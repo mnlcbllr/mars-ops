@@ -1,0 +1,12 @@
+[package]
+name = "ares-core"
+description = "ARES scientific core: Mars raster data, terrain metrics, routing and mission planning. Independent of Tauri."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+thiserror = "2"

@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["crates/ares-core", "crates/ares-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+
+[profile.dev.package.ares-core]
+opt-level = 2
