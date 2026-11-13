@@ -6,12 +6,34 @@
 //! only if every layer says it was verified against its archive source.
 
 use crate::geo::GridGeoreference;
+use crate::planning::{MissionScenario, ScientificSite};
 use crate::provenance::EvidenceKind;
+use crate::resources::{ResourceBudget, ResourceModel};
 use crate::terrain::Raster;
+use crate::LocalPoint;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub const MANIFEST_FILE: &str = "manifest.json";
+/// Base position and candidate science sites packaged with the dataset.
+pub const TARGETS_FILE: &str = "targets.json";
+/// Default resource budget and model coefficients packaged with the dataset.
+pub const ASSUMPTIONS_FILE: &str = "assumptions.json";
+
+/// Contents of [`TARGETS_FILE`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Targets {
+    pub base: LocalPoint,
+    pub base_note: String,
+    pub sites: Vec<ScientificSite>,
+}
+
+/// Contents of [`ASSUMPTIONS_FILE`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Assumptions {
+    pub budget: ResourceBudget,
+    pub model: ResourceModel,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -132,9 +154,9 @@ impl Dataset {
         }
         // The manifest's ground cell size must agree with its own projection
         // parameters, or distances and slopes would be silently wrong.
-        let disagrees = |stated: f64, implied: f64| !((stated - implied).abs() <= 1e-3 * implied.abs());
-        if disagrees(geo.cell_size_x_m, geo.implied_cell_size_x_m())
-            || disagrees(geo.cell_size_y_m, geo.map_scale_m_per_px)
+        let agrees = |stated: f64, implied: f64| (stated - implied).abs() <= 1e-3 * implied.abs();
+        if !agrees(geo.cell_size_x_m, geo.implied_cell_size_x_m())
+            || !agrees(geo.cell_size_y_m, geo.map_scale_m_per_px)
         {
             return Err(DataError::DataAlignmentFailure(format!(
                 "cell size {} × {} m does not match the projection, which implies {:.6} × {:.6} m",
@@ -199,6 +221,29 @@ impl Dataset {
     /// Path of the display imagery file, if the dataset has one.
     pub fn imagery_path(&self) -> Option<PathBuf> {
         self.layer(LayerKind::Imagery).map(|l| self.dir.join(&l.file))
+    }
+
+    /// The scenario packaged with the dataset: its targets and default assumptions.
+    pub fn default_scenario(&self) -> Result<MissionScenario, DataError> {
+        fn load<T: serde::de::DeserializeOwned>(path: PathBuf) -> Result<T, DataError> {
+            let bytes = std::fs::read(&path).map_err(|e| DataError::Io {
+                path: path.display().to_string(),
+                message: e.to_string(),
+            })?;
+            serde_json::from_slice(&bytes)
+                .map_err(|e| DataError::ManifestParse(format!("{}: {e}", path.display())))
+        }
+        let targets: Targets = load(self.dir.join(TARGETS_FILE))?;
+        let assumptions: Assumptions = load(self.dir.join(ASSUMPTIONS_FILE))?;
+        Ok(MissionScenario {
+            schema_version: 1,
+            name: format!("{} — packaged demo scenario", self.manifest.display_name),
+            dataset_id: self.manifest.dataset_id.clone(),
+            base: targets.base,
+            sites: targets.sites,
+            budget: assumptions.budget,
+            model: assumptions.model,
+        })
     }
 
     /// True only if every layer is recorded as verified against an archive
@@ -381,6 +426,47 @@ mod tests {
         let no_source_hash =
             Dataset::open(&write_dataset("nohash", true, |m| m.layers[0].sha256_source = None)).unwrap();
         assert!(!no_source_hash.is_real_data_verified());
+    }
+
+    #[test]
+    fn default_scenario_combines_packaged_targets_and_assumptions() {
+        use crate::resources::test_support::{bare_model, time_only};
+        let dir = write_dataset("scenario", true, |_| {});
+        let targets = Targets {
+            base: LocalPoint::new(1.5, 0.5),
+            base_note: "test".into(),
+            sites: vec![ScientificSite {
+                id: "A".into(),
+                name: "Site A".into(),
+                position: LocalPoint::new(0.5, 1.5),
+                science_rationale: "test".into(),
+                source_product_ids: vec!["TEST_PRODUCT".into()],
+                evidence_kind: EvidenceKind::UserDefined,
+                activity_min_s: 60.0,
+                activity_max_s: 120.0,
+                activity_power_w: 5.0,
+                preference_weight: 2.0,
+            }],
+        };
+        let assumptions = Assumptions { budget: time_only(3600.0, 600.0), model: bare_model() };
+        fs::write(dir.join(TARGETS_FILE), serde_json::to_string(&targets).unwrap()).unwrap();
+        fs::write(dir.join(ASSUMPTIONS_FILE), serde_json::to_string(&assumptions).unwrap()).unwrap();
+
+        let scenario = Dataset::open(&dir).unwrap().default_scenario().unwrap();
+        assert_eq!(scenario.dataset_id, "tiny");
+        assert_eq!(scenario.base, LocalPoint::new(1.5, 0.5));
+        assert_eq!(scenario.sites, targets.sites);
+        assert_eq!(scenario.budget.eva_reserve_s, 600.0);
+        assert_eq!(scenario.model, assumptions.model);
+    }
+
+    #[test]
+    fn default_scenario_reports_missing_or_malformed_files() {
+        let dir = write_dataset("noscenario", true, |_| {});
+        let ds = Dataset::open(&dir).unwrap();
+        assert!(matches!(ds.default_scenario(), Err(DataError::Io { .. })));
+        fs::write(dir.join(TARGETS_FILE), "[]").unwrap();
+        assert!(matches!(ds.default_scenario(), Err(DataError::ManifestParse(_))));
     }
 
     #[test]

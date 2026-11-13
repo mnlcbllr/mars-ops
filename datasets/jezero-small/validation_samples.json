@@ -1,0 +1,496 @@
+{
+  "description": "Elevations read from the original .IMG by byte offset (not by the application), used to test that the application returns the product's own values.",
+  "source_product_id": "DTEEC_023524_1985_023379_1985_U01",
+  "source_verified": false,
+  "region_min_m": -2629.787109375,
+  "region_max_m": -2510.18505859375,
+  "region_nodata_cells": 0,
+  "samples": [
+    {
+      "col": 1920,
+      "row": 1658,
+      "source_sample": 3421,
+      "source_line": 3659,
+      "elevation_m": -2596.70263671875
+    },
+    {
+      "col": 1945,
+      "row": 547,
+      "source_sample": 3446,
+      "source_line": 2548,
+      "elevation_m": -2594.80810546875
+    },
+    {
+      "col": 1534,
+      "row": 915,
+      "source_sample": 3035,
+      "source_line": 2916,
+      "elevation_m": -2584.322265625
+    },
+    {
+      "col": 340,
+      "row": 315,
+      "source_sample": 1841,
+      "source_line": 2316,
+      "elevation_m": -2554.123779296875
+    },
+    {
+      "col": 26,
+      "row": 1282,
+      "source_sample": 1527,
+      "source_line": 3283,
+      "elevation_m": -2574.00927734375
+    },
+    {
+      "col": 806,
+      "row": 388,
+      "source_sample": 2307,
+      "source_line": 2389,
+      "elevation_m": -2568.756103515625
+    },
+    {
+      "col": 551,
+      "row": 1090,
+      "source_sample": 2052,
+      "source_line": 3091,
+      "elevation_m": -2576.590576171875
+    },
+    {
+      "col": 401,
+      "row": 352,
+      "source_sample": 1902,
+      "source_line": 2353,
+      "elevation_m": -2542.59716796875
+    },
+    {
+      "col": 1071,
+      "row": 700,
+      "source_sample": 2572,
+      "source_line": 2701,
+      "elevation_m": -2576.869140625
+    },
+    {
+      "col": 1508,
+      "row": 913,
+      "source_sample": 3009,
+      "source_line": 2914,
+      "elevation_m": -2583.9853515625
+    },
+    {
+      "col": 1284,
+      "row": 1010,
+      "source_sample": 2785,
+      "source_line": 3011,
+      "elevation_m": -2570.009765625
+    },
+    {
+      "col": 1920,
+      "row": 1976,
+      "source_sample": 3421,
+      "source_line": 3977,
+      "elevation_m": -2623.865234375
+    },
+    {
+      "col": 203,
+      "row": 1277,
+      "source_sample": 1704,
+      "source_line": 3278,
+      "elevation_m": -2575.137451171875
+    },
+    {
+      "col": 1883,
+      "row": 484,
+      "source_sample": 3384,
+      "source_line": 2485,
+      "elevation_m": -2592.572265625
+    },
+    {
+      "col": 1035,
+      "row": 1453,
+      "source_sample": 2536,
+      "source_line": 3454,
+      "elevation_m": -2580.998046875
+    },
+    {
+      "col": 22,
+      "row": 866,
+      "source_sample": 1523,
+      "source_line": 2867,
+      "elevation_m": -2572.77197265625
+    },
+    {
+      "col": 1537,
+      "row": 1352,
+      "source_sample": 3038,
+      "source_line": 3353,
+      "elevation_m": -2584.776611328125
+    },
+    {
+      "col": 1811,
+      "row": 544,
+      "source_sample": 3312,
+      "source_line": 2545,
+      "elevation_m": -2593.443359375
+    },
+    {
+      "col": 1416,
+      "row": 124,
+      "source_sample": 2917,
+      "source_line": 2125,
+      "elevation_m": -2579.291259765625
+    },
+    {
+      "col": 633,
+      "row": 426,
+      "source_sample": 2134,
+      "source_line": 2427,
+      "elevation_m": -2547.12548828125
+    },
+    {
+      "col": 1875,
+      "row": 1820,
+      "source_sample": 3376,
+      "source_line": 3821,
+      "elevation_m": -2608.20458984375
+    },
+    {
+      "col": 305,
+      "row": 19,
+      "source_sample": 1806,
+      "source_line": 2020,
+      "elevation_m": -2568.89794921875
+    },
+    {
+      "col": 1959,
+      "row": 1940,
+      "source_sample": 3460,
+      "source_line": 3941,
+      "elevation_m": -2621.757080078125
+    },
+    {
+      "col": 1794,
+      "row": 986,
+      "source_sample": 3295,
+      "source_line": 2987,
+      "elevation_m": -2588.314697265625
+    },
+    {
+      "col": 579,
+      "row": 111,
+      "source_sample": 2080,
+      "source_line": 2112,
+      "elevation_m": -2568.288330078125
+    },
+    {
+      "col": 941,
+      "row": 1192,
+      "source_sample": 2442,
+      "source_line": 3193,
+      "elevation_m": -2537.413330078125
+    },
+    {
+      "col": 1061,
+      "row": 805,
+      "source_sample": 2562,
+      "source_line": 2806,
+      "elevation_m": -2569.590087890625
+    },
+    {
+      "col": 681,
+      "row": 81,
+      "source_sample": 2182,
+      "source_line": 2082,
+      "elevation_m": -2570.825927734375
+    },
+    {
+      "col": 1434,
+      "row": 1392,
+      "source_sample": 2935,
+      "source_line": 3393,
+      "elevation_m": -2584.97216796875
+    },
+    {
+      "col": 3,
+      "row": 582,
+      "source_sample": 1504,
+      "source_line": 2583,
+      "elevation_m": -2571.1845703125
+    },
+    {
+      "col": 789,
+      "row": 522,
+      "source_sample": 2290,
+      "source_line": 2523,
+      "elevation_m": -2567.222412109375
+    },
+    {
+      "col": 1429,
+      "row": 963,
+      "source_sample": 2930,
+      "source_line": 2964,
+      "elevation_m": -2583.932373046875
+    },
+    {
+      "col": 529,
+      "row": 518,
+      "source_sample": 2030,
+      "source_line": 2519,
+      "elevation_m": -2568.72998046875
+    },
+    {
+      "col": 235,
+      "row": 1244,
+      "source_sample": 1736,
+      "source_line": 3245,
+      "elevation_m": -2576.327880859375
+    },
+    {
+      "col": 1106,
+      "row": 1103,
+      "source_sample": 2607,
+      "source_line": 3104,
+      "elevation_m": -2527.805908203125
+    },
+    {
+      "col": 1518,
+      "row": 1364,
+      "source_sample": 3019,
+      "source_line": 3365,
+      "elevation_m": -2584.5634765625
+    },
+    {
+      "col": 124,
+      "row": 1508,
+      "source_sample": 1625,
+      "source_line": 3509,
+      "elevation_m": -2575.184326171875
+    },
+    {
+      "col": 408,
+      "row": 517,
+      "source_sample": 1909,
+      "source_line": 2518,
+      "elevation_m": -2572.54443359375
+    },
+    {
+      "col": 1705,
+      "row": 682,
+      "source_sample": 3206,
+      "source_line": 2683,
+      "elevation_m": -2592.028076171875
+    },
+    {
+      "col": 1715,
+      "row": 997,
+      "source_sample": 3216,
+      "source_line": 2998,
+      "elevation_m": -2585.616455078125
+    },
+    {
+      "col": 1263,
+      "row": 151,
+      "source_sample": 2764,
+      "source_line": 2152,
+      "elevation_m": -2578.879638671875
+    },
+    {
+      "col": 856,
+      "row": 223,
+      "source_sample": 2357,
+      "source_line": 2224,
+      "elevation_m": -2574.451171875
+    },
+    {
+      "col": 1324,
+      "row": 1831,
+      "source_sample": 2825,
+      "source_line": 3832,
+      "elevation_m": -2594.0556640625
+    },
+    {
+      "col": 835,
+      "row": 1877,
+      "source_sample": 2336,
+      "source_line": 3878,
+      "elevation_m": -2576.391357421875
+    },
+    {
+      "col": 721,
+      "row": 2016,
+      "source_sample": 2222,
+      "source_line": 4017,
+      "elevation_m": -2589.0498046875
+    },
+    {
+      "col": 1637,
+      "row": 1482,
+      "source_sample": 3138,
+      "source_line": 3483,
+      "elevation_m": -2584.45361328125
+    },
+    {
+      "col": 245,
+      "row": 484,
+      "source_sample": 1746,
+      "source_line": 2485,
+      "elevation_m": -2572.09765625
+    },
+    {
+      "col": 1486,
+      "row": 33,
+      "source_sample": 2987,
+      "source_line": 2034,
+      "elevation_m": -2579.234375
+    },
+    {
+      "col": 729,
+      "row": 1509,
+      "source_sample": 2230,
+      "source_line": 3510,
+      "elevation_m": -2575.570556640625
+    },
+    {
+      "col": 976,
+      "row": 917,
+      "source_sample": 2477,
+      "source_line": 2918,
+      "elevation_m": -2549.76318359375
+    },
+    {
+      "col": 1808,
+      "row": 768,
+      "source_sample": 3309,
+      "source_line": 2769,
+      "elevation_m": -2591.986572265625
+    },
+    {
+      "col": 1889,
+      "row": 508,
+      "source_sample": 3390,
+      "source_line": 2509,
+      "elevation_m": -2594.27880859375
+    },
+    {
+      "col": 1681,
+      "row": 760,
+      "source_sample": 3182,
+      "source_line": 2761,
+      "elevation_m": -2588.028564453125
+    },
+    {
+      "col": 787,
+      "row": 1635,
+      "source_sample": 2288,
+      "source_line": 3636,
+      "elevation_m": -2578.17578125
+    },
+    {
+      "col": 1907,
+      "row": 1465,
+      "source_sample": 3408,
+      "source_line": 3466,
+      "elevation_m": -2588.041748046875
+    },
+    {
+      "col": 1359,
+      "row": 456,
+      "source_sample": 2860,
+      "source_line": 2457,
+      "elevation_m": -2582.012451171875
+    },
+    {
+      "col": 1828,
+      "row": 1778,
+      "source_sample": 3329,
+      "source_line": 3779,
+      "elevation_m": -2603.8291015625
+    },
+    {
+      "col": 1219,
+      "row": 1888,
+      "source_sample": 2720,
+      "source_line": 3889,
+      "elevation_m": -2594.59521484375
+    },
+    {
+      "col": 536,
+      "row": 554,
+      "source_sample": 2037,
+      "source_line": 2555,
+      "elevation_m": -2572.756591796875
+    },
+    {
+      "col": 1958,
+      "row": 1604,
+      "source_sample": 3459,
+      "source_line": 3605,
+      "elevation_m": -2594.3115234375
+    },
+    {
+      "col": 1808,
+      "row": 1297,
+      "source_sample": 3309,
+      "source_line": 3298,
+      "elevation_m": -2586.229736328125
+    },
+    {
+      "col": 1042,
+      "row": 337,
+      "source_sample": 2543,
+      "source_line": 2338,
+      "elevation_m": -2576.52734375
+    },
+    {
+      "col": 1298,
+      "row": 351,
+      "source_sample": 2799,
+      "source_line": 2352,
+      "elevation_m": -2579.147216796875
+    },
+    {
+      "col": 56,
+      "row": 1308,
+      "source_sample": 1557,
+      "source_line": 3309,
+      "elevation_m": -2574.029296875
+    },
+    {
+      "col": 0,
+      "row": 0,
+      "source_sample": 1501,
+      "source_line": 2001,
+      "elevation_m": -2568.133544921875
+    },
+    {
+      "col": 2047,
+      "row": 0,
+      "source_sample": 3548,
+      "source_line": 2001,
+      "elevation_m": -2584.590576171875
+    },
+    {
+      "col": 0,
+      "row": 2047,
+      "source_sample": 1501,
+      "source_line": 4048,
+      "elevation_m": -2580.606201171875
+    },
+    {
+      "col": 2047,
+      "row": 2047,
+      "source_sample": 3548,
+      "source_line": 4048,
+      "elevation_m": -2629.787109375
+    }
+  ],
+  "corner_latlon": {
+    "north_west": [
+      18.48749388169466,
+      77.47933353727043
+    ],
+    "south_east": [
+      18.452595131030137,
+      77.51546338255949
+    ]
+  }
+}

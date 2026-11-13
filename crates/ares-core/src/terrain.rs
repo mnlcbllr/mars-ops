@@ -31,6 +31,8 @@ pub enum RasterError {
     },
     #[error("cell size must be positive and finite (got {dx_m} × {dy_m} m)")]
     BadCellSize { dx_m: f64, dy_m: f64 },
+    #[error("raster dimensions {width}×{height} are empty or too large")]
+    BadDimensions { width: usize, height: usize },
 }
 
 impl Raster {
@@ -46,7 +48,12 @@ impl Raster {
         if !(dx_m.is_finite() && dy_m.is_finite() && dx_m > 0.0 && dy_m > 0.0) {
             return Err(RasterError::BadCellSize { dx_m, dy_m });
         }
-        let expected = width * height * 4;
+        // Dimensions come from a manifest file: never multiply them unchecked.
+        let expected = width
+            .checked_mul(height)
+            .and_then(|cells| cells.checked_mul(4))
+            .filter(|&bytes| bytes > 0)
+            .ok_or(RasterError::BadDimensions { width, height })?;
         if bytes.len() != expected {
             return Err(RasterError::SizeMismatch { width, height, expected, actual: bytes.len() });
         }
@@ -144,6 +151,7 @@ impl PlanningGrid {
     /// Aggregate `raster` by `factor` and compute slope on the result.
     /// Columns / rows that do not fill a whole block are left out.
     pub fn build(raster: &Raster, factor: usize) -> PlanningGrid {
+        assert_eq!(raster.data.len(), raster.width * raster.height, "raster data does not match its dimensions");
         let factor = factor.max(1);
         let (width, height) = (raster.width / factor, raster.height / factor);
         let (cell_x_m, cell_y_m) = (raster.dx_m * factor as f64, raster.dy_m * factor as f64);
@@ -263,6 +271,20 @@ mod tests {
             err,
             RasterError::SizeMismatch { width: 3, height: 2, expected: 24, actual: 20 }
         );
+    }
+
+    #[test]
+    fn dimensions_whose_byte_count_overflows_are_rejected_without_panicking() {
+        // (usize::MAX / 2 + 1) × 2 cells wraps to 0 in unchecked arithmetic, which
+        // would make an empty buffer look like a perfect match.
+        let err = Raster::from_f32le_bytes(&[], usize::MAX / 2 + 1, 2, 1.0, 1.0, NODATA).unwrap_err();
+        assert_eq!(err, RasterError::BadDimensions { width: usize::MAX / 2 + 1, height: 2 });
+    }
+
+    #[test]
+    fn zero_sized_rasters_are_rejected() {
+        let err = Raster::from_f32le_bytes(&[], 0, 2, 1.0, 1.0, NODATA).unwrap_err();
+        assert_eq!(err, RasterError::BadDimensions { width: 0, height: 2 });
     }
 
     #[test]

@@ -12,6 +12,7 @@ pub mod data;
 pub mod geo;
 pub mod planning;
 pub mod provenance;
+pub mod report;
 pub mod resources;
 pub mod route;
 pub mod terrain;
