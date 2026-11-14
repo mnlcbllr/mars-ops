@@ -1,0 +1,135 @@
+{
+  "base": {
+    "x_m": 396.6,
+    "y_m": 654.3
+  },
+  "base_note": "USER_DEFINED demo base on level crater floor south-west of the central mound. Not a proposed or actual landing or habitat site.",
+  "sites": [
+    {
+      "id": "S1",
+      "name": "Central mound — summit bench",
+      "position": {
+        "x_m": 1011.3,
+        "y_m": 977.4
+      },
+      "science_rationale": "USER_DEFINED demo target: light-toned bench near the top of the largest mound in the orthoimage; DTM shows it ringed by steep flanks.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1800.0,
+      "activity_max_s": 3600,
+      "activity_power_w": 60,
+      "preference_weight": 5
+    },
+    {
+      "id": "S2",
+      "name": "Central mound — south-west foot",
+      "position": {
+        "x_m": 654.3,
+        "y_m": 755.2
+      },
+      "science_rationale": "USER_DEFINED demo target: break in slope where the largest mound's layered light-toned flank meets the floor.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 2700,
+      "activity_power_w": 60,
+      "preference_weight": 4
+    },
+    {
+      "id": "S3",
+      "name": "North-west mound — southern apron",
+      "position": {
+        "x_m": 594.9,
+        "y_m": 1482.2
+      },
+      "science_rationale": "USER_DEFINED demo target: apron below the light-toned north-west mound.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 2700,
+      "activity_power_w": 40,
+      "preference_weight": 3
+    },
+    {
+      "id": "S4",
+      "name": "Bright-floored crater — west rim",
+      "position": {
+        "x_m": 1457.4,
+        "y_m": 1316.6
+      },
+      "science_rationale": "USER_DEFINED demo target: rim of a small crater with a bright floor in the orthoimage.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 2400,
+      "activity_power_w": 40,
+      "preference_weight": 3
+    },
+    {
+      "id": "S5",
+      "name": "Southern mound — north foot",
+      "position": {
+        "x_m": 951.8,
+        "y_m": 331.2
+      },
+      "science_rationale": "USER_DEFINED demo target: foot of the isolated southern mound.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 2400,
+      "activity_power_w": 40,
+      "preference_weight": 2
+    },
+    {
+      "id": "S6",
+      "name": "Eastern plain crater — rim",
+      "position": {
+        "x_m": 1645.8,
+        "y_m": 624.0
+      },
+      "science_rationale": "USER_DEFINED demo target: rim of a dark-floored crater on the eastern plain.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 2400,
+      "activity_power_w": 20,
+      "preference_weight": 2
+    },
+    {
+      "id": "S7",
+      "name": "North-east plain",
+      "position": {
+        "x_m": 1844.1,
+        "y_m": 1825.5
+      },
+      "science_rationale": "USER_DEFINED demo target: textured plain far from the base, included to exercise resource limits.",
+      "source_product_ids": [
+        "ESP_023524_1985_RED_C_01_ORTHO",
+        "DTEEC_023524_1985_023379_1985_U01"
+      ],
+      "evidence_kind": "USER_DEFINED",
+      "activity_min_s": 1200.0,
+      "activity_max_s": 1800,
+      "activity_power_w": 20,
+      "preference_weight": 1
+    }
+  ]
+}

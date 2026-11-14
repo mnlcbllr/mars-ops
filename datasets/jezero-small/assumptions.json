@@ -1,0 +1,91 @@
+{
+  "budget": {
+    "eva_limit_s": 21600,
+    "eva_reserve_s": 2700,
+    "energy_budget_wh": 1200.0,
+    "energy_reserve_wh": 200.0,
+    "consumable_budget": 0.8,
+    "consumable_reserve": 0.2,
+    "consumable_unit": "kg O2"
+  },
+  "model": {
+    "model_version": "ares-resource-model-1",
+    "flat_speed_m_s": {
+      "value": 0.6,
+      "unit": "m/s",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Walking speed on level ground. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        0.3,
+        1.2
+      ],
+      "version": 1
+    },
+    "slope_time_penalty": {
+      "value": 6.0,
+      "unit": "per unit grade",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Time per metre is multiplied by (1 + penalty × |grade|); 6 makes a 10 % grade 60 % slower. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        3.0,
+        10.0
+      ],
+      "version": 1
+    },
+    "max_slope_deg": {
+      "value": 20.0,
+      "unit": "deg",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Planning cells steeper than this are not entered. A scenario rule, not a suit or safety limit. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        10.0,
+        25.0
+      ],
+      "version": 1
+    },
+    "overhead_s": {
+      "value": 1800.0,
+      "unit": "s",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Fixed time for egress, ingress and checks. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        600.0,
+        3600.0
+      ],
+      "version": 1
+    },
+    "base_power_w": {
+      "value": 150.0,
+      "unit": "W",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Continuous equipment load for the whole EVA. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        50.0,
+        300.0
+      ],
+      "version": 1
+    },
+    "consumable_rate_travel_per_h": {
+      "value": 0.1,
+      "unit": "kg O2/h",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Oxygen use while walking. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        0.05,
+        0.15
+      ],
+      "version": 1
+    },
+    "consumable_rate_activity_per_h": {
+      "value": 0.07,
+      "unit": "kg O2/h",
+      "source_type": "USER_DEFINED",
+      "citation_or_assumption": "Oxygen use while working at a site or during overhead. Demo assumption chosen by the developers; not derived from NASA EVA data and not a certified value.",
+      "range": [
+        0.04,
+        0.12
+      ],
+      "version": 1
+    }
+  }
+}

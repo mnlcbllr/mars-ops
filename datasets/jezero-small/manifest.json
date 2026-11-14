@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "dataset_id": "jezero-small",
+  "display_name": "Jezero floor mounds (HiRISE)",
+  "body": "Mars",
+  "region_name": "Jezero Crater floor, east of the western delta",
+  "generated_utc": "2026-11-13T21:22:13Z",
+  "georeference": {
+    "projection": "EQUIRECTANGULAR",
+    "radius_m": 3394839.8133163,
+    "center_latitude_deg": 15.0,
+    "center_longitude_deg": 77.53,
+    "map_scale_m_per_px": 1.0096633268711,
+    "roi_x_min_m": -2899.7530747739,
+    "roi_y_max_m": 1095404.9462524215,
+    "width": 2048,
+    "height": 2048,
+    "cell_size_x_m": 0.9914373926782546,
+    "cell_size_y_m": 1.0096633268711
+  },
+  "roi_bbox": {
+    "lat_min": 18.452595131030137,
+    "lat_max": 18.48749388169466,
+    "lon_east_min": 77.47933353727043,
+    "lon_east_max": 77.51546338255949
+  },
+  "layers": [
+    {
+      "provider": "NASA/JPL-Caltech/University of Arizona",
+      "instrument": "MRO HiRISE (High Resolution Imaging Science Experiment)",
+      "license_and_credit": "Credit: NASA/JPL-Caltech/UArizona. The HiRISE site states that its images are in the public domain and asks for this credit line where possible (https://www.uahirise.org/ESP_023524_1985, retrieved 2026-11-13 UTC). PDS data set MRO-M-HIRISE-5-DTM-V1.0.",
+      "retrieved_utc": "2026-11-13T18:04:44Z",
+      "source_crs": "+proj=eqc +lat_ts=15.0 +lat_0=0 +lon_0=77.53 +x_0=0 +y_0=0 +R=3394839.8133163 +units=m +no_defs",
+      "output_crs": "Source pixels unchanged (no resampling). Local frame: origin at the region's south-west corner, x east, y north, metres; one cell = 0.991437 m (east-west) × 1.009663 m (north-south) on the ground.",
+      "pixel_size_m": [
+        0.9914373926782546,
+        1.0096633268711
+      ],
+      "bbox_original": {
+        "lat_min": 18.159317160581,
+        "lat_max": 18.521550219233,
+        "lon_east_min": 77.45290261,
+        "lon_east_max": 77.59817341
+      },
+      "bbox_projected_m": [
+        -2899.7530747739,
+        1093337.1557589895,
+        -831.9625813418875,
+        1095404.9462524215
+      ],
+      "is_real_source_verified": true,
+      "id": "hirise-jezero-dtm",
+      "display_name": "HiRISE stereo DTM",
+      "kind": "ELEVATION",
+      "file": "elevation.bin",
+      "origin_type": "DERIVED",
+      "observation_date": "Stereo pair acquired 2011-08-03 (ESP_023524_1985) and 2011-07-23 (ESP_023379_1985)",
+      "product_id": "DTEEC_023524_1985_023379_1985_U01",
+      "source_url": "https://www.uahirise.org/PDS/DTM/ESP/ORB_023500_023599/ESP_023524_1985_ESP_023379_1985/DTEEC_023524_1985_023379_1985_U01.IMG",
+      "vertical_datum": "Metres above the Mars equipotential surface (Mars 2000 datum, MOLA areoid; Smith et al. 2001), per the product label.",
+      "nodata_value": -3.4028226550889045e+38,
+      "sha256_source": "0cced9e87cb9e49e5d00829892146d264a5a48a6cc8f87f6e114b124532b7410",
+      "sha256_derived": "9309562ee7f3ef21259f156af0be6a4e6bcc7dbeec37603e50da44c5c8f176a7",
+      "processing_steps": [
+        "Downloaded DTEEC_023524_1985_023379_1985_U01.IMG from the HiRISE PDS archive (https://www.uahirise.org/dtm/ESP_023524_1985).",
+        "Parsed the attached PDS3 label; verified projection, sample type, scale/offset and no-data constant.",
+        "Located pixels in the projection with the equations of the HiRISE RDR Software Interface Specification, JPL D-32006 v1.3, section 3.5.1.",
+        "Extracted columns 1500–3547, lines 2000–4047 (0-based) with no resampling, scaling or filtering.",
+        "Wrote little-endian 32-bit floats, row-major, north to south; no-data cells keep the label's MISSING_CONSTANT."
+      ],
+      "quality_notes": [
+        "DERIVED product: elevations were computed by the producer from the HiRISE stereo pair ESP_023524_1985, ESP_023379_1985 by photogrammetry (SOCET Set 5.6.0); they are not direct in-situ measurements.",
+        "Region lies entirely inside DTM coverage: 0 of 4194304 cells are no-data.",
+        "Pixel-to-map convention: HiRISE RDR Software Interface Specification, JPL D-32006 v1.3, section 3.5.1. Independent reader check: GDAL 3.12.2 (PDS driver) places the grid origin +0.000 px east and +0.000 px north of the origin computed here from the label.",
+        "Georeferencing check against the label's own extent keywords: first/last pixel-centre coordinates computed from the projection keywords differ from MAXIMUM/MINIMUM_LATITUDE and EASTERNMOST/WESTERNMOST_LONGITUDE by north +0.94 px, south +1.24 px, west -1.28 px, east -1.87 px (1 px ≈ 1 m). Recorded as the empirical positional offset: up to 1.9 m, inside one 4 m planning cell.",
+        "Elevation values of the region were read by GDAL and by raw byte offsets from the label; both are bit-identical.",
+        "Producer's stated quality (https://www.uahirise.org/dtm/about.php, retrieved 2026-11-13 UTC): DTM post spacing is about 4 times the pixel scale of the input images, 'so the post spacing is 1-2 m' with 'vertical precision in the tens of centimeters'; the result 'is tied to the global elevation map produced by the MOLA instrument team'. The page does not state horizontal accuracy. Hazards smaller than the post spacing are not represented.",
+        "Projection radius is the Mars ellipsoid radius at 15° N (per the label); the true planetary radius at this site differs by roughly 0.1 %, which mis-states horizontal distances by the same fraction."
+      ]
+    },
+    {
+      "provider": "NASA/JPL-Caltech/University of Arizona",
+      "instrument": "MRO HiRISE (High Resolution Imaging Science Experiment)",
+      "license_and_credit": "Credit: NASA/JPL-Caltech/UArizona. The HiRISE site states that its images are in the public domain and asks for this credit line where possible (https://www.uahirise.org/ESP_023524_1985, retrieved 2026-11-13 UTC). PDS data set MRO-M-HIRISE-5-DTM-V1.0.",
+      "retrieved_utc": "2026-11-13T18:04:44Z",
+      "source_crs": "+proj=eqc +lat_ts=15.0 +lat_0=0 +lon_0=77.53 +x_0=0 +y_0=0 +R=3394839.8133163 +units=m +no_defs",
+      "output_crs": "Source pixels unchanged (no resampling). Local frame: origin at the region's south-west corner, x east, y north, metres; one cell = 0.991437 m (east-west) × 1.009663 m (north-south) on the ground.",
+      "pixel_size_m": [
+        0.9914373926782546,
+        1.0096633268711
+      ],
+      "bbox_original": {
+        "lat_min": 18.159317160581,
+        "lat_max": 18.521550219233,
+        "lon_east_min": 77.45290261,
+        "lon_east_max": 77.59817341
+      },
+      "bbox_projected_m": [
+        -2899.7530747739,
+        1093337.1557589895,
+        -831.9625813418875,
+        1095404.9462524215
+      ],
+      "is_real_source_verified": true,
+      "id": "hirise-jezero-ortho",
+      "display_name": "HiRISE orthoimage (red, 1 m)",
+      "kind": "IMAGERY",
+      "file": "ortho.png",
+      "origin_type": "OBSERVED",
+      "observation_date": "2011-08-03",
+      "product_id": "ESP_023524_1985_RED_C_01_ORTHO",
+      "source_url": "https://www.uahirise.org/PDS/DTM/ESP/ORB_023500_023599/ESP_023524_1985_ESP_023379_1985/ESP_023524_1985_RED_C_01_ORTHO.JP2",
+      "vertical_datum": null,
+      "nodata_value": 0.0,
+      "sha256_source": "82bb6218cf7acf1001b2e09107afe3d3474488f744422b35224cb2051ab108bc",
+      "sha256_derived": "caaccc0fe726dc78b2450878f374701c02a8705b6daded0f0adf919a31d74d17",
+      "processing_steps": [
+        "Downloaded ESP_023524_1985_RED_C_01_ORTHO.JP2 and its detached label ESP_023524_1985_RED_C_01_ORTHO.LBL (label sha256 5c7b622fba9165d16bc355f5fd796d13f57ed48243af4c28234da9fee7f13b4e) from the HiRISE PDS archive.",
+        "Verified that the label's map projection equals the DTM's.",
+        "Decoded JPEG 2000 and extracted columns 1500–3547, lines 2000–4047 (0-based) with no resampling or contrast change.",
+        "Wrote 8-bit greyscale PNG (lossless)."
+      ],
+      "quality_notes": [
+        "The orthoimage label declares exactly the same projection, scale, offsets and dimensions as the DTM (the producer orthorectified the image onto this DTM), so the same pixel window is cut from both. Image-to-terrain registration therefore rests on the producer's orthorectification.",
+        "Metadata cross-check: the georeferencing embedded in the JPEG 2000 file (GeoJP2) places the grid origin +1.50 px east and -1.50 px north of the PDS-label grid and encodes the projection as '+proj=eqc +lat_ts=0 +lat_0=15 +lon_0=77.53 +x_0=0 +y_0=0 +R=3394839.8133163 +units=m +no_defs=True' (standard parallel and latitude of origin swapped relative to the label). The PDS label is used; the disagreement, about 1.5 m, is recorded as positional uncertainty.",
+        "No independent feature-based measurement of image-to-terrain offset is included: two photometric methods (brightness against DTM gradient, and edge strength against slope) were tried on this region and gave no distinct correlation peak, so neither is reported as evidence.",
+        "Pixel values are the product's 8-bit DN, unchanged. I/F = DN × 0.0001094936284662 + 0.1130332588555438 per the label. DN 0 = null.",
+        "Imagery shows brightness only. It is not a source of heights, slopes or composition."
+      ]
+    }
+  ]
+}

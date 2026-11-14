@@ -1,0 +1,10 @@
+target/
+node_modules/
+dist/
+tools/.venv/
+# Original NASA archives are large; they are re-downloaded by tools/fetch_source.sh
+datasets/_source/
+results/*
+!results/.gitkeep
+src-tauri/gen/
+*.log
