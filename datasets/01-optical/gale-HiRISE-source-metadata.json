@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "dataset_id": "gale-small",
+  "display_name": "Gale Crater foothills (HiRISE)",
+  "body": "Mars",
+  "region_name": "Gale Crater, lower Mount Sharp foothills",
+  "generated_utc": "2026-11-14T11:03:08Z",
+  "georeference": {
+    "projection": "EQUIRECTANGULAR",
+    "radius_m": 3396190.0,
+    "center_latitude_deg": 0.0,
+    "center_longitude_deg": 137.39,
+    "map_scale_m_per_px": 1.0117630165416,
+    "roi_x_min_m": -215.5055225233608,
+    "roi_y_max_m": -277946.4770892358,
+    "width": 1024,
+    "height": 1024,
+    "cell_size_x_m": 1.0083639380190528,
+    "cell_size_y_m": 1.0117630165416
+  },
+  "roi_bbox": {
+    "lat_min": -4.70660389803729,
+    "lat_max": -4.689125186677671,
+    "lon_east_min": 137.38636429148474,
+    "lon_east_max": 137.40384300284438
+  },
+  "layers": [
+    {
+      "provider": "NASA/JPL-Caltech/University of Arizona",
+      "instrument": "MRO HiRISE (High Resolution Imaging Science Experiment)",
+      "license_and_credit": "Credit: NASA/JPL-Caltech/UArizona. PDS MRO-M-HIRISE-5-DTM-V1.0.",
+      "retrieved_utc": "2026-11-14",
+      "source_crs": "+proj=eqc +lat_ts=0.0 +lat_0=0 +lon_0=137.39 +x_0=0 +y_0=0 +R=3396190.0 +units=m +no_defs",
+      "output_crs": "Source pixels unchanged (no resampling). Local frame: origin at the region's south-west corner, x east, y north, metres; one cell = 1.008364 m (east-west) \u00d7 1.011763 m (north-south) on the ground.",
+      "pixel_size_m": [
+        1.0083639380190528,
+        1.0117630165416
+      ],
+      "bbox_original": {
+        "lat_min": -4.792202743651,
+        "lat_max": -4.583317928209,
+        "lon_east_min": 137.3351821,
+        "lon_east_max": 137.44270087
+      },
+      "bbox_projected_m": [
+        -215.5055225233608,
+        -278982.52241817437,
+        820.5398064152376,
+        -277946.4770892358
+      ],
+      "is_real_source_verified": true,
+      "id": "hirise-gale-dtm",
+      "display_name": "HiRISE stereo DTM",
+      "kind": "ELEVATION",
+      "origin_type": "DERIVED",
+      "observation_date": "Stereo pair acquired 2015-04-08 (ESP_040770_1755) and 2014-12-13 (ESP_039280_1755)",
+      "product_id": "DTEEC_040770_1755_039280_1755_U01",
+      "source_url": "https://www.uahirise.org/PDS/DTM/ESP/ORB_040700_040799/ESP_040770_1755_ESP_039280_1755/DTEEC_040770_1755_039280_1755_U01.IMG",
+      "vertical_datum": "Metres above the Mars equipotential surface (Mars 2000 datum, MOLA areoid; Smith et al. 2001), per the product label.",
+      "nodata_value": -3.4028226550889045e+38,
+      "sha256_source": "407daf9f10229b892c811af49dfe3ef673f69981c43a2679bcb2a73677ef50cb",
+      "processing_steps": [
+        "Downloaded DTEEC_040770_1755_039280_1755_U01.IMG from the HiRISE PDS archive (https://www.uahirise.org/dtm/dtm.php?ID=ESP_040770_1755).",
+        "Parsed the attached PDS3 label; verified projection, sample type, scale/offset and no-data constant.",
+        "Located pixels in the projection with the equations of the HiRISE RDR Software Interface Specification, JPL D-32006 v1.3, section 3.5.1.",
+        "Extracted columns 3000\u20134023, lines 6200\u20137223 (0-based) with no resampling, scaling or filtering.",
+        "Wrote little-endian 32-bit floats, row-major, north to south; no-data cells keep the label's MISSING_CONSTANT."
+      ],
+      "quality_notes": [
+        "DERIVED product: elevations were computed by the producer from the HiRISE stereo pair ESP_040770_1755, ESP_039280_1755 by photogrammetry (SOCET Set 5.6.0); they are not direct in-situ measurements.",
+        "Region lies entirely inside DTM coverage: 0 of 1048576 cells are no-data.",
+        "Pixel-to-map convention: HiRISE RDR Software Interface Specification, JPL D-32006 v1.3, section 3.5.1. Independent reader check: GDAL 3.12.2 (PDS driver) places the grid origin +0.000 px east and +0.000 px north of the origin computed here from the label.",
+        "Georeferencing check against the label's own extent keywords: first/last pixel-centre coordinates computed from the projection keywords differ from MAXIMUM/MINIMUM_LATITUDE and EASTERNMOST/WESTERNMOST_LONGITUDE by north +0.72 px, south +1.36 px, west -0.96 px, east -1.01 px (1 px \u2248 1 m). Recorded as the empirical positional offset: up to 1.4 m, inside one 4 m planning cell.",
+        "Elevation values of the region were read by GDAL and by raw byte offsets from the label; both are bit-identical.",
+        "Producer's stated quality (https://www.uahirise.org/dtm/about.php, retrieved 2026-11-13 UTC): DTM post spacing is about 4 times the pixel scale of the input images, 'so the post spacing is 1-2 m' with 'vertical precision in the tens of centimeters'; the result 'is tied to the global elevation map produced by the MOLA instrument team'. The page does not state horizontal accuracy. Hazards smaller than the post spacing are not represented.",
+        "Ground distances use the product\u2019s declared spherical reference radius."
+      ],
+      "original_hyde_file": "elevation.bin",
+      "geotiff_in_this_zip": "../04-topographic/gale-HiRISE-elevation-m.tif",
+      "sha256_original_hyde_export": "a7b85a79791a616ed7570ab23209eaa05725b5f921d4e4c42a15324c934de15b",
+      "metadata_note": "The crop provenance below describes the original HYDE export. This pack re-encodes the same values as a GeoTIFF."
+    },
+    {
+      "provider": "NASA/JPL-Caltech/University of Arizona",
+      "instrument": "MRO HiRISE (High Resolution Imaging Science Experiment)",
+      "license_and_credit": "Credit: NASA/JPL-Caltech/UArizona. PDS MRO-M-HIRISE-5-DTM-V1.0.",
+      "retrieved_utc": "2026-11-14",
+      "source_crs": "+proj=eqc +lat_ts=0.0 +lat_0=0 +lon_0=137.39 +x_0=0 +y_0=0 +R=3396190.0 +units=m +no_defs",
+      "output_crs": "Source pixels unchanged (no resampling). Local frame: origin at the region's south-west corner, x east, y north, metres; one cell = 1.008364 m (east-west) \u00d7 1.011763 m (north-south) on the ground.",
+      "pixel_size_m": [
+        1.0083639380190528,
+        1.0117630165416
+      ],
+      "bbox_original": {
+        "lat_min": -4.792202743651,
+        "lat_max": -4.583317928209,
+        "lon_east_min": 137.3351821,
+        "lon_east_max": 137.44270087
+      },
+      "bbox_projected_m": [
+        -215.5055225233608,
+        -278982.52241817437,
+        820.5398064152376,
+        -277946.4770892358
+      ],
+      "is_real_source_verified": true,
+      "id": "hirise-gale-ortho",
+      "display_name": "HiRISE orthoimage (red, 1 m)",
+      "kind": "IMAGERY",
+      "origin_type": "OBSERVED",
+      "observation_date": "2015-04-08",
+      "product_id": "ESP_040770_1755_RED_C_01_ORTHO",
+      "source_url": "https://www.uahirise.org/PDS/DTM/ESP/ORB_040700_040799/ESP_040770_1755_ESP_039280_1755/ESP_040770_1755_RED_C_01_ORTHO.JP2",
+      "vertical_datum": null,
+      "nodata_value": 0.0,
+      "sha256_source": "f25a1a8caab875cd84250a6e79fb2ea082eb3f01f6db2ab9791be25f05649a2a",
+      "processing_steps": [
+        "Downloaded ESP_040770_1755_RED_C_01_ORTHO.JP2 and its detached label ESP_040770_1755_RED_C_01_ORTHO.LBL (label sha256 edd5a4482fbf544f8915e3e37f1bf415fd62d6cfd78c92c9fd53d2d8c2cb2be8) from the HiRISE PDS archive.",
+        "Verified that the label's map projection equals the DTM's.",
+        "Decoded JPEG 2000 and extracted columns 3000\u20134023, lines 6200\u20137223 (0-based) with no resampling or contrast change.",
+        "Wrote 8-bit greyscale PNG (lossless)."
+      ],
+      "quality_notes": [
+        "The orthoimage label declares exactly the same projection, scale, offsets and dimensions as the DTM (the producer orthorectified the image onto this DTM), so the same pixel window is cut from both. Image-to-terrain registration therefore rests on the producer's orthorectification.",
+        "Metadata cross-check: the georeferencing embedded in the JPEG 2000 file (GeoJP2) places the grid origin +1.50 px east and -1.50 px north of the PDS-label grid and encodes the projection as '+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=137.39 +x_0=0 +y_0=0 +R=3396190 +units=m +no_defs=True' (standard parallel and latitude of origin are checked against the label). The PDS label is used; the disagreement, about 1.5 m, is recorded as positional uncertainty.",
+        "No independent feature-based measurement of image-to-terrain offset is included: two photometric methods (brightness against DTM gradient, and edge strength against slope) were tried on this region and gave no distinct correlation peak, so neither is reported as evidence.",
+        "Pixel values are the product's 8-bit DN, unchanged. I/F = DN \u00d7 0.0002740960335737 + 0.1129831270620163 per the label. DN 0 = null.",
+        "Imagery shows brightness only. It is not a source of heights, slopes or composition."
+      ],
+      "original_hyde_file": "ortho.png",
+      "geotiff_in_this_zip": "gale-HiRISE-ortho.tif",
+      "sha256_original_hyde_export": "c1cb83bdab49c6de6712b311c66d63dbeebf2a583afbefa180238d999ec948b1",
+      "metadata_note": "The crop provenance below describes the original HYDE export. This pack re-encodes the same values as a GeoTIFF."
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+PDS_VERSION_ID                 = PDS3
+
+RECORD_TYPE                    = FIXED_LENGTH
+RECORD_BYTES                   = 3056
+FILE_RECORDS                   = 324696
+LABEL_REVISION_NOTE            = 
+    "2012-03-06, H. Taylor, F. Seelos (JHU/APL)
+     Initial TER/MTRDR labels for CRISM Data Users' Workshop;
+     2014-01-09, G. Romeo, J. Aiello, F. Seelos (JHU/APL)
+     Complete TER/MTRDR label set for preliminary PDS review;
+     2014-04-08, G. Romeo, J. Aiello, R. Espiritu, F. Seelos (JHU/APL)
+     TER/MTRDR label set revisions completed for PDS peer review;
+     2014-08-14, G. Romeo, J. Aiello, F. Seelos (JHU/APL)
+     PDS peer review TER/MTRDR label set liens retired;"
+
+^ENVI_HEADER                   = "FRT0002037A_07_IF165J_MTR3.HDR"
+
+^IMAGE                         = "FRT0002037A_07_IF165J_MTR3.IMG"
+
+/* Map-Projected Targeted RDR Identification */
+DATA_SET_ID                    = "MRO-M-CRISM-5-RDR-MPTARGETED-V1.0"
+PRODUCT_ID                     = "FRT0002037A_07_IF165J_MTR3"
+
+/*                                cccnnnnnnnn_xx_ooaaas_MTRv              */
+/*                                ccc = Class Type                        */
+/*                                nnnnnnnn = Observation ID, hexadecimal  */
+/*                                xx = counter this observation (hex)     */
+/*                                ooaaa = Image type, Macro number        */
+/*                                s = Sensor ID (J for Joined)            */
+/*                                v = Version number                      */
+
+INSTRUMENT_HOST_NAME          = "MARS RECONNAISSANCE ORBITER"
+SPACECRAFT_ID                 = MRO
+INSTRUMENT_NAME               = "COMPACT RECONNAISSANCE IMAGING
+                                 SPECTROMETER FOR MARS"
+INSTRUMENT_ID                 = CRISM
+TARGET_NAME                   = MARS
+PRODUCT_TYPE                  = MPTARGETED_RDR
+PRODUCT_CREATION_TIME         = 2021-06-16T18:26:24
+START_TIME                    = 2011-09-11T09:26:51.349
+STOP_TIME                     = 2011-09-11T09:28:51.083
+SPACECRAFT_CLOCK_START_COUNT  = "10/1000200443.53819"
+SPACECRAFT_CLOCK_STOP_COUNT   = "10/1000200563.36397"
+
+ORBIT_NUMBER                  = 24023
+OBSERVATION_TYPE              = "FRT"
+OBSERVATION_ID                = "16#0002037A#"
+MRO:OBSERVATION_NUMBER        = 16#07#
+MRO:ACTIVITY_ID               = "IF165"
+MRO:SENSOR_ID                 = "J"
+
+/* Detector and FPE temperature refer to IR component of observation */
+
+MRO:DETECTOR_TEMPERATURE      = -147.493
+MRO:OPTICAL_BENCH_TEMPERATURE = -50.138
+MRO:SPECTROMETER_HOUSING_TEMP = -73.371
+MRO:SPHERE_TEMPERATURE        = -49.903
+MRO:FPE_TEMPERATURE           = 1.716
+PRODUCT_VERSION_ID            = "3"
+PRODUCER_INSTITUTION_NAME     = "JOHNS HOPKINS UNIVERSITY
+                                  APPLIED PHYSICS LABORATORY"
+SOFTWARE_NAME                 = "mtrdr_pipeline"
+SOFTWARE_VERSION_ID           = "1.0"
+SOURCE_PRODUCT_ID             = (
+    "FRT0002037A_07_IF165J_TER3",
+    "FRT0002037A_07_DE165L_DDR1"
+)
+
+/* Targeted RDR Observation and Processing Parameters */
+
+SOLAR_DISTANCE                = 232600867.769095 <KILOMETER>
+SOLAR_LONGITUDE               = 358.901130 
+MRO:WAVELENGTH_FILE_NAME      = "FRT0002037A_07_WV165J_MTR3.TAB"
+MRO:PHOTOMETRIC_CORR_FLAG        = "ON"
+MRO:ATMOSPHERIC_CORR_FLAG        = "ON"
+MRO:RATIO_SHIFT_CORR_FLAG        = "ON"
+MRO:EMPIRICAL_GEOM_NORM_FLAG     = "ON"
+MRO:EMPIRICAL_SMILE_CORR_FLAG    = "ON"
+MRO:SENSOR_SPACE_TRANSFORM_FLAG  = "ON"
+
+/* Map projection information about this RDR is in the */
+/* IMAGE_MAP_PROJECTION object below.                  */
+
+OBJECT                         = IMAGE_MAP_PROJECTION
+  ^DATA_SET_MAP_PROJECTION     = "MTR_MAP.CAT"
+  MAP_PROJECTION_TYPE          = "EQUIRECTANGULAR"
+  A_AXIS_RADIUS                =  3396.190000000000 <KILOMETER>
+  B_AXIS_RADIUS                =  3396.190000000000 <KILOMETER>
+  C_AXIS_RADIUS                =  3396.190000000000 <KILOMETER>
+  POSITIVE_LONGITUDE_DIRECTION = EAST
+  CENTER_LATITUDE              =   0.0000000 <DEGREE>
+  CENTER_LONGITUDE             =   0.0000000 <DEGREE>
+  LINE_FIRST_PIXEL             =    1        <PIXEL>
+  LINE_LAST_PIXEL              =  664        <PIXEL>
+  SAMPLE_FIRST_PIXEL           =    1        <PIXEL>
+  SAMPLE_LAST_PIXEL            =  764        <PIXEL>
+  MAP_PROJECTION_ROTATION      =   0.0000000 <DEGREE>
+  MAP_RESOLUTION               = 3293.0387513 
+  MAP_SCALE                    =   0.0180000 
+  MINIMUM_LATITUDE             =  -4.6638374 <DEGREE>
+  MAXIMUM_LATITUDE             =  -4.4625036 <DEGREE>
+  WESTERNMOST_LONGITUDE        = 137.3748800 <DEGREE>
+  EASTERNMOST_LONGITUDE        = 137.6065800 <DEGREE>
+  LINE_PROJECTION_OFFSET       = -14694.1972222 <PIXEL>
+  SAMPLE_PROJECTION_OFFSET     = -452379.7944444 <PIXEL>
+  COORDINATE_SYSTEM_TYPE       = "BODY-FIXED ROTATING"
+  COORDINATE_SYSTEM_NAME       = "PLANETOCENTRIC"
+END_OBJECT                     = IMAGE_MAP_PROJECTION
+
+/* ENVI header description */
+/* The ENVI header is a separate ASCII file that includes basic image  */
+/* data file characteristics and allows the image data to be loaded    */
+/* directly into the ENVI image processing software available bands    */
+/* list.                                                               */
+
+OBJECT                    = ENVI_HEADER 
+  HEADER_TYPE             = "ENVI" 
+  INTERCHANGE_FORMAT      = "ASCII" 
+  BYTES                   = 14912
+  DESCRIPTION             = "This text file can be used by ENVI image 
+      processing software to read in the image."
+END_OBJECT                = ENVI_HEADER
+
+
+/* This Map-Projected Targeted RDR label describes a multiple-band */
+/* image file containing calibrated and corrected spectral data    */
+/* in units of corrected I over F.                                 */
+
+OBJECT              = IMAGE
+  LINES             = 664
+  LINE_SAMPLES      = 764
+  SAMPLE_TYPE       = PC_REAL
+  SAMPLE_BITS       = 32
+  UNIT              = "CORRECTED_I_OVER_F"
+  BANDS             = 489
+  BAND_STORAGE_TYPE = BAND_SEQUENTIAL
+END_OBJECT = IMAGE
+
+END
