@@ -9,11 +9,13 @@ use ares_core::data::{dataset_dir, find_datasets, DatasetSummary};
 use ares_core::inspect::PointInspection;
 use ares_core::planning::{MissionScenario, ValidationReport};
 use ares_core::report::MissionReport;
+use ares_core::report::{utc_iso8601, write_new};
 use ares_core::session::{DatasetInfo, DisplayLayer, Session};
 use ares_core::LocalPoint;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager, State};
 
@@ -142,6 +144,84 @@ fn export_mission_report(
     Ok(path.display().to_string())
 }
 
+/// Directory for user-saved mission plans: scenarios without a solved result.
+fn plans_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let documents = app.path().document_dir().or_else(|_| app.path().app_data_dir()).map_err(message)?;
+    Ok(documents.join("ARES").join("plans"))
+}
+
+#[derive(serde::Serialize)]
+struct PlanSummary {
+    file: String,
+    name: String,
+    dataset_id: String,
+}
+
+/// Save the edited scenario as pretty JSON in `Documents/ARES/plans` and
+/// return the file's path. The webview cannot choose the location. A plan
+/// holds no result: load it and run the mission again.
+#[tauri::command]
+fn save_plan(app: AppHandle, scenario: MissionScenario) -> Result<String, String> {
+    let json = serde_json::to_vec_pretty(&scenario).map_err(message)?;
+    let keep = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
+    let id: String = scenario.dataset_id.chars().map(|c| if keep(c) { c } else { '_' }).collect();
+    let seconds = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let stamp: String = utc_iso8601(seconds).chars().filter(char::is_ascii_alphanumeric).collect();
+    let path = write_new(&plans_dir(&app)?, &format!("hyde-plan_{id}_{stamp}"), &json).map_err(message)?;
+    Ok(path.display().to_string())
+}
+
+/// Summaries of saved plans, newest first. A damaged file is skipped, not an
+/// error, so one bad file cannot hide the rest.
+#[tauri::command]
+fn list_plans(app: AppHandle) -> Result<Vec<PlanSummary>, String> {
+    const MAX_PLAN_BYTES: u64 = 4 * 1024 * 1024;
+    let mut plans = Vec::new();
+    let entries = match std::fs::read_dir(plans_dir(&app)?) {
+        Ok(entries) => entries,
+        // Nothing saved yet: an empty list, not a failure.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(plans),
+        Err(e) => return Err(message(e)),
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let parsed = entry.metadata().ok().filter(|m| m.len() <= MAX_PLAN_BYTES).and_then(|_| {
+            std::fs::read(&path).ok().and_then(|bytes| serde_json::from_slice::<MissionScenario>(&bytes).ok())
+        });
+        let Some(scenario) = parsed else { continue };
+        let Some(file) = path.file_name().and_then(|f| f.to_str()) else { continue };
+        plans.push(PlanSummary {
+            file: file.to_string(),
+            name: scenario.name,
+            dataset_id: scenario.dataset_id,
+        });
+    }
+    // The file names embed an ISO-like timestamp, so reverse order is newest first.
+    plans.sort_by(|a, b| b.file.cmp(&a.file));
+    Ok(plans)
+}
+
+/// Load a saved plan by file name, only if it was saved for the open dataset.
+#[tauri::command(rename_all = "snake_case")]
+fn load_plan(app: AppHandle, state: State<'_, AppState>, file: String) -> Result<MissionScenario, String> {
+    const MAX_PLAN_BYTES: usize = 4 * 1024 * 1024;
+    if file.is_empty() || file.contains('/') || file.contains('\\') || file.contains("..") {
+        return Err("InvalidPlanFile: not the name of a saved plan".into());
+    }
+    let bytes = std::fs::read(plans_dir(&app)?.join(&file)).map_err(message)?;
+    if bytes.len() > MAX_PLAN_BYTES {
+        return Err("PlanTooLarge: the saved plan file is unexpectedly large".into());
+    }
+    let scenario: MissionScenario = serde_json::from_slice(&bytes).map_err(message)?;
+    if scenario.dataset_id != current(&state)?.dataset.manifest.dataset_id {
+        return Err("PlanDatasetMismatch: the saved plan belongs to a different dataset".into());
+    }
+    Ok(scenario)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
@@ -154,6 +234,9 @@ pub fn run() {
             validate_scenario,
             solve_mission,
             export_mission_report,
+            save_plan,
+            list_plans,
+            load_plan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running HYDE");

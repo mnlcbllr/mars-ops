@@ -6,6 +6,7 @@ import type {
   DatasetSummary,
   LocalPoint,
   MissionScenario,
+  PlanSummary,
   PointInspection,
   SolvedRun,
   ValidationReport,
@@ -25,6 +26,11 @@ export const api = {
   solve: (scenario: MissionScenario) => invoke<SolvedRun>("solve_mission", { scenario }),
   /** Writes the run to Documents/ARES/reports and resolves to the file path. */
   exportReport: (run_id: number) => invoke<string>("export_mission_report", { run_id }),
+  /** Writes the scenario (no result) to Documents/ARES/plans and resolves to the file path. */
+  savePlan: (scenario: MissionScenario) => invoke<string>("save_plan", { scenario }),
+  listPlans: () => invoke<PlanSummary[]>("list_plans"),
+  /** Loads a saved plan; rejected unless it was saved for the open dataset. */
+  loadPlan: (file: string) => invoke<MissionScenario>("load_plan", { file }),
 };
 
 /** Tauri rejects with the command's error string; anything else is stringified. */

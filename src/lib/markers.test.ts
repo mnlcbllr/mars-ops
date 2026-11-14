@@ -29,35 +29,35 @@ const result = (stops: string[], excluded: string[]): MissionResult =>
 const kinds = (markers: ReturnType<typeof markersFor>) =>
   Object.fromEntries(markers.map((m) => [m.id, `${m.kind}:${m.glyph}`]));
 
-test("before a run, selected sites are candidates and the rest are unselected", () => {
-  const markers = markersFor(scenario, new Set(["S1", "S2"]), null);
+test("before a run, every site is a candidate", () => {
+  const markers = markersFor(scenario, null);
   expect(kinds(markers)).toEqual({
     S1: "candidate:",
     S2: "candidate:",
-    S3: "unselected:",
-    S4: "unselected:",
+    S3: "candidate:",
+    S4: "candidate:",
     BASE: "base:B",
   });
 });
 
 test("after a run, visited sites carry their visit order and the others are left out", () => {
-  const markers = markersFor(scenario, new Set(["S1", "S2", "S3"]), result(["S3", "S1"], ["S2"]));
+  const markers = markersFor(scenario, result(["S3", "S1"], ["S2"]));
   expect(kinds(markers)).toEqual({
     S1: "visited:2",
     S2: "left_out:",
     S3: "visited:1",
-    S4: "unselected:",
+    S4: "candidate:",
     BASE: "base:B",
   });
 });
 
 test("a run with no stops still marks the sites it rejected", () => {
-  const markers = markersFor(scenario, new Set(["S1", "S2"]), result([], ["S1"]));
+  const markers = markersFor(scenario, result([], ["S1"]));
   expect(kinds(markers)).toMatchObject({ S1: "left_out:", S2: "candidate:" });
 });
 
 test("the base is drawn last, on top of everything", () => {
-  const markers = markersFor(scenario, new Set(["S1"]), result(["S1"], []));
+  const markers = markersFor(scenario, result(["S1"], []));
   expect(markers.at(-1)).toMatchObject({ kind: "base", x_m: 5, y_m: 6, label: "Base" });
-  expect(markers[0]!.kind).toBe("unselected");
+  expect(markers[0]!.kind).toBe("candidate");
 });

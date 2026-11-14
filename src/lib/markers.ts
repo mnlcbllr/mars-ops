@@ -1,4 +1,4 @@
-// Map markers, drawn the same way on the 2D canvas and on 3D sprites.
+// Map markers, drawn on 3D sprites.
 // Each state has its own shape or line style, so none depends on colour alone.
 
 import type { MissionResult, MissionScenario } from "./types";
@@ -9,12 +9,10 @@ export type MarkerKind =
   | "base"
   /** A site in the plan: filled disc carrying its visit order. */
   | "visited"
-  /** A selected candidate with no plan yet: ringed disc. */
+  /** A candidate with no plan yet: ringed disc. */
   | "candidate"
-  /** A selected candidate the plan left out: dashed ring, struck through. */
-  | "left_out"
-  /** A candidate the user has not selected: small faint ring. */
-  | "unselected";
+  /** A candidate the plan left out: dashed ring, struck through. */
+  | "left_out";
 
 export interface Marker {
   kind: MarkerKind;
@@ -28,16 +26,11 @@ export interface Marker {
 }
 
 /** Markers for the current scenario and, if there is one, its plan. */
-export function markersFor(
-  scenario: MissionScenario,
-  selected: ReadonlySet<string>,
-  result: MissionResult | null,
-): Marker[] {
+export function markersFor(scenario: MissionScenario, result: MissionResult | null): Marker[] {
   const order = new Map(result?.stops.map((stop, i) => [stop.site_id, i + 1]));
   const sites = scenario.sites.map((site): Marker => {
     const position = { x_m: site.position.x_m, y_m: site.position.y_m };
     const visit = order.get(site.id);
-    if (!selected.has(site.id)) return { kind: "unselected", id: site.id, ...position, glyph: "", label: site.id };
     if (visit !== undefined) return { kind: "visited", id: site.id, ...position, glyph: String(visit), label: site.id };
     if (result?.excluded.some((e) => e.site_id === site.id)) {
       return { kind: "left_out", id: site.id, ...position, glyph: "", label: `${site.id} left out` };
@@ -46,13 +39,13 @@ export function markersFor(
   });
   const base: Marker = { kind: "base", id: "BASE", ...scenario.base, glyph: "B", label: "Base" };
   // Draw the base and visited sites last so they sit on top.
-  const rank = (m: Marker) => (m.kind === "base" ? 3 : m.kind === "visited" ? 2 : m.kind === "unselected" ? 0 : 1);
+  const rank = (m: Marker) => (m.kind === "base" ? 3 : m.kind === "visited" ? 2 : 1);
   return [...sites, base].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Radius of the marker body in CSS pixels (labels start beyond it). */
 export function markerRadius(kind: MarkerKind): number {
-  return kind === "unselected" ? 5 : kind === "visited" || kind === "base" ? 11 : 9;
+  return kind === "visited" || kind === "base" ? 11 : 9;
 }
 
 /** Draw a marker centred on (x, y). */
@@ -71,9 +64,7 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
     ctx.beginPath();
     ctx.arc(x, y, r + 2, 0, 2 * Math.PI);
     ctx.fillStyle = INK_DARK;
-    ctx.globalAlpha = marker.kind === "unselected" ? 0.55 : 0.9;
     ctx.fill();
-    ctx.globalAlpha = 1;
 
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
@@ -84,9 +75,8 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
       ctx.strokeStyle = INK_LIGHT;
       ctx.stroke();
     } else {
-      ctx.lineWidth = marker.kind === "unselected" ? 1.5 : 2;
+      ctx.lineWidth = 2;
       ctx.strokeStyle = marker.kind === "left_out" ? WARNING : INK_LIGHT;
-      ctx.globalAlpha = marker.kind === "unselected" ? 0.7 : 1;
       if (marker.kind === "left_out") ctx.setLineDash([4, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -96,7 +86,6 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
         ctx.lineTo(x + r * 0.6, y - r * 0.6);
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
     }
   }
 
@@ -114,7 +103,6 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
     ctx.textBaseline = "middle";
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = INK_DARK;
-    ctx.globalAlpha = marker.kind === "unselected" ? 0.75 : 1;
     ctx.strokeText(marker.label, x + r + 6, y + 0.5);
     ctx.fillStyle = INK_LIGHT;
     ctx.fillText(marker.label, x + r + 6, y + 0.5);

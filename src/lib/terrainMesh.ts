@@ -1,8 +1,8 @@
 // Builds the 3D terrain mesh from the elevation raster.
 //
 // Every vertex is one raster cell: its height is that cell's value, bit for
-// bit, and its position is the cell centre in the same local metric frame the
-// 2D map uses. Nothing is smoothed, averaged or interpolated; a coarser mesh
+// bit, and its position is the cell centre in the local metric frame.
+// Nothing is smoothed, averaged or interpolated; a coarser mesh
 // simply skips cells. Missing cells become holes.
 
 export interface TerrainMesh {

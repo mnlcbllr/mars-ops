@@ -1,55 +1,50 @@
 import { useEffect, useReducer, useRef } from "react";
 import { api, errorText } from "./api";
-import type { MissionScenario, ResourceModel, SolvedRun, ValidationReport } from "./types";
+import type { LocalPoint, MissionScenario, ResourceModel, SolvedRun, ValidationReport } from "./types";
 
 export type CoefficientKey = Exclude<keyof ResourceModel, "model_version">;
-export type MissionPhase = "idle" | "validating" | "solving" | "exporting";
+export type MissionPhase = "idle" | "validating" | "solving" | "exporting" | "saving";
 
 export interface MissionState {
   scenario: MissionScenario;
-  selected: ReadonlySet<string>;
   phase: MissionPhase;
   validation: ValidationReport | null;
   run: SolvedRun | null;
   error: string | null;
   exportPath: string | null;
+  savePath: string | null;
 }
 
 type Action =
   | { type: "edit"; scenario: MissionScenario }
-  | { type: "toggleSite"; id: string }
   | { type: "startRun" }
   | { type: "validated"; report: ValidationReport }
   | { type: "solved"; run: SolvedRun }
   | { type: "startExport" }
   | { type: "exported"; path: string }
+  | { type: "startSave" }
+  | { type: "saved"; path: string }
   | { type: "failed"; message: string };
 
 export function initialMission(scenario: MissionScenario): MissionState {
   return {
-    scenario, selected: new Set(scenario.sites.map((site) => site.id)), phase: "idle",
-    validation: null, run: null, error: null, exportPath: null,
+    scenario, phase: "idle",
+    validation: null, run: null, error: null, exportPath: null, savePath: null,
   };
 }
 
 export function missionReducer(state: MissionState, action: Action): MissionState {
   switch (action.type) {
-    case "edit":
-    case "toggleSite": {
+    case "edit": {
       if (state.phase !== "idle") return state;
-      const selected = new Set(state.selected);
-      if (action.type === "toggleSite") {
-        if (selected.has(action.id)) selected.delete(action.id);
-        else selected.add(action.id);
-      }
       return {
-        ...state, scenario: action.type === "edit" ? action.scenario : state.scenario, selected,
-        run: null, validation: null, error: null, exportPath: null,
+        ...state, scenario: action.scenario,
+        run: null, validation: null, error: null, exportPath: null, savePath: null,
       };
     }
     case "startRun":
       return state.phase === "idle"
-        ? { ...state, phase: "validating", validation: null, run: null, error: null, exportPath: null }
+        ? { ...state, phase: "validating", validation: null, run: null, error: null, exportPath: null, savePath: null }
         : state;
     case "validated":
       return state.phase === "validating"
@@ -63,22 +58,50 @@ export function missionReducer(state: MissionState, action: Action): MissionStat
         : state;
     case "exported":
       return state.phase === "exporting" ? { ...state, phase: "idle", exportPath: action.path } : state;
+    case "startSave":
+      return state.phase === "idle"
+        ? { ...state, phase: "saving", error: null, savePath: null }
+        : state;
+    case "saved":
+      return state.phase === "saving" ? { ...state, phase: "idle", savePath: action.path } : state;
     case "failed":
       return { ...state, phase: "idle", error: action.message };
   }
 }
 
-/** Keep deselected sites in the editor, but never send them to the planner. */
+/** The scenario the user edits is exactly what the planner receives. */
 export function planningScenario(state: MissionState): MissionScenario {
-  const scenario = { ...state.scenario, sites: state.scenario.sites.filter((site) => state.selected.has(site.id)) };
   // JSON IPC would silently turn NaN/Infinity from incomplete fields into null.
-  JSON.stringify(scenario, (_key, value: unknown) => {
+  JSON.stringify(state.scenario, (_key, value: unknown) => {
     if (typeof value === "number" && !Number.isFinite(value)) {
       throw new Error("Complete the numeric fields with finite numbers before running the mission.");
     }
     return value;
   });
-  return scenario;
+  return state.scenario;
+}
+
+/** Defaults for a site the user places on the map, mirroring the packaged demo targets. */
+const PLACED_SITE_DEFAULTS = {
+  name: "User candidate",
+  science_rationale: "Placed by the user on the map; terrain was checked at placement time.",
+  source_product_ids: [] as string[],
+  evidence_kind: "USER_DEFINED" as const,
+  activity_min_s: 1800,
+  activity_max_s: 3600,
+  activity_power_w: 60,
+  preference_weight: 5,
+};
+
+/** A scenario with one more user-placed candidate, given the next free S-number. */
+export function addedSite(scenario: MissionScenario, point: LocalPoint): MissionScenario {
+  const used = new Set(scenario.sites.map((site) => site.id));
+  let n = 1;
+  while (used.has(`S${n}`)) n++;
+  return {
+    ...scenario,
+    sites: [...scenario.sites, { id: `S${n}`, position: point, ...PLACED_SITE_DEFAULTS }],
+  };
 }
 
 export function editCoefficient(scenario: MissionScenario, key: CoefficientKey, value: number): MissionScenario {
@@ -140,9 +163,22 @@ export function useMission(scenario: MissionScenario) {
     }
   };
 
+  const savePlan = async () => {
+    if (locked.current) return;
+    locked.current = true;
+    dispatch({ type: "startSave" });
+    try {
+      const path = await api.savePlan(planningScenario(state));
+      if (mounted.current) dispatch({ type: "saved", path });
+    } catch (failure) {
+      if (mounted.current) dispatch({ type: "failed", message: errorText(failure) });
+    } finally {
+      locked.current = false;
+    }
+  };
+
   return {
-    state, run, exportReport,
+    state, run, exportReport, savePlan,
     edit: (scenario: MissionScenario) => dispatch({ type: "edit", scenario }),
-    toggleSite: (id: string) => dispatch({ type: "toggleSite", id }),
   };
 }

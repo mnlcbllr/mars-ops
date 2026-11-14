@@ -1,7 +1,10 @@
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { api, errorText } from "@/lib/api";
 import { editCoefficient, type CoefficientKey, type MissionState } from "@/lib/mission";
-import type { MissionScenario, ResourceBudget, ScientificSite } from "@/lib/types";
+import type { MissionScenario, PlanSummary, ResourceBudget, ScientificSite } from "@/lib/types";
 
 function NumberField({ label, value, onChange, scale = 1, optional = false }: {
   label: string;
@@ -31,20 +34,41 @@ const COEFFICIENTS: [CoefficientKey, string, number][] = [
 interface ScenarioEditorProps {
   state: MissionState;
   placingBase: boolean;
+  placingSite: boolean;
+  datasetId: string;
   onPlaceBase: () => void;
+  onTogglePlaceSite: () => void;
+  onDeleteSite: (id: string) => void;
   onChange: (scenario: MissionScenario) => void;
-  onToggleSite: (id: string) => void;
+  onSavePlan: () => void;
+  onLoadPlan: (scenario: MissionScenario) => void;
   onRun: () => void;
 }
 
-export function ScenarioEditor({ state, placingBase, onPlaceBase, onChange, onToggleSite, onRun }: ScenarioEditorProps) {
-  const { scenario, selected, phase } = state;
+export function ScenarioEditor({
+  state, placingBase, placingSite, datasetId, onPlaceBase, onTogglePlaceSite,
+  onDeleteSite, onChange, onSavePlan, onLoadPlan, onRun,
+}: ScenarioEditorProps) {
+  const { scenario, phase } = state;
   const { budget } = scenario;
   const updateBudget = (values: Partial<ResourceBudget>) => onChange({ ...scenario, budget: { ...budget, ...values } });
   const updateSite = (id: string, values: Partial<ScientificSite>) => onChange({
     ...scenario, sites: scenario.sites.map((site) => site.id === id ? { ...site, ...values } : site),
   });
   const nullable = (value: number) => Number.isNaN(value) ? null : value;
+
+  // Saved plans are listed on demand: fresh on every open, so a just-saved plan shows up.
+  const [plans, setPlans] = useState<PlanSummary[] | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const openPlanList = (open: boolean) => {
+    if (!open) { setPlans(null); return; }
+    setPlanError(null);
+    void api.listPlans().then(setPlans, (failure) => setPlanError(errorText(failure)));
+  };
+  const load = (file: string) => {
+    setPlanError(null);
+    void api.loadPlan(file).then(onLoadPlan, (failure) => setPlanError(errorText(failure)));
+  };
 
   return <form id="mission-scenario" onSubmit={(event) => { event.preventDefault(); onRun(); }}
     onInvalidCapture={(event) => {
@@ -91,28 +115,63 @@ export function ScenarioEditor({ state, placingBase, onPlaceBase, onChange, onTo
         {budget.consumable_budget === null && <p className="text-xs text-status-warning">{budget.consumable_reserve === null ? "No consumable limit set." : "Consumable reserve needs a budget."}</p>}
       </section>
       <section className="space-y-2" aria-label="Candidate science sites">
-        <h2 className="font-medium">Candidate sites · {selected.size} selected</h2>
-        <p className="text-xs text-muted-foreground">Selected sites are candidates, not required stops. The planner may exclude them.</p>
-        {scenario.sites.map((site) => <div key={site.id} className="rounded-lg border p-2.5">
-          <label className="flex items-start gap-2 text-sm">
-            <input className="mt-1" type="checkbox" checked={selected.has(site.id)} onChange={() => onToggleSite(site.id)} />
-            <span>{site.id} · {site.name}</span>
-          </label>
-          <details className="mt-2 text-xs">
-            <summary className="cursor-pointer text-muted-foreground">Activity & priority · {site.evidence_kind}</summary>
-            <fieldset disabled={!selected.has(site.id)} className="mt-2 grid grid-cols-2 gap-2">
-              <NumberField label={`${site.id} minimum activity (min)`} value={site.activity_min_s} scale={60}
-                onChange={(activity_min_s) => updateSite(site.id, { activity_min_s })} />
-              <NumberField label={`${site.id} maximum activity (min)`} value={site.activity_max_s} scale={60}
-                onChange={(activity_max_s) => updateSite(site.id, { activity_max_s })} />
-              <NumberField label={`${site.id} preference weight`} value={site.preference_weight}
-                onChange={(preference_weight) => updateSite(site.id, { preference_weight })} />
-              <NumberField label={`${site.id} activity power (W)`} value={site.activity_power_w}
-                onChange={(activity_power_w) => updateSite(site.id, { activity_power_w })} />
-            </fieldset>
-            <p className="mt-2 text-muted-foreground">{site.science_rationale}</p>
-          </details>
-        </div>)}
+        <h2 className="font-medium">Candidate sites · {scenario.sites.length}</h2>
+        <p className="text-xs text-muted-foreground">Sites you add are the planner's candidates, not required stops. It may still leave some out.</p>
+        <Button type="button" size="sm" variant="outline" aria-pressed={placingSite} onClick={onTogglePlaceSite}>
+          {placingSite ? "Cancel site placement" : "Add candidate on map"}
+        </Button>
+        {scenario.sites.length === 0
+          ? <p className="text-xs text-muted-foreground">No candidate sites yet. Choose “Add candidate on map” and click known terrain to place the first one.</p>
+          : scenario.sites.map((site) => <div key={site.id} className="rounded-lg border p-2.5">
+            <div className="flex items-start gap-2">
+              <details className="min-w-0 flex-1">
+                <summary className="cursor-pointer text-sm">{site.id} · {site.name}</summary>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <NumberField label={`${site.id} east (m)`} value={site.position.x_m}
+                    onChange={(x_m) => updateSite(site.id, { position: { ...site.position, x_m } })} />
+                  <NumberField label={`${site.id} north (m)`} value={site.position.y_m}
+                    onChange={(y_m) => updateSite(site.id, { position: { ...site.position, y_m } })} />
+                </div>
+                <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Activity &amp; priority · {site.evidence_kind}</p>
+                <div className="mt-1 grid grid-cols-2 gap-2 text-xs">
+                  <NumberField label={`${site.id} minimum activity (min)`} value={site.activity_min_s} scale={60}
+                    onChange={(activity_min_s) => updateSite(site.id, { activity_min_s })} />
+                  <NumberField label={`${site.id} maximum activity (min)`} value={site.activity_max_s} scale={60}
+                    onChange={(activity_max_s) => updateSite(site.id, { activity_max_s })} />
+                  <NumberField label={`${site.id} preference weight`} value={site.preference_weight}
+                    onChange={(preference_weight) => updateSite(site.id, { preference_weight })} />
+                  <NumberField label={`${site.id} activity power (W)`} value={site.activity_power_w}
+                    onChange={(activity_power_w) => updateSite(site.id, { activity_power_w })} />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">{site.science_rationale}</p>
+              </details>
+              <Button type="button" size="icon-sm" variant="ghost" aria-label={`Remove candidate ${site.id}`}
+                title={`Remove candidate ${site.id}`} onClick={() => onDeleteSite(site.id)}>
+                <Trash2 />
+              </Button>
+            </div>
+          </div>)}
+      </section>
+      <section className="space-y-2" aria-label="Saved plans">
+        <h2 className="font-medium">Save &amp; load plan</h2>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={onSavePlan}>Save plan</Button>
+          {state.savePath && <span className="min-w-0 break-all text-xs text-muted-foreground">Saved to {state.savePath}</span>}
+        </div>
+        <details className="text-xs" onToggle={(event) => openPlanList(event.currentTarget.open)}>
+          <summary className="cursor-pointer text-muted-foreground">Load a saved plan</summary>
+          {planError && <p role="alert" className="mt-2 text-status-warning">{planError}</p>}
+          {plans !== null && plans.length === 0 && <p className="mt-2 text-muted-foreground">No saved plans yet.</p>}
+          <ul className="mt-2 space-y-1">
+            {plans?.map((plan) => <li key={plan.file} className="flex items-center justify-between gap-2">
+              <span className="min-w-0 break-all text-muted-foreground">{plan.name}</span>
+              {plan.dataset_id === datasetId
+                ? <Button type="button" size="sm" variant="ghost" onClick={() => load(plan.file)}>Load</Button>
+                : <span className="shrink-0 text-muted-foreground">other dataset</span>}
+            </li>)}
+          </ul>
+        </details>
+        <p className="text-xs text-muted-foreground">A saved plan holds the scenario without any result: load it and run the mission again.</p>
       </section>
       <details className="space-y-2">
         <summary className="cursor-pointer font-medium">Model assumptions</summary>
@@ -128,7 +187,7 @@ export function ScenarioEditor({ state, placingBase, onPlaceBase, onChange, onTo
           {COEFFICIENTS.map(([key, label]) => <p key={key} className="mt-2"><strong>{label}:</strong> {scenario.model[key].citation_or_assumption}</p>)}
         </details>
       </details>
-      <p className="text-xs text-muted-foreground">Preferences are modeled mission-designer priorities, not measured scientific value. Edits clear the previous plan and are session-only; export JSON to retain the solved scenario.</p>
+      <p className="text-xs text-muted-foreground">Preferences are modeled mission-designer priorities, not measured scientific value. Edits clear the previous plan and are session-only; save the plan or export JSON to retain the solved scenario.</p>
     </fieldset>
   </form>;
 }

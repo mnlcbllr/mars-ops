@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
-import { editCoefficient, initialMission, missionReducer, planningScenario, type MissionState } from "./mission";
+import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, type MissionState } from "./mission";
 import type { MissionScenario, SolvedRun, ValidationReport } from "./types";
 
 function scenario(): MissionScenario {
@@ -45,26 +45,29 @@ function planned(): MissionState {
 }
 
 describe("mission workflow", () => {
-  test("starts with all packaged sites selected and no fabricated plan", () => {
+  test("starts idle with no fabricated plan or saved path", () => {
     const state = initialMission(scenario());
-    expect([...state.selected]).toEqual(state.scenario.sites.map((site) => site.id));
     expect(state.run).toBeNull();
     expect(state.phase).toBe("idle");
+    expect(state.savePath).toBeNull();
   });
 
-  test("deselection preserves editable sites but removes them from the solver input", () => {
+  test("placed sites get the next free S-number and defaults, without mutating the scenario", () => {
     const initial = initialMission(scenario());
-    const state = missionReducer(initial, { type: "toggleSite", id: "S1" });
-    const input = planningScenario(state);
-    expect(input.sites.some((site) => site.id === "S1")).toBe(false);
-    expect(state.scenario.sites).toEqual(initial.scenario.sites);
-    expect(initial.selected.has("S1")).toBe(true);
-    expect(missionReducer(state, { type: "toggleSite", id: "S1" }).selected.has("S1")).toBe(true);
+    const added = addedSite(initial.scenario, { x_m: 100, y_m: 200 });
+    const site = added.sites.at(-1)!;
+    expect(added.sites).toHaveLength(initial.scenario.sites.length + 1);
+    expect(initial.scenario.sites.at(-1)!.id).toBe("S7"); // source untouched
+    expect(site.id).toBe("S8");
+    expect(site.evidence_kind).toBe("USER_DEFINED");
+    expect(site.activity_min_s).toBeLessThanOrEqual(site.activity_max_s);
+    const again = addedSite(added, { x_m: 0, y_m: 0 });
+    expect(again.sites.at(-1)!.id).toBe("S9");
   });
 
-  test("an empty selection is sent to authoritative backend validation", () => {
+  test("the planning input is the edited scenario itself", () => {
     const state = initialMission(scenario());
-    expect(planningScenario({ ...state, selected: new Set() }).sites).toEqual([]);
+    expect(planningScenario(state)).toBe(state.scenario);
   });
 
   test("validation errors stop the workflow and reject a late solve completion", () => {
@@ -87,26 +90,23 @@ describe("mission workflow", () => {
     expect(missionReducer(solving, { type: "solved", run }).run).toBe(run);
   });
 
-  test("scenario and selection edits clear the report, validation and export path", () => {
-    const exported = { ...planned(), exportPath: "/reports/17.json" };
-    for (const state of [
-      missionReducer(exported, { type: "edit", scenario: { ...exported.scenario, budget: { ...exported.scenario.budget, eva_limit_s: 2400 } } }),
-      missionReducer(exported, { type: "toggleSite", id: "S1" }),
-    ]) {
-      expect(state.run).toBeNull();
-      expect(state.validation).toBeNull();
-      expect(state.exportPath).toBeNull();
-    }
+  test("scenario edits clear the report, validation and export/save paths", () => {
+    const exported = { ...planned(), exportPath: "/reports/17.json", savePath: "/plans/1.json" };
+    const state = missionReducer(exported, { type: "edit", scenario: { ...exported.scenario, budget: { ...exported.scenario.budget, eva_limit_s: 2400 } } });
+    expect(state.run).toBeNull();
+    expect(state.validation).toBeNull();
+    expect(state.exportPath).toBeNull();
+    expect(state.savePath).toBeNull();
   });
 
-  test("active validation, solve and export lock edits and duplicate operations", () => {
+  test("active validation, solve, export and save lock edits and duplicate operations", () => {
     const initial = initialMission(scenario());
-    for (const phase of ["validating", "solving", "exporting"] as const) {
+    for (const phase of ["validating", "solving", "exporting", "saving"] as const) {
       const state = { ...initial, phase };
       expect(missionReducer(state, { type: "edit", scenario: scenario() })).toBe(state);
-      expect(missionReducer(state, { type: "toggleSite", id: "S1" })).toBe(state);
       expect(missionReducer(state, { type: "startRun" })).toBe(state);
       expect(missionReducer(state, { type: "startExport" })).toBe(state);
+      expect(missionReducer(state, { type: "startSave" })).toBe(state);
     }
   });
 
@@ -133,6 +133,19 @@ describe("mission workflow", () => {
     expect(done.error).toBeNull();
   });
 
+  test("saving needs no run; a failed save keeps the scenario editable and retryable", () => {
+    const initial = initialMission(scenario());
+    expect(missionReducer(initial, { type: "saved", path: "/plans/1.json" })).toBe(initial);
+    const saving = missionReducer(initial, { type: "startSave" });
+    expect(saving.phase).toBe("saving");
+    const failed = missionReducer(saving, { type: "failed", message: "Disk full" });
+    expect(failed.phase).toBe("idle");
+    expect(failed.savePath).toBeNull();
+    const done = missionReducer(missionReducer(failed, { type: "startSave" }), { type: "saved", path: "/plans/1.json" });
+    expect(done.savePath).toBe("/plans/1.json");
+    expect(done.error).toBeNull();
+  });
+
   test("non-finite draft numbers cannot become null in JSON IPC", () => {
     const state = initialMission(scenario());
     for (const invalid of [NaN, Infinity, -Infinity]) {
@@ -151,7 +164,7 @@ describe("mission workflow", () => {
     } });
     expect(planningScenario(edited).budget.energy_budget_wh).toBeNull();
     expect(planningScenario(edited).budget.energy_reserve_wh).toBe(200);
-    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} onChange={() => {}} onPlaceBase={() => {}} onToggleSite={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} placingSite={false} datasetId="jezero-small" onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain("Energy reserve needs a budget.");
     expect(html).not.toContain("No energy limit set.");
   });
@@ -206,16 +219,19 @@ describe("mission presentation", () => {
     }
   });
 
-  test("editor exposes minutes, optional limits, site selection and model assumptions", () => {
+  test("editor exposes minutes, optional limits, site editing, saving and model assumptions", () => {
     const state = initialMission(scenario());
     state.scenario.budget.energy_budget_wh = null;
     state.scenario.budget.energy_reserve_wh = null;
-    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} onChange={() => {}} onPlaceBase={() => {}} onToggleSite={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false} datasetId="jezero-small" onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain('id="mission-scenario"');
     expect(html).toContain("EVA limit (min)");
     expect(html).toContain('value="360"');
     expect(html).toContain("No energy limit set.");
     expect(html).toContain("maximum activity (min)");
+    expect(html).toContain("Add candidate on map");
+    expect(html).toContain("Save plan");
+    expect(html).toContain("Load a saved plan");
     expect(html).toContain("Model assumptions");
     expect(html).toContain("session-only");
   });

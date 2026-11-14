@@ -266,3 +266,10 @@ export interface DatasetSummary {
   display_name: string;
   region_name: string;
 }
+
+/** A scenario saved by the user, without any solved result. */
+export interface PlanSummary {
+  file: string;
+  name: string;
+  dataset_id: string;
+}

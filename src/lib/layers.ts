@@ -1,5 +1,5 @@
 // Turns numeric rasters into map pixels. Pure functions: the same code feeds
-// the 2D canvas and the 3D texture.
+// the 3D texture.
 
 /**
  * Elevation ramp: one hue, dark (low) to light (high), so brightness alone

@@ -41,7 +41,7 @@ interface Terrain3DProps {
   legs: PlannedLeg[];
   selectedLeg: number | null;
   inspected: PointInspection | null;
-  placingBase: boolean;
+  placing: boolean;
   /** Changing this value puts the camera back to its starting view. */
   resetSignal: number;
   onPick: (point: LocalPoint) => void;
@@ -85,7 +85,7 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, selectedLeg, inspected, placingBase, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -360,15 +360,14 @@ export function Terrain3D(props: Terrain3DProps) {
     return (
       <div className="absolute inset-0 grid place-items-center p-8 text-center text-sm text-muted-foreground">
         <p className="max-w-sm">
-          The 3D view could not start because WebGL is not available on this system ({failure}). The 2D map shows the
-          same data.
+          The 3D view could not start because WebGL is not available on this system ({failure}).
         </p>
       </div>
     );
   }
 
   return (
-    <div ref={hostRef} className={`absolute inset-0 ${placingBase ? "cursor-crosshair" : "cursor-grab"}`}>
+    <div ref={hostRef} className={`absolute inset-0 ${placing ? "cursor-crosshair" : "cursor-grab"}`}>
       <div
         className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-background/80 px-1.5 py-1 text-xs leading-none font-medium backdrop-blur-sm"
         aria-label="Compass: the arrow points north"

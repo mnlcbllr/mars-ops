@@ -43,9 +43,12 @@ export async function loadWorkspace(): Promise<Workspace> {
   const dataset = datasets[0];
   if (!dataset) throw new Error("No bundled datasets found. Check the app's datasets resource directory.");
   const info = await api.openDataset(dataset.dataset_id);
-  const [scenario, elevationBytes, slopeBytes, imageryBytes] = await Promise.all([
+  const [packaged, elevationBytes, slopeBytes, imageryBytes] = await Promise.all([
     api.defaultScenario(), api.layer("elevation"), api.layer("slope"), api.layer("imagery"),
   ]);
+  // The user sets every candidate themselves: start with an empty site list.
+  // The packaged targets stay with the dataset for the CLI and the report provenance.
+  const scenario: MissionScenario = { ...packaged, sites: [] };
   const geo = info.manifest.georeference;
   const grid = info.planning_grid;
   const elevation = raster(elevationBytes, geo.width, geo.height);
