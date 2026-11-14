@@ -127,6 +127,39 @@
         "Pixel values are the product's 8-bit DN, unchanged. I/F = DN × 0.0001094936284662 + 0.1130332588555438 per the label. DN 0 = null.",
         "Imagery shows brightness only. It is not a source of heights, slopes or composition."
       ]
+    },
+    {
+      "id": "usgs-jezero-geology",
+      "display_name": "USGS geologic units (regional)",
+      "kind": "GEOLOGY",
+      "file": "geology.json",
+      "origin_type": "DERIVED",
+      "provider": "U.S. Geological Survey",
+      "instrument": "USGS geologic mapping (Sun and Stack, 2020)",
+      "product_id": "USGS-SIM-3464",
+      "source_url": "https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Jezero_FeatureServiceFromPro/FeatureServer/8/query?f=json&geometry=-1400%2C1093650%2C1100%2C1096200&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=OBJECTID%2Cunit%2Cname%2Csymbol_noSub%2Csubscript&returnGeometry=true",
+      "license_and_credit": "Public domain. Sun, V.Z., and Stack, K.M., 2020, USGS Scientific Investigations Map 3464, doi:10.3133/sim3464.",
+      "retrieved_utc": "2026-11-14T02:53:02+00:00",
+      "observation_date": null,
+      "source_crs": "PROJCS[\"MTM_clon77_5E\",GEOGCS[\"GCS_Mars_2000_Sphere\",DATUM[\"D_Mars_2000_Sphere\",SPHEROID[\"Mars_2000_Sphere\",3396190.0,0.0]],PRIMEM[\"Reference_Meridian\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"False_Easting\",0.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",77.5],PARAMETER[\"Scale_Factor\",1.0],PARAMETER[\"Latitude_Of_Origin\",0.0],UNIT[\"Meter\",1.0]]",
+      "output_crs": "Jezero crop local coordinates: x east, y north, metres, origin at south-west.",
+      "vertical_datum": null,
+      "pixel_size_m": null,
+      "bbox_original": null,
+      "bbox_projected_m": null,
+      "nodata_value": null,
+      "sha256_source": "83572ee6ad06bbe60d2eee86431e829a81af471d2b5d283972f379ba94d24439",
+      "sha256_derived": "4348c90147cae0ee613d18d6c64b4a664bcceb5e0683a7d6fb0f06ae171cbbfa",
+      "processing_steps": [
+        "Queried the USGS ArcGIS geologic units layer (layer 8) for features intersecting the crop.",
+        "Inverted the source Mars transverse Mercator projection to latitude/longitude and mapped angular coordinates to the HiRISE local frame.",
+        "Clipped polygons to the crop, preserving holes. Stored local coordinates rounded to 0.01 m for compactness; this is not source accuracy."
+      ],
+      "quality_notes": [
+        "Source map scale 1:75,000. Regional geologic context only; boundaries and site associations are approximate.",
+        "Units are published interpretations, not mineral identifications at the stops or walking hazards. This layer is not used to route."
+      ],
+      "is_real_source_verified": true
     }
   ]
 }

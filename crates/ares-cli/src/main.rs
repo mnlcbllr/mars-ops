@@ -50,7 +50,7 @@ fn verify(dir: &Path) -> Result<ExitCode, String> {
         println!("          product {}", l.product_id);
         println!("          file {} sha256 {} — matches", l.file, l.sha256_derived);
         println!(
-            "          source sha256 {} — complete per its label and hashed at import: {}",
+            "          source sha256 {} — source verification recorded at import: {}",
             l.sha256_source.as_deref().unwrap_or("(none)"),
             l.is_real_source_verified
         );

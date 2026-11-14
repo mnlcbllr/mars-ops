@@ -54,6 +54,8 @@ pub enum LayerKind {
     Elevation,
     /// Display imagery (PNG). Not a source of heights.
     Imagery,
+    /// Regional geologic units in the local terrain frame (JSON).
+    Geology,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

@@ -172,3 +172,16 @@ fn session_report_matches_a_direct_run_of_the_planner() {
     assert_eq!(report.scenario, scenario);
     assert!(report.dataset.real_data_verified);
 }
+
+#[test]
+fn regional_geology_is_checksum_verified_and_included_in_reports() {
+    let session = Session::open(&dataset_dir()).unwrap();
+    let geology = session.layer_bytes(DisplayLayer::Geology).unwrap();
+    let parsed: serde_json::Value = serde_json::from_slice(&geology).unwrap();
+    let units = parsed["units"].as_array().unwrap();
+    assert_eq!(units.len(), 2);
+    assert!(units.iter().any(|unit| unit["symbol"] == "Njf"));
+    let scenario = session.dataset.default_scenario().unwrap();
+    let report = session.solve(scenario).unwrap();
+    assert!(report.dataset.layers.iter().any(|layer| layer.product_id == "USGS-SIM-3464"));
+}

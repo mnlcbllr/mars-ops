@@ -206,7 +206,7 @@ export interface BBoxDeg {
 export interface LayerRecord {
   id: string;
   display_name: string;
-  kind: "ELEVATION" | "IMAGERY";
+  kind: "ELEVATION" | "IMAGERY" | "GEOLOGY";
   file: string;
   origin_type: EvidenceKind;
   provider: string;

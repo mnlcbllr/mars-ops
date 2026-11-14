@@ -92,7 +92,7 @@ impl MissionReport {
             sha256_source: l.sha256_source.clone(),
             sha256_derived: l.sha256_derived.clone(),
         };
-        MissionReport {
+        let mut report = MissionReport {
             report_schema_version: 1,
             generated_utc: utc_iso8601(now),
             software: "HYDE".into(),
@@ -122,7 +122,11 @@ impl MissionReport {
                  than the planning cell."
                     .into(),
             ],
+        };
+        if dataset.layer(crate::data::LayerKind::Geology).is_some() {
+            report.disclaimers.push("The USGS regional geology layer provides science context only and was not used to route.".into());
         }
+        report
     }
 }
 

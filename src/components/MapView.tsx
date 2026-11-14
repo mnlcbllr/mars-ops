@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { drawMarker, type Marker } from "@/lib/markers";
+import { drawMarker, markerRadius, type Marker } from "@/lib/markers";
 import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE } from "@/lib/theme";
 import type { LocalPoint, PlannedLeg } from "@/lib/types";
 import { fitView, scaleBar, toLocal, toScreen, zoomAt, type Size, type View } from "@/lib/view2d";
@@ -21,6 +21,7 @@ interface MapViewProps {
   placingBase: boolean;
   onPick: (point: LocalPoint) => void;
   onSelectLeg: (index: number | null) => void;
+  onSelectSite: (id: string) => void;
 }
 
 const FIT_PADDING = 28;
@@ -38,7 +39,7 @@ function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: n
 
 /** North-up 2D map: pan, zoom, click to inspect. */
 export function MapView(props: MapViewProps) {
-  const { extent, base, hazard, markers, legs, selectedLeg, inspected, placingBase, onPick, onSelectLeg } = props;
+  const { extent, base, hazard, markers, legs, selectedLeg, inspected, placingBase, onPick, onSelectLeg, onSelectSite } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
@@ -225,7 +226,18 @@ export function MapView(props: MapViewProps) {
     const rect = event.currentTarget.getBoundingClientRect();
     const [sx, sy] = [event.clientX - rect.left, event.clientY - rect.top];
     const [x_m, y_m] = toLocal(view, size, sx, sy);
-    if (!placingBase) onSelectLeg(legAt(sx, sy));
+    if (!placingBase) {
+      for (let i = markers.length - 1; i >= 0; i--) {
+        const marker = markers[i]!;
+        if (marker.kind === "base") continue;
+        const [mx, my] = toScreen(view, size, marker.x_m, marker.y_m);
+        if (Math.hypot(sx - mx, sy - my) <= markerRadius(marker.kind) + 3) {
+          onSelectSite(marker.id);
+          return;
+        }
+      }
+      onSelectLeg(legAt(sx, sy));
+    }
     onPick({ x_m, y_m });
   };
 

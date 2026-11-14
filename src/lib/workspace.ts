@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { api } from "./api";
+import type { GeologicUnit } from "./geology";
 import { ELEVATION_RAMP, elevationRgba, rampLut } from "./layers";
 import type { DatasetInfo, MissionScenario } from "./types";
 
@@ -10,6 +11,7 @@ export interface Workspace {
   slope: Float32Array;
   imagery: HTMLCanvasElement;
   heights: HTMLCanvasElement;
+  geology: GeologicUnit[];
 }
 
 export function canvas(width: number, height: number) {
@@ -43,8 +45,9 @@ export async function loadWorkspace(): Promise<Workspace> {
   const dataset = datasets[0];
   if (!dataset) throw new Error("No bundled datasets found. Check the app's datasets resource directory.");
   const info = await api.openDataset(dataset.dataset_id);
-  const [scenario, elevationBytes, slopeBytes, imageryBytes] = await Promise.all([
+  const [scenario, elevationBytes, slopeBytes, imageryBytes, geologyBytes] = await Promise.all([
     api.defaultScenario(), api.layer("elevation"), api.layer("slope"), api.layer("imagery"),
+    info.manifest.layers.some((layer) => layer.kind === "GEOLOGY") ? api.layer("geology") : null,
   ]);
   const geo = info.manifest.georeference;
   const grid = info.planning_grid;
@@ -66,5 +69,7 @@ export async function loadWorkspace(): Promise<Workspace> {
   } finally {
     URL.revokeObjectURL(url);
   }
-  return { info, scenario, elevation, slope, imagery, heights };
+  const geology: GeologicUnit[] = geologyBytes
+    ? JSON.parse(new TextDecoder().decode(geologyBytes)).units : [];
+  return { info, scenario, elevation, slope, imagery, heights, geology };
 }

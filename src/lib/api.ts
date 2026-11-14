@@ -11,12 +11,12 @@ import type {
   ValidationReport,
 } from "./types";
 
-export type DisplayLayer = "imagery" | "elevation" | "slope";
+export type DisplayLayer = "imagery" | "elevation" | "slope" | "geology";
 
 export const api = {
   listDatasets: () => invoke<DatasetSummary[]>("list_datasets"),
   openDataset: (dataset_id: string) => invoke<DatasetInfo>("open_dataset", { dataset_id }),
-  /** Raw layer bytes: PNG for imagery, little-endian f32 otherwise. */
+  /** Raw layer bytes: PNG for imagery, JSON for geology, little-endian f32 for elevation and slope. */
   layer: (layer: DisplayLayer) => invoke<ArrayBuffer>("dataset_layer", { layer }),
   defaultScenario: () => invoke<MissionScenario>("default_scenario"),
   inspect: (p: LocalPoint, max_slope_deg: number) =>

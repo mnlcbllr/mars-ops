@@ -6,6 +6,7 @@ import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { errorText } from "@/lib/api";
 import { drawMarker, type Marker } from "@/lib/markers";
+import { legTrack, LEG_PREVIEW_MS } from "@/lib/routeTour";
 import { buildTerrainMesh } from "@/lib/terrainMesh";
 import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE } from "@/lib/theme";
 import type { LocalPoint, PlannedLeg, PointInspection } from "@/lib/types";
@@ -45,6 +46,8 @@ interface Terrain3DProps {
   /** Changing this value puts the camera back to its starting view. */
   resetSignal: number;
   onPick: (point: LocalPoint) => void;
+  onSelectSite: (id: string) => void;
+  playing: boolean;
   onMesh: (info: MeshInfo) => void;
 }
 
@@ -85,14 +88,14 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, selectedLeg, inspected, placingBase, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, selectedLeg, inspected, placingBase, resetSignal, onPick, onMesh, onSelectSite, playing } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const callbacks = useRef({ onPick, onMesh });
-  callbacks.current = { onPick, onMesh };
+  const callbacks = useRef({ onPick, onMesh, onSelectSite, placingBase });
+  callbacks.current = { onPick, onMesh, onSelectSite, placingBase };
 
   const [extentX, extentY] = [width * dx, height * dy];
 
@@ -176,6 +179,23 @@ export function Terrain3D(props: Terrain3DProps) {
         1 - ((event.clientY - rect.top) / rect.height) * 2,
       );
       raycaster.setFromCamera(pointer, camera);
+      if (!callbacks.current.placingBase) {
+        // Test only the marker disc, not the full rectangular label sprite.
+        const world = new THREE.Vector3();
+        for (let i = current.overlay.children.length - 1; i >= 0; i--) {
+          const object = current.overlay.children[i]!;
+          const marker = object.userData.marker as Marker | undefined;
+          if (!marker || marker.kind === "base") continue;
+          object.getWorldPosition(world).project(camera);
+          if (world.z < -1 || world.z > 1) continue;
+          const x = rect.left + (world.x + 1) * rect.width / 2;
+          const y = rect.top + (1 - world.y) * rect.height / 2;
+          if (Math.hypot(event.clientX - x, event.clientY - y) <= 13) {
+            callbacks.current.onSelectSite(marker.id);
+            return;
+          }
+        }
+      }
       const hit = raycaster.intersectObject(current.mesh, false)[0];
       if (!hit) return;
       const local = current.frame.worldToLocal(hit.point.clone());
@@ -316,6 +336,7 @@ export function Terrain3D(props: Terrain3DProps) {
       object.position.set(x_m, z_m + OVERLAY_LIFT_M, -y_m);
       object.renderOrder = 3;
       s.overlay.add(object);
+      return object;
     };
     const canvas2x = (cssWidth: number, cssHeight: number) => {
       const canvas = document.createElement("canvas");
@@ -331,7 +352,7 @@ export function Terrain3D(props: Terrain3DProps) {
       if (z === null) continue; // no elevation here: nothing to stand the marker on
       const [canvas, ctx] = canvas2x(MARKER_CANVAS.width, MARKER_CANVAS.height);
       drawMarker(ctx, marker, MARKER_CANVAS.anchorX, MARKER_CANVAS.height / 2);
-      sprite(canvas, MARKER_CANVAS.anchorX, marker.x_m, marker.y_m, z);
+      sprite(canvas, MARKER_CANVAS.anchorX, marker.x_m, marker.y_m, z).userData.marker = marker;
     }
 
     if (inspected?.elevation_m != null) {
@@ -355,6 +376,40 @@ export function Terrain3D(props: Terrain3DProps) {
     }
     s.invalidate();
   }, [legs, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
+
+  const activeLeg = selectedLeg === null ? undefined : legs[selectedLeg];
+  useEffect(() => {
+    const s = stage.current;
+    if (!s || !activeLeg || !playing || !viewportHeight) return;
+    const track = legTrack(activeLeg);
+    const start = track(0);
+    if (!start) return;
+    const material = new THREE.SpriteMaterial({ color: 0xffde78, depthTest: false, sizeAttenuation: false });
+    const cursor = new THREE.Sprite(material);
+    const scale = (2 * Math.tan(THREE.MathUtils.degToRad(FOV_DEG / 2))) * 9 / viewportHeight;
+    cursor.scale.set(scale, scale / exaggeration, 1);
+    cursor.renderOrder = 4;
+    s.frame.add(cursor);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const started = performance.now();
+    let frame = 0;
+    const draw = (now: number) => {
+      const progress = Math.min(1, (now - started) / LEG_PREVIEW_MS);
+      const point = reducedMotion ? track(1) : track(progress);
+      if (point) {
+        cursor.position.set(point.x_m, point.elevation_m + OVERLAY_LIFT_M + 3, -point.y_m);
+        s.invalidate();
+      }
+      if (!reducedMotion && progress < 1) frame = requestAnimationFrame(draw);
+    };
+    draw(started);
+    return () => {
+      cancelAnimationFrame(frame);
+      s.frame.remove(cursor);
+      material.dispose();
+      s.invalidate();
+    };
+  }, [activeLeg, playing, viewportHeight, exaggeration]);
 
   if (failure) {
     return (

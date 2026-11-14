@@ -22,6 +22,8 @@ pub enum DisplayLayer {
     /// Planning-cell slope: `f32` little-endian degrees, row 0 = north,
     /// `NaN` = unknown.
     Slope,
+    /// Regional geologic units in the local terrain frame (JSON).
+    Geology,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -111,6 +113,7 @@ impl Session {
             DisplayLayer::Imagery => self.dataset.read_layer_verified(LayerKind::Imagery)?,
             DisplayLayer::Elevation => f32_le(self.dataset.elevation.data.iter().copied()),
             DisplayLayer::Slope => f32_le(self.known_slope()),
+            DisplayLayer::Geology => self.dataset.read_layer_verified(LayerKind::Geology)?,
         })
     }
 

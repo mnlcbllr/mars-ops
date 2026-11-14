@@ -23,6 +23,53 @@ Use the desktop window: a regular browser does not provide the native dataset/pl
 
 Edits invalidate previous results and exports. Inputs are locked during validation, planning and export. Drafts are session-only; the exported report includes the selected scenario, model provenance, dataset hashes, solver result and limitations. Report import is not implemented. Displayed metrics are rounded for readability; the report retains the backend's numeric values.
 
+## Hackathon demo
+
+HYDE plans a modeled round trip on the Jezero crater floor. The science task is
+to compare visible layering and textures at light-toned mounds and nearby
+reference terrain. The staging point, observation activities and EVA constraints
+are demo assumptions.
+
+1. Start on **Mars globe**. Drag to orbit or scroll to zoom. Select the Jezero
+   marker to zoom into the georeferenced HiRISE patch without leaving the globe.
+   Use **Show full Mars globe** to zoom back out.
+2. Turn on **Geology** to see the mapped Jezero floor and fan units. The regional
+   layer supplements **Imagery** and **Elevation** and is available offline.
+3. Select **Run mission** while on the globe to draw the round trip directly
+   over Jezero. **Play route on globe** follows the planned geometry. Select
+   a numbered stop to see its science task, or **Return to base** to inspect
+   the final leg. **Open local 3D terrain** switches to the elevation mesh
+   when you need to see hills and slopes in relief.
+4. Expand **Resource checks & itinerary** and **Excluded sites**. Try a stricter
+   slope limit and rerun. The planner uses terrain and scenario resource rules,
+   not the regional geology overlay.
+
+The animation is inspired by [NASA's Curiosity's Proposed Path up Mount
+Sharp](https://science.nasa.gov/resource/curiositys-proposed-path-up-mount-sharp/).
+It depicts HYDE’s computed Jezero route, not the Curiosity route. It is an
+illustrative replay, not elapsed EVA time.
+
+**Data credits.** The globe uses the NASA/JPL Mars Trek [MGS MOC Atlas Global
+Color Mosaic](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars). HYDE
+bundles a 2048 × 1024 equirectangular overview stitched from the level-2 WMTS
+tiles (layer `msss_atlas_simp_clon`, matrix set `default028mm`, 8 columns by 4
+rows, north at top, −180° east longitude at left). The source tiles are
+grayscale and are tinted for display, not presented as true color. To rebuild,
+run `python tools/import_mars_globe.py` with Pillow installed. The globe uses a spherical
+surface. At close range the same HiRISE imagery, elevation colors, regional
+geology and derived hazard overlay are projected onto that sphere with the
+dataset’s georeference. The globe drape does not model local relief. Route
+calculation remains on the local HiRISE grid, and the separate 3D terrain view
+shows elevations in relief.
+
+HiRISE imagery and stereo elevation: NASA/JPL-Caltech/UArizona.
+Regional geology: [USGS SIM 3464, Sun and Stack (2020)](https://doi.org/10.3133/sim3464).
+The data manifest records the products, processing and hashes. To rebuild only
+the geology layer from the USGS feature service, use
+`python tools/import_jezero_geology.py` with `pyproj` and `shapely` installed.
+Re-run that import after rebuilding the base HiRISE manifest. No Python or
+internet is needed to run the app with the bundled layers.
+
 ## Checks
 
 ```sh
