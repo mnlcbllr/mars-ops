@@ -109,6 +109,8 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
         </dl>
       </div>
 
+      <p className="text-xs text-muted-foreground">Mission timeline/progress slider is available below the map frame.</p>
+
       <div className="flex flex-wrap gap-1.5">
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(15 * 60)}>+15 min</Button>
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(30 * 60)}>+30 min</Button>

@@ -230,6 +230,25 @@ export function useMission(scenario: MissionScenario) {
     simulationCall(() => api.injectSimulationEvent(kind));
   const replanSimulation = async () => simulationCall(() => api.replanSimulation());
 
+  /** Seek by restarting from initial solved plan and advancing to target elapsed seconds.
+   *  Uses actual backend simulation calculations (no arbitrary state injection). */
+  const seekSimulation = async (targetSeconds: number) => {
+    if (!state.run || locked.current) return;
+    const runId = state.run.run_id;
+    const target = Math.max(0, targetSeconds);
+    locked.current = true;
+    dispatch({ type: "startSimulation" });
+    try {
+      let view = await api.startSimulation(runId);
+      if (target > 0) view = await api.advanceSimulation(target);
+      if (mounted.current) dispatch({ type: "simulation", view });
+    } catch (failure) {
+      if (mounted.current) dispatch({ type: "failed", message: errorText(failure) });
+    } finally {
+      locked.current = false;
+    }
+  };
+
   const clearSimulation = async () => {
     if (locked.current) return;
     locked.current = true;
@@ -245,7 +264,7 @@ export function useMission(scenario: MissionScenario) {
 
   return {
     state, run, runWith: run, exportReport, savePlan,
-    startSimulation, advanceSimulation, advanceSimulationToStop, injectSimulationEvent, replanSimulation, clearSimulation,
+    startSimulation, advanceSimulation, advanceSimulationToStop, seekSimulation, injectSimulationEvent, replanSimulation, clearSimulation,
     edit: (scenario: MissionScenario) => dispatch({ type: "edit", scenario }),
   };
 }

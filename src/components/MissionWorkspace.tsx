@@ -5,7 +5,7 @@ import { SimulationPanel } from "@/components/SimulationPanel";
 import { Terrain3D } from "@/components/Terrain3D";
 import { Button } from "@/components/ui/button";
 import { api, errorText } from "@/lib/api";
-import { fmt, latLon } from "@/lib/format";
+import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
 import { markersFor } from "@/lib/markers";
 import { addedSite, useMission } from "@/lib/mission";
@@ -28,6 +28,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [legSelection, setLegSelection] = useState<{ runId: number; index: number } | null>(null);
   const [preview, setPreview] = useState<{ point: LocalPoint; label: string; siteId: string } | null>(null);
   const [viewReset, setViewReset] = useState(0);
+  const [scrubS, setScrubS] = useState<number | null>(null);
+  const [scrubbing, setScrubbing] = useState(false);
   const inspection = useRef(0);
   const busy = phase !== "idle" || state.simulationBusy;
   const simulation = state.simulation;
@@ -211,6 +213,42 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               : <p>Click the map to inspect elevation, slope and coverage.</p>}
           </div>
         </section>
+        {simulation && (() => {
+          const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
+          const elapsedS = simulation.state.elapsed_s ?? 0;
+          const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
+          const sliderValue = scrubbing && scrubS !== null ? scrubS : elapsedS;
+          const commitSeek = () => {
+            if (!scrubbing || scrubS === null || busy) { setScrubbing(false); setScrubS(null); return; }
+            setScrubbing(false);
+            const target = Math.max(0, Math.min(sliderMax, scrubS));
+            setScrubS(null);
+            if (Math.abs(target - elapsedS) >= 0.5) void mission.seekSimulation(target);
+          };
+          return <div className="shrink-0 border-t bg-background px-4 py-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="sim-progress-slider-map" className="font-medium">Mission progress</label>
+              <span className="tabular-nums text-muted-foreground">{minutes(sliderValue, 1)} / {minutes(plannedTotalS || sliderMax, 1)}</span>
+            </div>
+            <input
+              id="sim-progress-slider-map"
+              type="range"
+              min={0}
+              max={sliderMax}
+              step={1}
+              value={Math.min(sliderValue, sliderMax)}
+              disabled={busy}
+              className="mt-1 w-full accent-foreground"
+              aria-label="Mission progress timeline"
+              onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
+              onMouseUp={commitSeek}
+              onTouchEnd={commitSeek}
+              onKeyUp={(e) => { if (e.key === "Enter" || e.key === " " || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Home" || e.key === "End") commitSeek(); }}
+              onBlur={() => { if (scrubbing) commitSeek(); }}
+            />
+            <p className="mt-1 text-muted-foreground">Drag to seek (replays from start to selected time; injected events/replans are not preserved).</p>
+          </div>;
+        })()}
         <MissionResults
           state={state}
           selectedLeg={selectedLeg}
