@@ -19,6 +19,18 @@ pub const MANIFEST_FILE: &str = "manifest.json";
 pub const TARGETS_FILE: &str = "targets.json";
 /// Default resource budget and model coefficients packaged with the dataset.
 pub const ASSUMPTIONS_FILE: &str = "assumptions.json";
+/// Largest file the loader will read into memory. The packaged layers are
+/// about 17 MB; this bounds what a damaged dataset directory can allocate.
+pub const MAX_FILE_BYTES: u64 = 1 << 30;
+
+/// A dataset found under a datasets root directory.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DatasetSummary {
+    /// The directory name; what [`dataset_dir`] accepts.
+    pub dataset_id: String,
+    pub display_name: String,
+    pub region_name: String,
+}
 
 /// Contents of [`TARGETS_FILE`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -116,6 +128,86 @@ pub enum DataError {
     ChecksumMismatch { file: String, expected: String, actual: String },
     #[error("DataAlignmentFailure: {0}")]
     DataAlignmentFailure(String),
+    #[error("FileTooLarge: {path} is {bytes} bytes; the loader reads at most {limit}")]
+    FileTooLarge { path: String, bytes: u64, limit: u64 },
+    #[error("InvalidDatasetId: '{0}' is not a dataset name (letters, digits, '-' and '_' only)")]
+    InvalidDatasetId(String),
+}
+
+/// Read a whole file, refusing anything larger than `limit` bytes.
+fn read_capped(path: &Path, limit: u64) -> Result<Vec<u8>, DataError> {
+    use std::io::Read;
+    let io = |e: std::io::Error| DataError::Io { path: path.display().to_string(), message: e.to_string() };
+    let too_large = |bytes| DataError::FileTooLarge { path: path.display().to_string(), bytes, limit };
+
+    let file = std::fs::File::open(path).map_err(io)?;
+    let size = file.metadata().map_err(io)?.len();
+    if size > limit {
+        return Err(too_large(size));
+    }
+    // Read through a bound as well: the file may grow after the size check.
+    let mut bytes = Vec::with_capacity(size as usize);
+    file.take(limit.saturating_add(1)).read_to_end(&mut bytes).map_err(io)?;
+    if bytes.len() as u64 > limit {
+        return Err(too_large(bytes.len() as u64));
+    }
+    Ok(bytes)
+}
+
+/// Read a layer's file from `dir` and check it against the manifest's hash.
+fn read_layer_file(dir: &Path, layer: &LayerRecord) -> Result<Vec<u8>, DataError> {
+    let name = Path::new(&layer.file);
+    if name.components().count() != 1 || name.file_name().is_none() {
+        return Err(DataError::ManifestParse(format!(
+            "layer file '{}' must be a plain file name inside the dataset directory",
+            layer.file
+        )));
+    }
+    let bytes = read_capped(&dir.join(name), MAX_FILE_BYTES)?;
+    let actual = sha256_hex(&bytes);
+    if !actual.eq_ignore_ascii_case(&layer.sha256_derived) {
+        return Err(DataError::ChecksumMismatch {
+            file: layer.file.clone(),
+            expected: layer.sha256_derived.clone(),
+            actual,
+        });
+    }
+    Ok(bytes)
+}
+
+/// Directory of dataset `dataset_id` under `root`. The id must be a plain
+/// name, so a caller-supplied id can never address a path outside `root`.
+pub fn dataset_dir(root: &Path, dataset_id: &str) -> Result<PathBuf, DataError> {
+    let plain = !dataset_id.is_empty()
+        && dataset_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if !plain {
+        return Err(DataError::InvalidDatasetId(dataset_id.to_string()));
+    }
+    Ok(root.join(dataset_id))
+}
+
+/// Datasets under `root`: sub-directories with a valid name and a readable
+/// manifest, sorted by id. An unreadable root is simply empty.
+pub fn find_datasets(root: &Path) -> Vec<DatasetSummary> {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
+    let mut found: Vec<DatasetSummary> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let dataset_id = entry.file_name().into_string().ok()?;
+            let dir = dataset_dir(root, &dataset_id).ok()?;
+            let bytes = read_capped(&dir.join(MANIFEST_FILE), MAX_FILE_BYTES).ok()?;
+            let manifest: Manifest = serde_json::from_slice(&bytes).ok()?;
+            Some(DatasetSummary {
+                dataset_id,
+                display_name: manifest.display_name,
+                region_name: manifest.region_name,
+            })
+        })
+        .collect();
+    found.sort_by(|a, b| a.dataset_id.cmp(&b.dataset_id));
+    found
 }
 
 /// An opened, checksum-verified dataset.
@@ -137,14 +229,7 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
 impl Dataset {
     /// Open and verify the dataset in `dir`.
     pub fn open(dir: &Path) -> Result<Dataset, DataError> {
-        let read = |path: &Path| {
-            std::fs::read(path).map_err(|e| DataError::Io {
-                path: path.display().to_string(),
-                message: e.to_string(),
-            })
-        };
-
-        let manifest_bytes = read(&dir.join(MANIFEST_FILE))?;
+        let manifest_bytes = read_capped(&dir.join(MANIFEST_FILE), MAX_FILE_BYTES)?;
         let manifest: Manifest = serde_json::from_slice(&manifest_bytes)
             .map_err(|e| DataError::ManifestParse(e.to_string()))?;
 
@@ -170,22 +255,7 @@ impl Dataset {
         // Verify every layer file before using any of them.
         let mut elevation_bytes = None;
         for layer in &manifest.layers {
-            let name = Path::new(&layer.file);
-            if name.components().count() != 1 || name.file_name().is_none() {
-                return Err(DataError::ManifestParse(format!(
-                    "layer file '{}' must be a plain file name inside the dataset directory",
-                    layer.file
-                )));
-            }
-            let bytes = read(&dir.join(name))?;
-            let actual = sha256_hex(&bytes);
-            if !actual.eq_ignore_ascii_case(&layer.sha256_derived) {
-                return Err(DataError::ChecksumMismatch {
-                    file: layer.file.clone(),
-                    expected: layer.sha256_derived.clone(),
-                    actual,
-                });
-            }
+            let bytes = read_layer_file(dir, layer)?;
             if layer.kind == LayerKind::Elevation && elevation_bytes.is_none() {
                 elevation_bytes = Some((layer, bytes));
             }
@@ -218,6 +288,15 @@ impl Dataset {
         self.manifest.layers.iter().find(|l| l.kind == kind)
     }
 
+    /// Bytes of the first layer of `kind`, read again and re-checked against
+    /// the manifest hash, so a file changed after `open` is never served.
+    pub fn read_layer_verified(&self, kind: LayerKind) -> Result<Vec<u8>, DataError> {
+        let layer = self
+            .layer(kind)
+            .ok_or_else(|| DataError::MissingLayer(format!("{kind:?}").to_lowercase()))?;
+        read_layer_file(&self.dir, layer)
+    }
+
     /// Path of the display imagery file, if the dataset has one.
     pub fn imagery_path(&self) -> Option<PathBuf> {
         self.layer(LayerKind::Imagery).map(|l| self.dir.join(&l.file))
@@ -226,10 +305,7 @@ impl Dataset {
     /// The scenario packaged with the dataset: its targets and default assumptions.
     pub fn default_scenario(&self) -> Result<MissionScenario, DataError> {
         fn load<T: serde::de::DeserializeOwned>(path: PathBuf) -> Result<T, DataError> {
-            let bytes = std::fs::read(&path).map_err(|e| DataError::Io {
-                path: path.display().to_string(),
-                message: e.to_string(),
-            })?;
+            let bytes = read_capped(&path, MAX_FILE_BYTES)?;
             serde_json::from_slice(&bytes)
                 .map_err(|e| DataError::ManifestParse(format!("{}: {e}", path.display())))
         }
@@ -259,25 +335,24 @@ impl Dataset {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod test_support {
     use super::*;
     use std::fs;
 
-    const NODATA: f32 = -3.402_822_6e38;
+    pub const NODATA: f32 = -3.402_822_6e38;
 
-    fn temp_dir(tag: &str) -> PathBuf {
+    pub fn temp_dir(tag: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("ares-data-test-{}-{tag}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
     }
 
-    fn elevation_bytes() -> Vec<u8> {
-        // 3 wide × 2 tall.
-        [10.0f32, 20.0, 30.0, 40.0, 50.0, NODATA].iter().flat_map(|v| v.to_le_bytes()).collect()
+    pub fn f32_bytes(values: &[f32]) -> Vec<u8> {
+        values.iter().flat_map(|v| v.to_le_bytes()).collect()
     }
 
-    fn layer(kind: LayerKind, file: &str, sha: &str, verified: bool) -> LayerRecord {
+    pub fn layer(kind: LayerKind, file: &str, sha: &str, verified: bool) -> LayerRecord {
         LayerRecord {
             id: format!("{file}-layer"),
             display_name: file.into(),
@@ -306,7 +381,8 @@ mod tests {
         }
     }
 
-    fn manifest(layers: Vec<LayerRecord>) -> Manifest {
+    /// Manifest of a `width × height` grid of 1 m cells at the equator.
+    pub fn manifest(width: usize, height: usize, layers: Vec<LayerRecord>) -> Manifest {
         Manifest {
             schema_version: 1,
             dataset_id: "tiny".into(),
@@ -321,9 +397,9 @@ mod tests {
                 center_longitude_deg: 77.0,
                 map_scale_m_per_px: 1.0,
                 roi_x_min_m: 0.0,
-                roi_y_max_m: 2.0,
-                width: 3,
-                height: 2,
+                roi_y_max_m: height as f64,
+                width,
+                height,
                 cell_size_x_m: 1.0,
                 cell_size_y_m: 1.0,
             },
@@ -332,15 +408,108 @@ mod tests {
         }
     }
 
-    /// Write a dataset with a correct elevation layer; `edit` may then break it.
-    fn write_dataset(tag: &str, verified: bool, edit: impl FnOnce(&mut Manifest)) -> PathBuf {
-        let dir = temp_dir(tag);
-        let bytes = elevation_bytes();
+    /// Write `values` (row 0 = north; use [`NODATA`] for missing cells) as a
+    /// dataset in `dir` with a correct elevation layer; `edit` may then break it.
+    pub fn write_raster_dataset(
+        dir: &Path,
+        width: usize,
+        height: usize,
+        values: &[f32],
+        verified: bool,
+        edit: impl FnOnce(&mut Manifest),
+    ) {
+        fs::create_dir_all(dir).unwrap();
+        let bytes = f32_bytes(values);
         fs::write(dir.join("elevation.bin"), &bytes).unwrap();
-        let mut m = manifest(vec![layer(LayerKind::Elevation, "elevation.bin", &sha256_hex(&bytes), verified)]);
+        let elevation = layer(LayerKind::Elevation, "elevation.bin", &sha256_hex(&bytes), verified);
+        let mut m = manifest(width, height, vec![elevation]);
         edit(&mut m);
         fs::write(dir.join(MANIFEST_FILE), serde_json::to_string_pretty(&m).unwrap()).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_support::*;
+    use super::*;
+    use std::fs;
+
+    /// 3 wide × 2 tall, the last cell missing.
+    const TINY: [f32; 6] = [10.0, 20.0, 30.0, 40.0, 50.0, NODATA];
+
+    fn write_dataset(tag: &str, verified: bool, edit: impl FnOnce(&mut Manifest)) -> PathBuf {
+        let dir = temp_dir(tag);
+        write_raster_dataset(&dir, 3, 2, &TINY, verified, edit);
         dir
+    }
+
+    #[test]
+    fn a_file_over_the_size_limit_is_refused() {
+        let path = temp_dir("capped").join("five.bin");
+        fs::write(&path, b"12345").unwrap();
+        assert_eq!(read_capped(&path, 5).unwrap(), b"12345");
+        assert!(matches!(
+            read_capped(&path, 4),
+            Err(DataError::FileTooLarge { bytes: 5, limit: 4, .. })
+        ));
+    }
+
+    #[test]
+    fn dataset_ids_that_are_not_plain_names_are_refused() {
+        let root = Path::new("/data/root");
+        for bad in ["", ".", "..", "../x", "a/b", "a\\b", "/etc", "a b", "é"] {
+            assert!(
+                matches!(dataset_dir(root, bad), Err(DataError::InvalidDatasetId(_))),
+                "'{bad}' must be refused"
+            );
+        }
+        assert_eq!(dataset_dir(root, "jezero-small").unwrap(), root.join("jezero-small"));
+        assert_eq!(dataset_dir(root, "A_1").unwrap(), root.join("A_1"));
+    }
+
+    #[test]
+    fn find_datasets_lists_only_named_directories_with_a_readable_manifest() {
+        let root = temp_dir("root");
+        write_raster_dataset(&root.join("zeta"), 3, 2, &TINY, true, |_| {});
+        write_raster_dataset(&root.join("alpha"), 3, 2, &TINY, true, |m| m.display_name = "Alpha".into());
+        fs::create_dir_all(root.join("empty")).unwrap();
+        fs::create_dir_all(root.join("garbage")).unwrap();
+        fs::write(root.join("garbage").join(MANIFEST_FILE), "{ not json").unwrap();
+        write_raster_dataset(&root.join("bad name"), 3, 2, &TINY, true, |_| {});
+        fs::write(root.join("file.txt"), "not a directory").unwrap();
+
+        let summary = |id: &str, name: &str| DatasetSummary {
+            dataset_id: id.into(),
+            display_name: name.into(),
+            region_name: "Nowhere".into(),
+        };
+        assert_eq!(find_datasets(&root), [summary("alpha", "Alpha"), summary("zeta", "Tiny")]);
+        assert_eq!(find_datasets(&root.join("does-not-exist")), []);
+    }
+
+    #[test]
+    fn a_layer_is_served_only_while_its_hash_still_matches() {
+        let png = b"stand-in imagery bytes".to_vec();
+        let dir = temp_dir("serve");
+        fs::write(dir.join("ortho.png"), &png).unwrap();
+        write_raster_dataset(&dir, 3, 2, &TINY, true, |m| {
+            m.layers.push(layer(LayerKind::Imagery, "ortho.png", &sha256_hex(&png), true));
+        });
+        let ds = Dataset::open(&dir).unwrap();
+        assert_eq!(ds.read_layer_verified(LayerKind::Imagery).unwrap(), png);
+        assert_eq!(ds.read_layer_verified(LayerKind::Elevation).unwrap(), f32_bytes(&TINY));
+
+        fs::write(dir.join("ortho.png"), b"swapped after the dataset was opened").unwrap();
+        assert!(matches!(
+            ds.read_layer_verified(LayerKind::Imagery),
+            Err(DataError::ChecksumMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn asking_for_a_layer_the_dataset_lacks_is_missing_layer() {
+        let ds = Dataset::open(&write_dataset("nolayerkind", true, |_| {})).unwrap();
+        assert!(matches!(ds.read_layer_verified(LayerKind::Imagery), Err(DataError::MissingLayer(_))));
     }
 
     #[test]

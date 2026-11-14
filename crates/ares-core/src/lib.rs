@@ -10,11 +10,13 @@
 
 pub mod data;
 pub mod geo;
+pub mod inspect;
 pub mod planning;
 pub mod provenance;
 pub mod report;
 pub mod resources;
 pub mod route;
+pub mod session;
 pub mod terrain;
 
 use serde::{Deserialize, Serialize};

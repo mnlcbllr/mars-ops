@@ -13,7 +13,7 @@ What it does
      bytes located from the label) and requires them to be identical.
   5. Cuts the same pixel window from the 1 m orthoimage, after checking that
      its label describes exactly the same grid as the DTM.
-  6. Measures image-to-terrain registration empirically.
+  6. Compares the label grid with the georeferencing embedded in the JPEG 2000 file.
   7. Writes elevation.bin, ortho.png, manifest.json and validation_samples.json.
 
 Run (from the repository root):
@@ -49,10 +49,10 @@ DTM_PRODUCT_PAGE = "https://www.uahirise.org/dtm/ESP_023524_1985"
 CREDIT = (
     "Credit: NASA/JPL-Caltech/UArizona. The HiRISE site states that its images are in the "
     "public domain and asks for this credit line where possible "
-    "(https://www.uahirise.org/ESP_023524_1985, retrieved 2026-11-14). "
+    "(https://www.uahirise.org/ESP_023524_1985, retrieved 2026-11-13 UTC). "
     "PDS data set MRO-M-HIRISE-5-DTM-V1.0."
 )
-# Acquisition dates as shown on the HiRISE observation pages (retrieved 2026-11-14):
+# Acquisition dates as shown on the HiRISE observation pages (retrieved 2026-11-13 UTC):
 # https://www.uahirise.org/ESP_023524_1985 and https://www.uahirise.org/ESP_023379_1985
 ACQUIRED = {"ESP_023524_1985": "2011-08-03", "ESP_023379_1985": "2011-07-23"}
 SIS = "HiRISE RDR Software Interface Specification, JPL D-32006 v1.3, section 3.5.1"
@@ -165,46 +165,6 @@ class Grid:
             self.lat(self.edge_y(row) - 0.5 * self.p["map_scale"]),
             self.lon(self.edge_x(col) + 0.5 * self.p["map_scale"]),
         )
-
-
-def registration_check(elev: np.ndarray, ortho: np.ndarray, valid: np.ndarray) -> dict:
-    """How well image brightness is explained by terrain gradient at small shifts.
-
-    Shaded brightness is, to first order, linear in the surface gradient. Fitting
-    DN ≈ a + b·∂z/∂x + c·∂z/∂y at each trial offset gives an R²; the offset with
-    the highest R² is the empirical image-to-terrain misregistration.
-    """
-
-    def smooth(a: np.ndarray, k: int = 4) -> np.ndarray:
-        h, w = (a.shape[0] // k) * k, (a.shape[1] // k) * k
-        return a[:h, :w].reshape(h // k, k, w // k, k).mean(axis=(1, 3))
-
-    z = np.where(valid, elev, np.nan).astype(np.float64)
-    gy, gx = np.gradient(z)
-    img = ortho.astype(np.float64)
-    reach = 6
-    best = (-1.0, 0, 0)
-    table = {}
-    for dy in range(-reach, reach + 1):
-        for dx in range(-reach, reach + 1):
-            core = (slice(reach, -reach), slice(reach, -reach))
-            shifted = img[reach + dy : img.shape[0] - reach + dy, reach + dx : img.shape[1] - reach + dx]
-            a, b, c = smooth(gx[core]), smooth(gy[core]), smooth(shifted)
-            ok = np.isfinite(a) & np.isfinite(b) & (c > 0)
-            design = np.column_stack([np.ones(ok.sum()), a[ok], b[ok]])
-            coef, *_ = np.linalg.lstsq(design, c[ok], rcond=None)
-            resid = c[ok] - design @ coef
-            r2 = 1.0 - resid.var() / c[ok].var()
-            table[(dx, dy)] = r2
-            if r2 > best[0]:
-                best = (r2, dx, dy)
-    return {
-        "best_shift_px": [best[1], best[2]],
-        "best_r2": round(best[0], 4),
-        "r2_at_zero_shift": round(table[(0, 0)], 4),
-        "r2_at_search_edge": round(max(v for (dx, dy), v in table.items() if max(abs(dx), abs(dy)) == reach), 4),
-        "search_radius_px": reach,
-    }
 
 
 def main() -> None:
@@ -325,7 +285,7 @@ def main() -> None:
         + ", ".join(f"{k} {v:+.2f} px" for k, v in extent_offsets_px.items())
         + " (1 px ≈ 1 m). Recorded as the empirical positional offset: up to %.1f m, inside one 4 m planning cell." % worst_extent,
         "Elevation values of the region were read by GDAL and by raw byte offsets from the label; both are bit-identical.",
-        "Producer's stated quality (https://www.uahirise.org/dtm/about.php, retrieved 2026-11-14): DTM post spacing is "
+        "Producer's stated quality (https://www.uahirise.org/dtm/about.php, retrieved 2026-11-13 UTC): DTM post spacing is "
         "about 4 times the pixel scale of the input images, 'so the post spacing is 1-2 m' with 'vertical precision in "
         "the tens of centimeters'; the result 'is tied to the global elevation map produced by the MOLA instrument "
         "team'. The page does not state horizontal accuracy. Hazards smaller than the post spacing are not represented.",
@@ -347,17 +307,28 @@ def main() -> None:
         if (ds.width, ds.height) != (samples, lines) or ds.dtypes[0] != "uint8":
             fail("orthoimage raster does not match its label (DataAlignmentFailure)")
         ortho = ds.read(1, window=Window(col0, row0, size, size))
+        jp2_transform, jp2_crs = ds.transform, ds.crs.to_proj4() if ds.crs else "none"
     ortho_null = int(ortho_label["CORE_NULL"])
 
-    # ---- 6. Registration -----------------------------------------------------
-    reg = registration_check(elev, ortho, valid & (ortho != ortho_null))
-    print(f"  registration: {reg}")
+    # ---- 6. Registration evidence ---------------------------------------------
+    # The JPEG 2000 file carries its own (GeoJP2) georeferencing, written separately
+    # from the PDS label. Record how far it is from the label grid used here.
+    jp2_dx_px = (jp2_transform.c - grid.edge_x(0)) / scale
+    jp2_dy_px = (jp2_transform.f - grid.edge_y(0)) / scale
+    print(f"  GeoJP2 header origin vs label grid: {jp2_dx_px:+.2f} px east, {jp2_dy_px:+.2f} px north; CRS {jp2_crs}")
+    if abs(jp2_dx_px) > 2.5 or abs(jp2_dy_px) > 2.5:
+        fail("orthoimage GeoJP2 header and its PDS label disagree by more than 2.5 px (DataAlignmentFailure)")
     quality_ortho = [
         "The orthoimage label declares exactly the same projection, scale, offsets and dimensions as the DTM "
-        "(it was orthorectified onto this DTM by the producer), so the same pixel window is cut from both.",
-        "Empirical registration: brightness regressed on DTM gradient peaks at a shift of (%d, %d) px "
-        "(R² %.3f; %.3f at zero shift; best at the ±%d px search edge %.3f)."
-        % (*reg["best_shift_px"], reg["best_r2"], reg["r2_at_zero_shift"], reg["search_radius_px"], reg["r2_at_search_edge"]),
+        "(the producer orthorectified the image onto this DTM), so the same pixel window is cut from both. "
+        "Image-to-terrain registration therefore rests on the producer's orthorectification.",
+        "Metadata cross-check: the georeferencing embedded in the JPEG 2000 file (GeoJP2) places the grid origin "
+        "%+.2f px east and %+.2f px north of the PDS-label grid and encodes the projection as '%s' (standard parallel "
+        "and latitude of origin swapped relative to the label). The PDS label is used; the disagreement, about %.1f m, "
+        "is recorded as positional uncertainty." % (jp2_dx_px, jp2_dy_px, jp2_crs, max(abs(jp2_dx_px), abs(jp2_dy_px)) * scale),
+        "No independent feature-based measurement of image-to-terrain offset is included: two photometric methods "
+        "(brightness against DTM gradient, and edge strength against slope) were tried on this region and gave no "
+        "distinct correlation peak, so neither is reported as evidence.",
         "Pixel values are the product's 8-bit DN, unchanged. I/F = DN × %s + %s per the label. DN %d = null."
         % (ortho_label["SCALING_FACTOR"], ortho_label["OFFSET"], ortho_null),
         "Imagery shows brightness only. It is not a source of heights, slopes or composition.",

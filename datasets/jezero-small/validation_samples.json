@@ -1,7 +1,7 @@
 {
   "description": "Elevations read from the original .IMG by byte offset (not by the application), used to test that the application returns the product's own values.",
   "source_product_id": "DTEEC_023524_1985_023379_1985_U01",
-  "source_verified": false,
+  "source_verified": true,
   "region_min_m": -2629.787109375,
   "region_max_m": -2510.18505859375,
   "region_nodata_cells": 0,

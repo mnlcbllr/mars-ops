@@ -18,13 +18,16 @@ use crate::resources::{
     ResourceModel, ResourceUse,
 };
 use crate::route::{find_leg, Leg, RouteError, Search};
-use crate::terrain::PlanningGrid;
+use crate::terrain::{PlanningGrid, TerrainClass};
 use crate::LocalPoint;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
 /// Identifier used for the base in leg endpoints.
 pub const BASE_ID: &str = "BASE";
+/// Most candidate sites a scenario may carry. Routing work grows with the
+/// square of this, so it also bounds what one request can make the planner do.
+pub const MAX_SITES: usize = 16;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ScientificSite {
@@ -164,30 +167,43 @@ pub fn validate_scenario(grid: &PlanningGrid, scenario: &MissionScenario) -> Val
         push(Severity::Error, "InvalidResourceBudget", message, None);
     }
 
-    match terrain_at(grid, scenario.base, max_slope) {
-        TerrainAt::Outside => push(
+    match grid.classify(scenario.base, max_slope) {
+        (TerrainClass::OutsideCoverage, _) => push(
             Severity::Error,
             "BaseOutsideCoverage",
             "The base lies outside the elevation coverage.".into(),
             None,
         ),
-        TerrainAt::Unknown => push(
+        (TerrainClass::Unknown, _) => push(
             Severity::Error,
             "BaseOnUnknownTerrain",
             "The base lies on terrain with no elevation data.".into(),
             None,
         ),
-        TerrainAt::TooSteep(slope) => push(
+        (TerrainClass::AboveSlopeLimit, slope) => push(
             Severity::Error,
             "BaseOnSteepTerrain",
-            format!("The base lies on a {slope:.1}° slope, above the scenario limit of {max_slope:.1}°."),
+            format!(
+                "The base lies on a {:.1}° slope, above the scenario limit of {max_slope:.1}°.",
+                slope.unwrap_or(f32::NAN)
+            ),
             None,
         ),
-        TerrainAt::Traversable => {}
+        (TerrainClass::Traversable, _) => {}
     }
 
     if scenario.sites.is_empty() {
         push(Severity::Error, "NoSites", "No candidate science sites are selected.".into(), None);
+    }
+
+    if scenario.sites.len() > MAX_SITES {
+        push(
+            Severity::Error,
+            "TooManySites",
+            format!("{} candidate sites; at most {MAX_SITES} are supported.", scenario.sites.len()),
+            None,
+        );
+        return ValidationReport { ok: false, issues };
     }
 
     for (i, site) in scenario.sites.iter().enumerate() {
@@ -196,52 +212,33 @@ pub fn validate_scenario(grid: &PlanningGrid, scenario: &MissionScenario) -> Val
             push(Severity::Error, "InvalidSite", problem, id);
             continue;
         }
-        match terrain_at(grid, site.position, max_slope) {
-            TerrainAt::Outside => push(
+        match grid.classify(site.position, max_slope) {
+            (TerrainClass::OutsideCoverage, _) => push(
                 Severity::Warning,
                 "SiteOutsideCoverage",
                 "Site lies outside the elevation coverage and cannot be planned.".into(),
                 id,
             ),
-            TerrainAt::Unknown => push(
+            (TerrainClass::Unknown, _) => push(
                 Severity::Warning,
                 "SiteOnUnknownTerrain",
                 "Site lies on terrain with no elevation data and cannot be planned.".into(),
                 id,
             ),
-            TerrainAt::TooSteep(slope) => push(
+            (TerrainClass::AboveSlopeLimit, slope) => push(
                 Severity::Warning,
                 "SiteOnSteepTerrain",
-                format!("Site lies on a {slope:.1}° slope, above the scenario limit of {max_slope:.1}°."),
+                format!(
+                    "Site lies on a {:.1}° slope, above the scenario limit of {max_slope:.1}°.",
+                    slope.unwrap_or(f32::NAN)
+                ),
                 id,
             ),
-            TerrainAt::Traversable => {}
+            (TerrainClass::Traversable, _) => {}
         }
     }
 
     ValidationReport { ok: issues.iter().all(|i| i.severity != Severity::Error), issues }
-}
-
-enum TerrainAt {
-    Outside,
-    Unknown,
-    TooSteep(f32),
-    Traversable,
-}
-
-fn terrain_at(grid: &PlanningGrid, p: LocalPoint, max_slope_deg: f64) -> TerrainAt {
-    let Some((col, row)) = grid.cell_of(p) else {
-        return TerrainAt::Outside;
-    };
-    let idx = grid.index(col, row);
-    let slope = grid.slope_deg[idx];
-    if slope.is_nan() || grid.elevation_m[idx].is_nan() {
-        TerrainAt::Unknown
-    } else if slope as f64 > max_slope_deg {
-        TerrainAt::TooSteep(slope)
-    } else {
-        TerrainAt::Traversable
-    }
 }
 
 /// First problem with a site's own numbers or identity, if any.
@@ -920,6 +917,23 @@ mod tests {
         assert!(!report.ok);
         assert!(report.issues.iter().any(|i| i.code == "NoSites"));
         assert_eq!(plan_greedy(&g, &s).status, PlanStatus::Infeasible);
+    }
+
+    #[test]
+    fn more_sites_than_the_limit_is_refused_before_any_routing() {
+        let g = flat(21, 21, 1.0);
+        let sites = |n: usize| (0..n).map(|i| site(&g, &format!("S{i}"), 2 + i, 10, 1.0, 10.0, 10.0)).collect();
+
+        let at_limit = scenario(&g, (2, 2), sites(MAX_SITES), time_only(1000.0, 0.0));
+        assert!(validate_scenario(&g, &at_limit).ok);
+
+        let over = scenario(&g, (2, 2), sites(MAX_SITES + 1), time_only(1000.0, 0.0));
+        let report = validate_scenario(&g, &over);
+        assert!(!report.ok);
+        assert!(report.issues.iter().any(|i| i.code == "TooManySites" && i.severity == Severity::Error));
+        let result = plan_greedy(&g, &over);
+        assert_eq!(result.status, PlanStatus::Infeasible);
+        assert_eq!(result.timing.legs_routed, 0);
     }
 
     #[test]

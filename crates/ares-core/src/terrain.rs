@@ -5,6 +5,25 @@
 //! Missing elevation is `NaN` and is never treated as zero or as "safe".
 
 use crate::LocalPoint;
+use serde::{Deserialize, Serialize};
+
+/// Source raster cells per planning cell along each axis. With a 1 m DTM this
+/// gives ~4 m planning cells and a slope baseline of ~8 m (3×3 neighbourhood).
+pub const PLANNING_FACTOR: usize = 4;
+
+/// What the planning lattice says about a point under a slope limit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TerrainClass {
+    /// Known terrain at or below the scenario slope limit. Not a safety claim.
+    Traversable,
+    /// Known terrain steeper than the scenario slope limit.
+    AboveSlopeLimit,
+    /// Inside the grid but without elevation data (or without a full slope neighbourhood).
+    Unknown,
+    /// Outside the elevation coverage altogether.
+    OutsideCoverage,
+}
 
 /// Elevation samples on the source product's own pixel grid.
 #[derive(Clone, Debug)]
@@ -205,6 +224,22 @@ impl PlanningGrid {
 
     pub fn index(&self, col: usize, row: usize) -> usize {
         row * self.width + col
+    }
+
+    /// Class of the planning cell containing `p`, and its slope where known.
+    pub fn classify(&self, p: LocalPoint, max_slope_deg: f64) -> (TerrainClass, Option<f32>) {
+        let Some((col, row)) = self.cell_of(p) else {
+            return (TerrainClass::OutsideCoverage, None);
+        };
+        let idx = self.index(col, row);
+        let slope = self.slope_deg[idx];
+        if slope.is_nan() || self.elevation_m[idx].is_nan() {
+            (TerrainClass::Unknown, None)
+        } else if slope as f64 > max_slope_deg {
+            (TerrainClass::AboveSlopeLimit, Some(slope))
+        } else {
+            (TerrainClass::Traversable, Some(slope))
+        }
     }
 
     /// `(col, row)` of the planning cell containing `p`, or `None` outside.
@@ -423,6 +458,26 @@ mod tests {
         assert!(g.slope_deg[g.index(2, 2)].is_nan());
         assert!(g.slope_deg[g.index(1, 1)].is_nan());
         assert!(g.slope_deg[g.index(3, 3)].is_nan());
+    }
+
+    #[test]
+    fn classify_distinguishes_traversable_steep_unknown_and_outside() {
+        // 6×6 flat grid of 1 m cells; one steep cell and one cell without data.
+        let mut g = PlanningGrid::build(&raster_from(6, 6, 1.0, 1.0, |_, _| 0.0), 1);
+        let steep = g.index(2, 2);
+        g.slope_deg[steep] = 25.0;
+        let hole = g.index(3, 3);
+        g.slope_deg[hole] = f32::NAN;
+        g.elevation_m[hole] = f32::NAN;
+
+        assert_eq!(g.classify(g.cell_center(1, 1), 20.0), (TerrainClass::Traversable, Some(0.0)));
+        assert_eq!(g.classify(g.cell_center(2, 2), 20.0), (TerrainClass::AboveSlopeLimit, Some(25.0)));
+        // The same cell is traversable under a more permissive scenario limit.
+        assert_eq!(g.classify(g.cell_center(2, 2), 25.0), (TerrainClass::Traversable, Some(25.0)));
+        assert_eq!(g.classify(g.cell_center(3, 3), 20.0), (TerrainClass::Unknown, None));
+        // Edge cells have no complete slope neighbourhood: unknown, not safe.
+        assert_eq!(g.classify(g.cell_center(0, 0), 20.0), (TerrainClass::Unknown, None));
+        assert_eq!(g.classify(LocalPoint::new(-1.0, 2.0), 20.0), (TerrainClass::OutsideCoverage, None));
     }
 
     #[test]

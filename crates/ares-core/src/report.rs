@@ -6,6 +6,7 @@ use crate::planning::{MissionResult, MissionScenario};
 use crate::provenance::EvidenceKind;
 use crate::terrain::PlanningGrid;
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Source revision the core was built from (`unknown` outside a git checkout).
@@ -122,6 +123,35 @@ impl MissionReport {
                     .into(),
             ],
         }
+    }
+}
+
+impl MissionReport {
+    /// Write the report as pretty JSON into `dir` (created if needed) under a
+    /// name built from the dataset id and generation time. An existing file is
+    /// never replaced: a numeric suffix is added instead. Returns the path.
+    pub fn write_to_dir(&self, dir: &Path) -> std::io::Result<PathBuf> {
+        use std::io::{Error, ErrorKind, Write};
+        let json = serde_json::to_vec_pretty(self).map_err(Error::other)?;
+        std::fs::create_dir_all(dir)?;
+
+        let keep = |c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_';
+        let id: String =
+            self.dataset.dataset_id.chars().map(|c| if keep(c) { c } else { '_' }).collect();
+        let stamp: String = self.generated_utc.chars().filter(char::is_ascii_alphanumeric).collect();
+        for attempt in 1..=9999u32 {
+            let suffix = if attempt == 1 { String::new() } else { format!("_{attempt}") };
+            let path = dir.join(format!("ares-report_{id}_{stamp}{suffix}.json"));
+            match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut file) => {
+                    file.write_all(&json)?;
+                    return Ok(path);
+                }
+                Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Err(Error::new(ErrorKind::AlreadyExists, "too many reports with the same name"))
     }
 }
 
