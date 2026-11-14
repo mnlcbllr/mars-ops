@@ -1,0 +1,4261 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<!-- Created from PDF via Acrobat SaveAsXML -->
+<!-- Mapping table version: 28-February-2003 -->
+<HTML>
+<HEAD>
+<META
+ name="dc.creator"
+ content="Sandee Jeffers" >
+<META
+ name="dc.title"
+ content="Mars Express ASPERA-3 EAICD/SIS" >
+<META
+ name="dc.date"
+ content="2013-08-28T15:18:32-06:00" >
+<META
+ name="dc.date.modified"
+ content="2013-08-28T15:18:32-06:00" >
+<META
+ name="generator"
+ content="Adobe Acrobat Exchange-Pro 9.5.3" >
+</HEAD>
+<BODY bgcolor=white text=black link=blue vlink=purple alink=fushia >
+<DIV class="Sect" 
+
+><P 
+
+><FONT size="+1" color="#000000"></B>MSL-RAD-RDR-SIS-V3.2 </P
+><P 
+
+> </P
+><P 
+
+>August 28, 2013 </P
+><P 
+
+><FONT size="+1"><B> </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+2">Mars Science Laboratory Radiation Assessment Detector Reduced Data Record Software Interface Specification  </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+><FONT size="+1"></B> </P
+><P 
+
+> </P
+><P 
+
+>Prepared by: </P
+><P 
+
+> </P
+><P 
+
+>S. Rafkin / J. Peterson </P
+><P 
+
+><FONT size="+1"><B>Southwest Research Institute<FONT size="+1">&reg;<FONT size="+1"> </P
+><P 
+
+><FONT size="+1"></B> </P
+><P 
+
+> </P
+><P 
+
+>MSL-RAD-RDR-SIS-V3.2 </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+2"><B>Mars Science Laboratory Radiation Assessment Detector Reduced Data Record Software Interface  Specification  </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+1"></B>Version 3.2 </P
+><P 
+
+>Rev. August 28, 2013 </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+> </P
+><P 
+
+><FONT size="+1">Approved: </P
+><P 
+
+>                       _______________________________________ ___________________ </P
+><P 
+
+>Dr. Don Hassler      Date </P
+><P 
+
+>Principal Investigator   PI </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+>                       _______________________________________ ___________________ </P
+><P 
+
+>Eddie Weigle      Date </P
+><P 
+
+> Program Manager </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+>                       _______________________________________ ___________________ </P
+><P 
+
+>Dr. Scot Rafkin       Date </P
+><P 
+
+>RAD Project Scientist </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+>                      _______________________________________ ___________________ </P
+><P 
+
+>Joe Peterson       Date </P
+><P 
+
+> RAD Data Pipeline &amp; Archiving Manager </P
+><P 
+
+> </P
+><P 
+
+> </P
+><P 
+
+>                      _______________________________________ ___________________ </P
+><P 
+
+>Dr. Steve Joy       Date </P
+><P 
+
+> PDS-PPI Node Manager </P
+><P 
+
+><FONT size="+1"><B>DISTRIBUTION LIST </P
+><P 
+
+></B> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><FONT size="+1"><I>Table 1:</I><I> </I><I>Distribution List</I><I> </I></DD
+></DL
+><P 
+
+><I> </I></P
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><B>Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Organization </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Email </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+></TABLE
+><P 
+
+><FONT size="+1"><B>DOCUMENT CHANGE HISTORY </P
+><P 
+
+> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><FONT size="+1"></B><I>Table 2:</I><I> </I><I>Document Change History</I><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><B>Change </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Date </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Affected Portions </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>Initial Draft </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>September 6, 2011 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>All </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Version 3.0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>May 15, 2013 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>All </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Version 3.1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>June 18, 2013 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>All </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Version 3.2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>August 27, 2013 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>All </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+></TABLE
+><P 
+
+><FONT size="+1"><B>TBD Items </P
+><P 
+
+><FONT size="+1"></B> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><FONT size="+1"><I>Table 3:</I><I> </I><I>TBD Items</I><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><B>Item Description </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Section </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Pages </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+></TR
+></TABLE
+><P 
+
+><FONT size="+1"><B> </P
+><P 
+
+>TABLE OF CONTENTS </P
+><DIV class="TOC" 
+
+><DIV class="TOCI" 
+
+><FONT size="+1"></B> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1<FONT size="+1"> <FONT size="+1">Introduction .................................................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.1<FONT size="+1"> <FONT size="+1">Purpose and Scope ...............................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.2<FONT size="+1"> <FONT size="+1">Archiving Authorities ..........................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.2.1<FONT size="+1"> <FONT size="+1">NASA Planetary Data System (PDS) ........................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.3<FONT size="+1"> <FONT size="+1">Contents ...............................................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.4<FONT size="+1"> <FONT size="+1">Audience ..............................................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_251" href="#">
+<FONT size="+1">1.5<FONT size="+1"> <FONT size="+1">Scientific Objectives ............................................................................................................1</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_266" href="#">
+<FONT size="+1">1.6<FONT size="+1"> <FONT size="+1">Applicable Documents .........................................................................................................5</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_266" href="#">
+<FONT size="+1">1.7<FONT size="+1"> <FONT size="+1">Relationships to Other Interfaces .........................................................................................5</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_271" href="#">
+<FONT size="+1">1.8<FONT size="+1"> <FONT size="+1">Acronyms, Abbreviations, and Glossary .............................................................................6</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_271" href="#">
+<FONT size="+1">1.8.1<FONT size="+1"> <FONT size="+1">Acronyms and Abbreviations ....................................................................................6</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_280" href="#">
+<FONT size="+1">1.8.2<FONT size="+1"> <FONT size="+1">Glossary .....................................................................................................................8</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_284" href="#">
+<FONT size="+1">1.9<FONT size="+1"> <FONT size="+1">Contact Names and Addresses .............................................................................................9</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_286" href="#">
+<FONT size="+1">2<FONT size="+1"> <FONT size="+1">Overview of Instrument Design, Data Handling Process and Product Generation ...................10</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_286" href="#">
+<FONT size="+1">2.1<FONT size="+1"> <FONT size="+1">Instrument Design and Science Measurements .................................................................10</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_286" href="#">
+<FONT size="+1">2.1.1<FONT size="+1"> <FONT size="+1">Detectors ..................................................................................................................10</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_290" href="#">
+<FONT size="+1">2.1.2<FONT size="+1"> <FONT size="+1">Electronics ...............................................................................................................12</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_290" href="#">
+<FONT size="+1">2.1.3<FONT size="+1"> <FONT size="+1">Triggers ...................................................................................................................12</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_294" href="#">
+<FONT size="+1">2.1.4<FONT size="+1"> <FONT size="+1">Real-time Analysis ..................................................................................................14</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_294" href="#">
+<FONT size="+1">2.1.5<FONT size="+1"> <FONT size="+1">Measurements ..........................................................................................................14</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_300" href="#">
+<FONT size="+1">2.2<FONT size="+1"> <FONT size="+1">Data Handling Process .......................................................................................................15</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_300" href="#">
+<FONT size="+1">2.3<FONT size="+1"> <FONT size="+1">Product Generation ............................................................................................................15</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_300" href="#">
+<FONT size="+1">2.3.1<FONT size="+1"> <FONT size="+1">Data Production and Transfer Methods ...................................................................15</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_302" href="#">
+<FONT size="+1">2.3.2<FONT size="+1"> <FONT size="+1">Volume Creation .....................................................................................................16</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_302" href="#">
+<FONT size="+1">2.3.3<FONT size="+1"> <FONT size="+1">Volume Validation ..................................................................................................16</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_302" href="#">
+<FONT size="+1">2.3.4<FONT size="+1"> <FONT size="+1">Volume Identification ..............................................................................................16</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4<FONT size="+1"> <FONT size="+1">Overview of Data Products ................................................................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.1<FONT size="+1"> <FONT size="+1">Pre-Flight Data Products .........................................................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.2<FONT size="+1"> <FONT size="+1">Cruise and Surface Operations Data Products ........................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.3<FONT size="+1"> <FONT size="+1">Sub-System and Instrument Health Tests ...............................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.4<FONT size="+1"> <FONT size="+1">Instrument Calibration and Configuration Tables ...................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.5<FONT size="+1"> <FONT size="+1">Software ...................................................................................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.6<FONT size="+1"> <FONT size="+1">Documentation ........................................................................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_308" href="#">
+<FONT size="+1">2.4.7<FONT size="+1"> <FONT size="+1">Derived and Other Data Products ............................................................................17</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">2.4.8<FONT size="+1"> <FONT size="+1">Ancillary Data Usage ..............................................................................................18</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">3<FONT size="+1"> <FONT size="+1">Archive Format and Contents ....................................................................................................18</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">3.1<FONT size="+1"> <FONT size="+1">Format and Conventions ....................................................................................................18</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">3.1.1<FONT size="+1"> <FONT size="+1">Deliveries and Archive Volume Format .................................................................18</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">3.1.2<FONT size="+1"> <FONT size="+1">Data Set ID Formation ............................................................................................18</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_310" href="#">
+<FONT size="+1">3.1.3<FONT size="+1"> <FONT size="+1">File Naming Convention .........................................................................................18</A>
+<FONT size="+1"> </DIV
+></DIV
+><DIV class="TOC" 
+
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.2<FONT size="+1"> <FONT size="+1">Standards Used in Data Product Generation ......................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.2.1<FONT size="+1"> <FONT size="+1">PDS Standards .........................................................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.2.2<FONT size="+1"> <FONT size="+1">Time Standards ........................................................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.3<FONT size="+1"> <FONT size="+1">Data Validation ..................................................................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.4<FONT size="+1"> <FONT size="+1">Content ...............................................................................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+<FONT size="+1">3.4.1<FONT size="+1"> <FONT size="+1">Root Directory .........................................................................................................19</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+<FONT size="+1">3.4.2<FONT size="+1"> <FONT size="+1">INDEX Directory ....................................................................................................20</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+<FONT size="+1">3.4.3<FONT size="+1"> <FONT size="+1">DOCUMENT Directory ..........................................................................................20</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+<FONT size="+1">3.4.4<FONT size="+1"> <FONT size="+1">CATALOG Directory ..............................................................................................20</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.5<FONT size="+1"> <FONT size="+1">CALIBRATION Directory ......................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.6<FONT size="+1"> <FONT size="+1">GEOMETRY Directory ..........................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.7<FONT size="+1"> <FONT size="+1">BROWSE Directory ................................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.8<FONT size="+1"> <FONT size="+1">SOFTWARE Directory ...........................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.9<FONT size="+1"> <FONT size="+1">GAZETTER Directory ............................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.10<FONT size="+1"> <FONT size="+1">EXTRAS Directory .................................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.11<FONT size="+1"> <FONT size="+1">LABEL Directory ....................................................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_316" href="#">
+<FONT size="+1">3.4.12<FONT size="+1"> <FONT size="+1">DATA (Standard Products) Directory .....................................................................21</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_319" href="#">
+<FONT size="+1">4<FONT size="+1"> <FONT size="+1">Detailed Interface Specifications ...............................................................................................22</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_319" href="#">
+<FONT size="+1">4.1<FONT size="+1"> <FONT size="+1">Structure and Organization Overview ...............................................................................22</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_319" href="#">
+<FONT size="+1">4.2<FONT size="+1"> <FONT size="+1">Data Product Design ..........................................................................................................22</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_319" href="#">
+<FONT size="+1">4.2.1<FONT size="+1"> <FONT size="+1">General Data Product Format ..................................................................................22</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_322" href="#">
+<FONT size="+1">4.2.1.1<FONT size="+1"> <FONT size="+1">The FILE Header .......................................................................................23</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_327" href="#">
+<FONT size="+1">4.2.1.2<FONT size="+1"> <FONT size="+1">The Observation Section ............................................................................24</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_329" href="#">
+<FONT size="+1">4.2.1.3<FONT size="+1"> <FONT size="+1">The COUNTER SECTION........................................................................25</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_333" href="#">
+<FONT size="+1">4.2.1.4<FONT size="+1"> <FONT size="+1">Histograms .................................................................................................27</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_341" href="#">
+<FONT size="+1">4.2.1.5<FONT size="+1"> <FONT size="+1">Neutral........................................................................................................29</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_341" href="#">
+<FONT size="+1">4.2.1.6<FONT size="+1"> <FONT size="+1">Dosimetry ...................................................................................................29</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_344" href="#">
+<FONT size="+1">4.2.1.7<FONT size="+1"> <FONT size="+1">PHAs ..........................................................................................................30</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_344" href="#">
+<FONT size="+1">4.3<FONT size="+1"> <FONT size="+1">Extra Calibration Data .......................................................................................................30</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_346" href="#">
+<FONT size="+1">4.3.1<FONT size="+1"> <FONT size="+1">Z-mask for Stopping Particle Histogram .................................................................31</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_346" href="#">
+<FONT size="+1">4.3.2<FONT size="+1"> <FONT size="+1">Z-mask for Penetrating Particle Histogram .............................................................31</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_350" href="#">
+<FONT size="+1">Appendix A.  Available Software to Read PDS Files ...................................................................33</A>
+<FONT size="+1"> </DIV
+><DIV class="TOCI" 
+
+><FONT size="+1"> </DIV
+></DIV
+><DIV class="TOC" 
+
+><DIV class="TOCI" 
+
+><B>List of Tables:  </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_239" href="#">
+<FONT size="+1"></B>Table 1: Distribution List ........................................................................................................................... i</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_241" href="#">
+Table 2: Document Change History ......................................................................................................... ii</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_243" href="#">
+Table 3: TBD Items ................................................................................................................................. iii</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_284" href="#">
+Table 4: MSL RAD Archive Collection Support Staff ............................................................................. 9</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_312" href="#">
+Table 5: Root Directory Contents ........................................................................................................... 19</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+Table 6: Index Directory Contents .......................................................................................................... 20</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+Table 7: Document Directory Contents .................................................................................................. 20</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_314" href="#">
+Table 8: Catalog Directory Contents ...................................................................................................... 20</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_331" href="#">
+Table 9: 26</A>
+ </DIV
+><DIV class="TOCI" 
+
+><A href="#LinkTarget_331" href="#">
+Table 10: L2 Counts ................................................................................................................................. 26</A>
+ </DIV
+><DIV class="TOCI" 
+
+> </DIV
+></DIV
+><P 
+
+><FONT size="+1"> <FONT size="+1"><B> </P
+><H1 
+
+>1 Introduction </H1
+><P 
+
+><FONT size="+1"></B>This document describes the contents and types of volumes belonging to all of the MSL RAD reduced data record sets.  Experiment data products (EDR) are the responsibility of JPL, and are covered under a separate EDR SIS document. </P
+><H2 
+
+>1.1 <B>Purpose and Scope </H2
+><P 
+
+></B>The purpose of this document is two-fold. First, it provides users of the MSL RAD instrument data with detailed descriptions of high level data products and a description of how the products are generated, including data sources and destinations. Secondly, this document is the official interface between the MSL RAD instrument team and the NASA Planetary Data System (PDS). This specification applies to all reduced data record archive volumes containing MSL RAD data products for the mission duration. </P
+><H2 
+
+>1.2 <B>Archiving Authorities </H2
+><P 
+
+></B>The Planetary Data System Standard is used as the archiving standard by NASA for U.S. Planetary missions, implemented by PDS.   </P
+><H3 
+
+><B><I>1.2.1 NASA Planetary Data System (PDS) </I></H3
+><P 
+
+></B>The PDS is the primary organization within NASA responsible for archiving planetary data. MSL RAD data products are to be archived at the Planetary Plasma Interactions (PPI) node located at the University of California, Los Angeles (UCLA).  Experiment data products (EDR) are the responsibility of JPL, and are covered under a separate EDR SIS document. </P
+><H2 
+
+>1.3 <B>Contents </H2
+><P 
+
+></B>This document describes the MSL RAD data flow from launch to cruise to surface operations.  Information on how data are processed, formatted, labeled, and uniquely identified is included. General naming schemes for data volumes, data sets, data and label files are discussed. Standards used to generate the data products are explained. The design of the data set structure and data products is given. </P
+><H2 
+
+>1.4 <B>Audience </H2
+><P 
+
+></B>This specification is useful to those who wish to understand the format and content of the MSL RAD PDS data product archive collection.  Typically, these individuals would be planetary scientists, the staff of the PDS, software engineers, or data analysts. </P
+><H2 
+
+>1.5 <B>Scientific Objectives </H2
+><P 
+
+></B>The Radiation Assessment Detector (RAD) investigation is an investigation to detect and analyze the most biologically-significant energetic particle radiation on the Martian surface as a key element of the Mars Science Laboratory (MSL) mission. Fully characterizing and understanding the radiation environment on Mars is fundamental to quantitatively assessing the habitability of the planet, and is essential for future crewed Mars missions. RAD also addresses significant aspects of the MSL investigation, including the radiation effects on biological potential and past </P
+><P 
+
+>habitability, as well as keys to understanding the chemical alteration of the regolith due to impinging space radiation. </P
+><P 
+
+>The RAD <B><I>Level 1 Science Objectives</I></B> are:  </P
+><P 
+
+>To characterize the energetic particle spectrum at the surface of Mars,  </P
+><P 
+
+>To determine the radiation dose rate and equivalent dose rates for humans on the surface of Mars,  </P
+><P 
+
+>To enable validation of Mars atmospheric transmission models and radiation transport codes,  </P
+><P 
+
+>To provide input to the determination of the radiation hazard and mutagenic influences to life, past and present, at the Martian surface,  </P
+><P 
+
+>To provide input to the determination of the chemical and isotopic effects of energetic particles on the Martian surface and atmosphere. </P
+><P 
+
+> </P
+><P 
+
+><B><I>Characterize the Energetic Particle Spectrum on Mars </I></P
+><P 
+
+></B>Galactic cosmic rays (GCRs) are high energy (100 MeV/nuc to 10 GeV/nuc and above) particles thought to be produced by supernovae shocks outside the heliosphere and are composed of roughly 89% protons, 10% alpha particles (He), and 1% heavier nuclei (Reedy and Howe, 1999). GCRs are modulated by the solar wind and the 11-year solar cycle, with roughly 30% higher flux at solar minimum, and show variability with respect to elemental composition and energy. Specifically, near solar minimum, substantially higher fluxes of lower-energy particles can access the inner heliosphere compared to times near solar maximum. Because of their high energies and continuous nature, GCRs are the dominant source of background radiation at the Martian surface, and are responsible for the production of secondary particles via complex interactions in the atmosphere and regolith. The radiation dose from these secondary particles is comparable to that from the primary GCR.  </P
+><P 
+
+>The Earth's magnetic field (magnetosphere) and deep atmosphere (~ 1000 g cm<FONT size="+1">-2<FONT size="+1">) effectively shield us from most of the hostile interplanetary radiation environment. No primary cosmic rays reach the surface of the Earth. However, this is not the case for Mars. Mars has no significant magnetosphere and only ~1-2% of the atmospheric mass of Earth. In the thick terrestrial atmosphere, most of the GCR energy deposition, and secondary particle production, occurs in the first 20 km altitude, while in the thin Martian atmosphere this occurs at ground level. </P
+><P 
+
+>The secondary particles generated within the atmosphere include neutrons and gamma rays that, due to their lack of electric charge, penetrate the remaining column of the Martian atmosphere rather freely. The gamma rays do not contribute significantly to the radiation dose at the surface, but the neutrons do.  Also, some secondary neutrons generated within the regolith backscatter to the surface, where they contribute to the dose. GCR heavy ions also collide with carbon and oxygen in the atmosphere and regolith to produce a flux of energetic charged nuclear fragments at the surface. Some GCR heavy ions, such as C, N, and O are relatively abundant and have a significant probability to survive traversal of the atmosphere intact. Despite their relatively limited range in matter, these particles have high quality factors and therefore need to be considered in radiation risk assessments.  </P
+><P 
+
+>Solar energetic particles (SEPs) are produced by the Sun as a result of shocks from coronal mass ejections (CMEs) associated with large solar storms and flares; they are dominantly protons. Although most SEPs have energies lower than 100 MeV/nuc, the flux of SEPs is highly variable and can vary by more than 5 orders of magnitude on time scales of hours to days (Posner and Kunow, 2003), reaching energies as high as several GeV. About 140 MeV/nuc of kinetic energy is needed for protons and helium ions to penetrate the Martian atmosphere. Typical SEP events produce a flux composed of 98% protons, 1% alpha particles and 1% heavier nuclei (Reedy <I>et al</I>., 2001). Because most SEPs have energies below 100 MeV, much of their flux does not reach the Martian surface. However, large produce a significant SEP flux at energies above 100 MeV/nuc. Thus, although sporadic, SEP events may overwhelm the background GCR radiation at the Martian surface.  </P
+><P 
+
+><B><I>Determine the Radiation Dose Rate for Humans</I><I> </I><I>on Mars </I><I> </I></P
+><P 
+
+></B>Presently, no radiation exposure limits are established for surface Mars missions, but limits for low Earth orbit (LEO) provide a reasonable baseline from which to compare astronaut safety and risk.  The LEO limits are classified into short (30-day), annual, and career durations, and are also a function of the exposed organs.  Astronauts conducting Martian surface operations would be exposed to continuous GCR radiation, and potentially large bursts of SEP radiation. Although the GCR flux is less at solar maximum, the probability of large SEP events is greater, and the combined dose equivalent can easily approach annual exposure limits for blood forming organs, particularly at high elevations where the atmospheric column above is minimal.  Thus, it is critical to quantify through direct measurement the total radiation environment, including the baseline GCR flux and the secondaries it produces, as well as the range of episodic SEP radiation at the surface of Mars well in advance of any future manned missions in order to properly assess the safety risks and to develop potential mitigation strategies. <I>RAD will provide the precu</I><I>rsor </I><I>measurements necessary to fully characterize GCR and SEP radiation, assess potential risks, </I><I>and enable mitigation strategies to be adequately designed in preparation for future manned </I><I>Mars missions. </I> </P
+><P 
+
+><B><I>Transport of HZE Particles through the Martian Atmosphere </I></P
+><P 
+
+></B>The lack of direct observations necessitates the use of radiation transport models of the Mars atmosphere (e.g., HZETRN, GEANT).  However, radiation transport models that provide input to dosimetry models are static, driven by radiation inputs at the top of the atmosphere and MOLA topographic data only.  Unfortunately, the true nature of the surface radiation environment is still highly uncertain.  The model outputs need to be tested (Wilson <I>et al.,</I> 1999), and compared to <I>observational ground truth</I> in order to be validated and considered complete to the point of ensuring astronaut safety on future manned missions. Measurements from RAD will be compared to output from existing models of these interactions.  Disagreement between observations and model results elucidate weaknesses in the model physics, or the understanding of the modelled interactions, and will be used as feedback for improvement.<I> </I></P
+><P 
+
+><B><I>Characterize the Radiation Hazard for Extant Life on Mars </I></P
+><P 
+
+></B>The radiation hazards for indigenous Martian life forms are unknown, but most current studies assume that life elsewhere will be based on polymeric organic molecules (Pace, 2001), and will in an overall sense, share with terrestrial life the vulnerability to energetic radiation.  Thus the </P
+><P 
+
+>risks to extant organisms are assumed to be analogous to the risks to future human explorers.  Energetic charged particles ionize molecules along their tracks.  This ionization creates OH and other damaging free radicals which can in turn break DNA strands within cells. Double strand breaks are most significant, as they may be mis-repaired, leading to mutagenesis. Surviving cells may become cancerous.  While Martian life may not be based on DNA, most astrobiologists assume that it will require some system of heredity based on large polymeric organic molecules.  Thus it will likely have similar vulnerability to energetic radiation.   </P
+><P 
+
+>RAD will quantify the flux of biologically hazardous radiation at the surface of Mars today, and measure how these fluxes vary on diurnal, seasonal, solar cycle and episodic (flare, storm) timescales.  Through such measurements, we can learn how deep life would have to be today for natural shielding to be sufficient.  This depth can be compared to the calculated diffusion depth of strong oxidants which will destroy organic molecules in the near surface environment of Mars today (Bullock et al., 1994), and thus learn whether radiation or oxidizing chemistry will determine the minimum depth needed to drill to look for extant life on Mars today. </P
+><P 
+
+>Much attention has been given to the possibility of life in subsurface voids (caves) that will be protected from the surface radiation environment (Boston <I>et al</I>., 1992).  It has been noted that the cave environments likely to exist on Mars could possibly facilitate the evolution of macroscopic life in the subsurface, as opposed to merely microbial life (Boston <I>et al</I>., 2001).  The shielding required to make such an environment suitable for life will depend on the surface radiation.  Measurements of the surface radiation will allow us to determine how deeply buried such voids must be to be safe from the high-energy radiation environment at the surface.  This, in turn, will directly impact future strategies involving drilling and digging to search for subsurface life.<I> </I></P
+><P 
+
+>While the idea that life exists today on Mars is controversial, the idea of life on Mars in the past is much less so. The recent discoveries by the Mars Exploration Rovers (MER) and Mars Express of evidence for abundant surface liquid water in the past reinforce the widespread view that Mars, in the past, may have been a habitable planet.  In seeking to understand the limits of surface habitability in the past on Mars, it is important to be able to characterize the radiation environment during past epochs when surface water existed, the climate was more moderate, and presumably the atmosphere was substantially thicker than at present.  Radiation is an important source of biological mutations, and as such may have been the dominant source of genetic diversity in the past on Earth and presumably on any planet (perhaps including Mars) where life is based on a genetic code (which is part of most definitions of life). How would the thicker past atmosphere, required for a warm, wet early Mars, modify the radiation environment?  According to accepted models of atmospheric evolution, how have the dose rates of radiation capable of doing tissue damage, and radiation-induced mutation, varied throughout Martian history?  How would extreme radiation events (solar flares, gamma ray bursts) have affected evolution of past organic life on Mars?  For any effort to understand this past radiation environment of Mars, the starting point must be a more thorough understanding of the role that the current atmosphere plays in modulating and altering the radiation from space. <I>Understanding how radiation interacts with the contemporary atmosphere permits the extrapolation of this interaction with the ancient, thicker atmospheres.</I> </P
+><P 
+
+><B><I>Chemical and Isotopic Effects of Radiation on the Martian Surface and Atmosphere  </I></P
+><P 
+
+></B>Space &ldquo;weathering&rdquo; is a well-known but fairly poorly understood phenomenon that alters the chemistry and appearance of the surfaces of airless bodies (Hapke 2001, Chapman 2004).  It usually consists of two components, that due to micrometeorite bombardment, and that caused by the impingement of charged particles on the surface of asteroids and airless satellites. An enormous fluence of high-energy charged primary and secondary particles has interacted with the Martian regolith throughout its history. There is thus reason to believe that radiation contributes significantly to the unique chemistry of the Martian surface.  <I>The unique space weathering on Mars can only be understood and quantified with direct observations of energetic particles at the surface.</I>  </P
+><P 
+
+>One of the primary objectives of the MSL mission is to emplace mobile analytical chemistry instruments at the surface of Mars, including those that can quantify light elements. A detailed analysis of the makeup of both bulk rocks and their surfaces will pave the way for a far greater understanding of the weathering and alteration processes active on Mars. RAD will supply the basic input to chemistry models that up to now has been lacking - the space radiation environment of the surface of Mars.  <I>Together with the analytic chemistry experiments on MSL, RAD will provide real constraints on how primary rocks weather to their current, highly altered state. </I></P
+><H2 
+
+>1.6 <B>Applicable Documents </H2
+><P 
+
+></B><I>Hassler et al, 2012 </I></P
+><P 
+
+><I>Planetary Science Data Dictionary Document</I>, October 20, 2008, JPL D-7116, Rev. F </P
+><P 
+
+><I>Planetary Data System Standards Reference</I>, February 27, 2009, Version 3.8, JPL D-7669, Part 2 </P
+><P 
+
+><I>MSL RAD Experiment Data Record Software Interface Specification</I> (RAD EDR SIS) </P
+><H2 
+
+>1.7 <B>Relationships to Other Interfaces </H2
+><P 
+
+></B>Other interfaces that have an impact on RAD data set generation, packaging, distribution, and documentation include: </P
+><DL 
+
+><DD 
+
+>1. MSL RAD EDR SIS: These data are produced from telemetry by OPGS at JPL and are used to produce the PDS-compliant data and label files. If these data are reprocessed for any reason, there could be a direct impact on the generation of the MSL RAD RDR PDS data sets. </DD
+><DD 
+
+>2. EDRtoDB Software:  This software reads the EDR and then writes to the RAD Data Base (DB). </DD
+><DD 
+
+>3. DBtoRDR Software: This software is used to produce the RDR products from the information contained in the DB. </DD
+><DD 
+
+>4. RDRtoPDS.  PDS-compliant data and label files from RDR data. Any change in this software could impact the generation of the PDS data sets. </DD
+></DL
+><H2 
+
+>1.8 <B>Acronyms, Abbreviations, and Glossary </H2
+><H3 
+
+><I>1.8.1 Acronyms and Abbreviations </I></H3
+><P 
+
+></B>ADC &ndash; Analog to Digital Converter </P
+><P 
+
+>ASCII &ndash;  American Standard Code for Information Interchange </P
+><P 
+
+>ASIC &ndash; Application-Specific Integrated Circuit </P
+><P 
+
+>BC-432 &ndash; Bicron &trade; 432 plastic scintillator used as the &ldquo;E&rdquo; and &ldquo;F&rdquo; detectors in RAD </P
+><P 
+
+>CME&mdash;Coronal mass ejection </P
+><P 
+
+>CODMAC&mdash;Committee On Data Management And Computation  </P
+><P 
+
+>Co-I &ndash; Co-Investigator </P
+><P 
+
+>CsI &ndash; Cesium Iodide, an inorganic scintillating material used as the &ldquo;D&rdquo; detector in RAD </P
+><P 
+
+>DB &ndash; Data Base </P
+><P 
+
+>DDS &ndash;  Data Disposition System </P
+><P 
+
+>DOY &ndash;  Day Of Year (Julian date, 3 digits) </P
+><P 
+
+>DSN &ndash; Deep Space Network </P
+><P 
+
+>EDR &ndash; Experimental Data Record </P
+><P 
+
+>EEPROM &ndash; Electrically Erasable Programmable Read-Only Memory </P
+><P 
+
+>ERT &ndash; Earth Receive Time </P
+><P 
+
+>eV &ndash; Electron volt </P
+><P 
+
+>EVIL&mdash; Electronics for VIRENA Logic </P
+><P 
+
+>FEI &ndash; File Exchange Interface: Used to transfer files from OPGS to RAD team </P
+><P 
+
+>FIFO &ndash; First-in First-Out </P
+><P 
+
+>FPGA&mdash;Field programmable gate array </P
+><P 
+
+>GB  &ndash; Gigabyte(s) </P
+><P 
+
+>GeV &ndash; Giga-electron volt, or 10<FONT size="+1">9<FONT size="+1"> eV. </P
+><P 
+
+>GCR&mdash;Galactic cosmic rays </P
+><P 
+
+>HZE &ndash; High Charge Particles </P
+><P 
+
+>keV &ndash; Kilo-electron volt, or 10<FONT size="+1">3<FONT size="+1"> eV. </P
+><P 
+
+>IC  &ndash; Interplanetary Cruise </P
+><P 
+
+>ICD &ndash;  Interface Control Document </P
+><P 
+
+>ISO  &ndash; International Standards Organization </P
+><P 
+
+>JPL &ndash; Jet Propulsion Laboratory </P
+><P 
+
+>MB  &ndash; Megabyte(s) </P
+><P 
+
+>L2 &ndash; Level 2 processing of RAD data (performed by on-board software) </P
+><P 
+
+>L3 &ndash; Level 3 processing of RAD data (performed by on-board software) </P
+><P 
+
+>LEO&mdash;Low Earth orbit </P
+><P 
+
+>LET &ndash; Linear Energy Transfer, the amount of energy deposited by an energetic particle per unit track length in matter, usually in units of keV/micron where the medium is assumed to be water. </P
+><P 
+
+>LST &ndash; Local solar time </P
+><P 
+
+>MER&mdash;Mars Exploration Rover </P
+><P 
+
+>MeV &ndash; Mega-electron volt, or 10<FONT size="+1">6<FONT size="+1"> eV. </P
+><P 
+
+>MeV/nuc &ndash; Unit of kinetic energy for protons and heavy ions. </P
+><P 
+
+>MOLA&mdash;Mars Orbiter Laser Altimeter </P
+><P 
+
+>MPCS&mdash; Mission Data Processing and Control Subsystem </P
+><P 
+
+>MSL&mdash;Mars Science Laboratory </P
+><P 
+
+>NAIF  &ndash; Navigation Ancillary Information Facility </P
+><P 
+
+>NASA &ndash; National Aeronautics and Space Administration </P
+><P 
+
+>NRC &ndash; National Research Council </P
+><P 
+
+>NSSDC &ndash; National Space Science Data Center </P
+><P 
+
+>ODL - Object Description Language </P
+><P 
+
+>OPGS - Operations Product Generation Subsystem </P
+><P 
+
+>PDF - Portable Document Format </P
+><P 
+
+>PDS - NASA Planetary Data System </P
+><P 
+
+>PI Principal Investigator </P
+><P 
+
+>PM - Project Manager </P
+><P 
+
+>PHA &ndash; Pulse Height Analysis or Pulse Height Analyzed </P
+><P 
+
+>PROM &ndash; Programmable Read-Only Memory </P
+><P 
+
+>RAD &ndash; Radiation Assessment Detector. </P
+><P 
+
+>RAE &ndash; RAD Analog Electronics. </P
+><P 
+
+>RAM &ndash; Random Access Memory </P
+><P 
+
+>RCE &ndash; Rover Compute Element </P
+><P 
+
+>RCLK &ndash; RAD Clock </P
+><P 
+
+>RCT &ndash; Record Creation Time </P
+><P 
+
+>RDE &ndash; RAD Digital Electronics. </P
+><P 
+
+>RDR &ndash; Reduced Data Record </P
+><P 
+
+>REB &ndash; RAD Electronics Box. </P
+><P 
+
+>RNAV &ndash; Rover Navigation </P
+><P 
+
+>RSE &ndash; RAD Sleep Electronics. </P
+><P 
+
+>RSH &ndash; RAD Sensor Head. </P
+><P 
+
+>RTG &ndash; radioisotope thermoelectric generator </P
+><P 
+
+>SCET &ndash; Spacecraft Event Time </P
+><P 
+
+>SCLK &ndash; Spacecraft Clock </P
+><P 
+
+>SEP&mdash;Solar Energetic particle event </P
+><P 
+
+>SIS &ndash; Software Interface Specification </P
+><P 
+
+>SPICE Spacecraft, Planet, Instrument, C-matrix, Events files and software </P
+><P 
+
+>SSD &ndash; Solid State Detector </P
+><P 
+
+>SQL &ndash; Structured Query Language </P
+><P 
+
+>SwRI&reg; &ndash; Southwest Research Institute&reg; </P
+><P 
+
+>TLST &ndash; True local solar time </P
+><P 
+
+>UCLA &ndash; University of California, Los Angeles </P
+><P 
+
+>UTC &ndash; Universal coordinated time </P
+><P 
+
+>VIRENA &ndash; Voltage-Input Readout Electronics for Nuclear Applications </P
+><P 
+
+> </P
+><H3 
+
+><B><I>1.8.2 Glossary </I></H3
+><P 
+
+>Archive </B>&ndash; An archive consists of one or more Data Sets along with all the documentation and ancillary information needed to understand and use the data.  An archive is a logical construct independent of the medium on which it is stored.<B> </P
+><P 
+
+>Archive Volume</B> - An Archive Volume is a single physical media (CDROM, DVD, 9-track tape, etc.) used to permanently store files within the PDS archive. Archive Volumes may only be created on media approved by the PDS as meeting archive quality standards. </P
+><P 
+
+><B>Archive Volume Set</B> &ndash; A collection of one or more Archive Volumes used to store a single Data Set or collection of related Data Sets. </P
+><P 
+
+><B>Catalog Information</B> &ndash; High-level descriptive information about a Data Set (e.g., mission description, spacecraft description, instrument description), expressed in Object Description Language (ODL), which is suitable for loading into a PDS catalog. </P
+><P 
+
+><B>Counts / Observation</B> &ndash; Refers to raw telemetry data in counts for particle data. The accumulation period is canonically ~15 minutes, so the raw data is referenced in this way to indicate raw counts as measured by the instrument. </P
+><P 
+
+><B>Data Product</B> &ndash; A labeled grouping of data resulting from a scientific observation, usually stored in one file.  A product label identifies, describes, and defines the structure of the data. An example of a Data Product is a planetary image, a spectral table, or a time series table. </P
+><P 
+
+><B>Data Set &ndash; </B>The accumulation of data products, secondary data, software, and documentation that completely document and support the use of those data products. A data set can be part of a data set collection. (PDS Standards Reference, August 1, 2003) </P
+><P 
+
+><B>Dose &ndash; </B>Energy deposited per unit mass, usually in units of Gray (Gy), 1 Gy = 1 joule/kg </P
+><P 
+
+><B>Dose Equivalent &ndash; </B>Dose weighted by biological effectiveness of the radiation field as determined by integrating the LET distribution against the Quality Factor, with the result given in units of Sieverts (Sv).<B> </P
+><P 
+
+>E-Volume &ndash; </B>Electronic version of an archive volume, organized identically to the physical volume with the same requirements to meet PDS archive quality standards. </P
+><P 
+
+><B>Quality Factor</B> &ndash; A dimensionless quantity representing biological effectiveness as a function of LET, usually written Q(L). <B> </P
+><P 
+
+>Standard Data Product</B> &ndash; A Data Product generated in a predefined way using well-understood procedures, processed in &quot;pipeline&quot; fashion.  Data Products that are generated in a non-standard way are sometimes called <I>special Data Products. </I></P
+><P 
+
+> </P
+><H2 
+
+>1.9 <B>Contact Names and Addresses </H2
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+></B><I>Table 4:</I><I> </I><I>MSL RAD</I><I> </I><I>Archive Collection Support Staff</I><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><B>Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Organization/Address </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Phone </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>Email </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Joe Peterson </P
+><P 
+
+></B>RAD PDS Lead </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>SwRI </P
+><P 
+
+>1050 Walnut Street, Suite 300 </P
+><P 
+
+>Boulder, CO, 80302 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>303-546-9677 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#0000FF">joe@boulder.swri.edu </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#000000"><B>Scot Rafkin </P
+><P 
+
+></B>RAD Project Scientist </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>SwRI </P
+><P 
+
+>1050 Walnut Street, Suite 300 </P
+><P 
+
+>Boulder, CO, 80302 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>720-240-0116 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#0000FF">rafkin@boulder.swri.edu<FONT color="#000000"> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><B>Mr. Steven P. Joy </P
+><P 
+
+></B>PPI Operations Manager </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>UCLA-IGPP 405 Hilgard Ave Los Angeles, CA 90095-1567 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>310-825-3506 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+><A href="mailto:sjoy@igpp.ucla.edu">
+<FONT color="#0000FF">sjoy@igpp.ucla.edu</A>
+ </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#000000"><B>Dr. Mark Sharlow </P
+><P 
+
+></B>PPI Data Engineer </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>UCLA-IGPP 405 Hilgard Ave Los Angeles, CA 90095-1567 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>310-206-6073 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+><A href="mailto:msharlow@igpp.ucla.edu">
+<FONT color="#0000FF">msharlow@igpp.ucla.edu</A>
+ </P
+></TD
+></TR
+></TABLE
+><H1 
+
+><FONT size="+1" color="#000000"><B>2 Overview of Instrument Design, Data Handling Process and Product Generation </H1
+><H2 
+
+><FONT size="+1"></B>2.1 <B>Instrument Design and Science Measurements </H2
+><P 
+
+></B> </P
+><P 
+
+>The Radiation Assessment Detector (RAD) aboard the Mars Science Laboratory (MSL) Rover is an energetic charged and neutral particle detector designed to characterize the radiation environment at the surface of Mars.   </P
+><P 
+
+>The RAD experiment requires long time integration to capture the statistics of GCR radiation and frequent observations to capture the random and nearly unpredictable SEP events.  A minimum of 15 minutes of observation per hour every hour is sufficient to achieve RAD science objectives. </P
+><H3 
+
+><B><I>2.1.1  Detectors </I></H3
+><P 
+
+></B>RAD&rsquo;s particle detection capabilities are achieved with a solid-state detector (SSD) stack (A, B, C), a CsI(Tl) scintillator (D), and a plastic scintillator (E) for neutron detection, as shown below. The D and E detectors are surrounded by an anticoincidence shield (F), also made of plastic scintillator. All scintillators are optically coupled to silicon diodes which convert scintillation light to electrons. </P
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+> </P
+><P 
+
+>           |------------| &lt;--Si A Detector </P
+><P 
+
+>           |            |  </P
+><P 
+
+>           |            |  </P
+><P 
+
+>           |            |  </P
+><P 
+
+>           |            |  </P
+><P 
+
+>           |------------| &lt;--Si B Detector </P
+><P 
+
+>           |------------| &lt;--Si C Detector </P
+><P 
+
+>          //  /|-----|\ \\     |------------|   </P
+><P 
+
+>         //  / /     \ \ \\ </P
+><P 
+
+>        //  / /        \ \ \\  </P
+><P 
+
+>       //  / /    D    \ \ \\ </P
+><P 
+
+>      //  / /    CsI    \ \ \\ </P
+><P 
+
+>     //  / /             \ \ \\ &lt;-- anti-coincidence wrapper F1 </P
+><P 
+
+>    ||  --------------------  || </P
+><P 
+
+>    ||    ----------------    ||  </P
+><P 
+
+>    ||   |   Bicron 432   |   || </P
+><P 
+
+>    ||   |   E Detector   |   || </P
+><P 
+
+>    ||    ----------------    ||  </P
+><P 
+
+>   |----------------------------| </P
+><P 
+
+>   |----------------------------|&lt;-- anti-coincidence wrapper F2 </P
+><P 
+
+>      </P
+><P 
+
+>  </P
+><P 
+
+><FONT size="+1">The D calorimeter stops protons with energies up to about 95 MeV and Fe ions up to 400 MeV/n. At high energies, charged particles produce ionization electrons in the detector material and undergo no significant change in direction. Thus, the path of energetic ions through RAD is, to a good approximation, along a straight line. The opening angle of 65 degrees, defined by trajectories that hit both A and B (i.e., the A*B coincidence), yields a 0.9 cm^2 sr geometric factor of the instrument. This gives a fairly narrow distribution of possible path lengths through the detectors. The shape of the CsI scintillator conforms to the field of view as defined by the A*B coincidence. Identification of ion species is achieved with the dE/dx vs. E method (McDonald and Ludwig, 1964). </P
+><P 
+
+>The high-energy threshold for ions is determined by the trigger settings for detectors A and B. Particles that penetrate the chain of detectors ABCD (and possibly E) and leave the system through F2 are accepted and counted in the &quot;penetrating particle&quot; histograms. It has been determined that the A*B trigger can and will be operated at a low threshold so that RAD efficiently detects minimum-ionizing, singly-charged particles (e.g., GCR protons). Limited particle identification at energies beyond ~100 MeV/n is possible for these events. The penetrating particle histograms extend the energy range of the instrument to accommodate up to ~500 MeV/n ion spectra with elemental resolution based on multiple dE/dx analysis. </P
+><P 
+
+>The A detector has outer and inner segments, referred to as A1 and A2 respectively.  During high fluence events such as SEPs, the outer segment (A1) can be disabled so as not to overwhelm the electronics with a high event rate. </P
+><P 
+
+>The use of a scintillator anti-coincidence shield F1 and F2 is a requirement for neutral particle detection. Since neutral particles do not interact with electrons, which are the source for light emission in scintillator materials, the detection requires other means of energy transfer.  In the D/E scintillator system, neutrons of 5 to 100 MeV are detected indirectly by elastic scattering with protons in the plastic detector E. Recoil protons carry on average half the kinetic energy of the incoming neutron. The D and E detectors have 4-pi fields of view for neutral particles. High energy neutrons may cause D/E coincidences. Neutrons that produce very high-energy recoils can go undetected if the recoil leaves E or D and strikes the F anti-coincidence shield. This process effectively sets the upper limit of reasonable neutron detection efficiency at about 100 MeV. </P
+><P 
+
+>The lower energy range of neutrons detectable by RAD is determined by emission of neutral particles from the RTG that powers MSL.  RAD thresholds have been raised accordingly. The settings used through the cruise phase of the mission and the first several months on the surface correspond to thresholds of about 10 MeV in D and 3 MeV in E. When active, the DAN Pulse Neutron Generator (PNG)  provides a source of neutrons. RAD data obtained during periods of PNG firing are strongly affected by this source and should not be considered part of normal environmental monitoring. That is, the data should be excluded from typical analyses. </P
+><P 
+
+>Gamma-rays are a by-product of high-energy nuclear interactions and can penetrate the anti-coincidence shield without interacting, in which case  signals can be produced in E and (more likely) D via the photoelectric effect, Compton scattering, and pair production. The high-Z CsI material of D has a much higher sensitivity for the detection of gamma-rays than the plastic of detector E. D can be used as a gamma-ray spectrometer, albeit with poor resolution compared to the Odyssey GRS in orbit around Mars, above the detector noise level of several hundreds of </P
+><P 
+
+>keV. However the RTG will produce a flux of gamma-rays in D at energies up to several MeV, hence the threshold setting of ~ 10 MeV. </P
+><P 
+
+> </P
+><P 
+
+>Solar flares and coronal mass ejections can accelerate electrons to energies of several MeV. Observations of relativistic solar electrons are vital for event onset timing studies. Electrons are low linear energy transfer (LET) particles with modest ranges in detector materials. RAD will measure electrons in the range from 150 keV up to 15 MeV.  The distinction from ions can be determined from dE/dx vs. E analysis. A distinct signature in the detectors comes from positrons, which are by-products of flare processes in the corona and also produced by interactions of high-energy particles in the atmosphere. The annihilation of the positron with a detector B electron generates characteristic 511 keV X-rays. A*B coincidences with electron-type energy loss signals in coincidence with a light pulse in D equivalent to the characteristic X-ray energy deposit define a positron detection. </P
+><P 
+
+>Quantitative assessment of energy spectra depends on detailed response functions derived from calibration data and from Monte Carlo simulations.  </P
+><P 
+
+>All particle detectors, and some of the analog electronics, are contained in the RAD Sensor Head (RSH). Additional analog electronics, and all of the digital electronics, are contained in the RAD Electronics Box (REB). </P
+><H3 
+
+><B><I>2.1.2   Electronics </I></H3
+><P 
+
+></B>   The silicon diodes used both for direct detection of charged particles (A, B, and C) and for detection of scintillation light (D, E, F) are in all cases connected to charge-sensitive preamplifiers and shaping amplifiers in the sensor head. These are of a standard design, optimized for low noise and wide dynamic range. There are seventeen analog signals at the output of the RSH; these are split into 34 redundant signal pairs at the input of a mixed signal ASIC known as the VIRENA (Voltage-Input Readout for Nuclear Applications). The VIRENA provides, for each channel, an additional amplification stage, two adjustable threshold comparators, and a peak-hold circuit. The VIRENA is a 36-channel device, of which 34 channels are used as described above to read out the 17 RSH signals. The firmware requires that 32 of the 34 channels be selected to be used in the onboard analysis, i.e., 2 of the 34 channels are not used. The choice of which 32 channels are used is configurable. Furthermore, depending on which Level 2 (L2) trigger fired to initiate the event readout (a process explained in more detail below), different sets of channels may be read out, ranging from a few to the full 32. </P
+><P 
+
+>The VIRENA output signals are multiplexed into a single 14-bit analog-to-digital converter. For events with a valid L2 trigger, the appropriate set of pulse heights is read out and kept in local memory for analysis. </P
+><H3 
+
+><B><I>2.1.3   Triggers </I></H3
+><P 
+
+></B>    RAD has two trigger levels, Level 1 (L1) and Level 2 (L2). Level 1 triggers are initiated by the VIRENA &quot;fast&quot; discriminators. These are enabled for one channel each for the A1, A2, B, C, D, and E detectors. When the firmware recognizes an L1 trigger, the &ldquo;slow&rdquo; discriminator outputs are examined to see if any L2 trigger patterns (which are for the most part coincidence </P
+><P 
+
+>conditions) are matched. If they are, the pulse height readout commences according to the readout mask for the specific L2 trigger that was matched.  </P
+><P 
+
+> </P
+><P 
+
+>The onboard Level 2 data analysis module estimates the energy deposited in a given detector based on the ADC results of all its channels. Each channel of a given detector is processed in turn, starting with the one having the lowest gain. The result at each step of the calculation is a current best estimate of the detector energy, called E<FONT size="+1">sum<FONT size="+1">. This value is sent to the FIFO for every channel. E<FONT size="+1">sum<FONT size="+1"> is also carried over to the next channel processing, where it may or may not be used depending on the detector-specific configuration. The last, highest gain channel's E<FONT size="+1">sum<FONT size="+1"> can be used as the overall result for the detector provided it is not in saturation. In those cases, energy estimates from lower-gain channels are used. </P
+><P 
+
+> </P
+><P 
+
+>At each step of the E<FONT size="+1">sum<FONT size="+1"> calculation, the ADC result is compared to the overflow threshold. When the ADC result exceeds that threshold, the channel result is ignored, and the previous E<FONT size="+1">sum<FONT size="+1"> value is kept. The thresholds are configured so that ADC values below are in the linear response range of the channel. Values beyond overflow threshold are discarded in preference of the results of lower gain channels. An overflow is tagged in the channel data record.  Otherwise, the ADC result is compared to the underflow threshold. When the ADC result is below the underflow threshold, the previous E<FONT size="+1">sum<FONT size="+1"> is ignored, and the calibrated energy from this channel is copied to E<FONT size="+1">sum<FONT size="+1">. The underflow threshold shall be configured so that ADC values below indicate that the previous, lower gain channels cannot usefully contribute anything but noise to the result. An underflow is tagged in the channel data record. </P
+><P 
+
+> </P
+><P 
+
+>For the D and E detectors, when a channel is not the first, is not in overflow, and is not in underflow,  a silicon hit detection is attempted. The scintillation detectors are read out with multiple photo diodes. When a particle deposits energy in the scintillator, all diodes should see about the same charge, and the calibrated energy of all channels should match. When a particle hits the pin diode itself, that channel will show a much large signal compared to the others. The larger value shall be discarded. The purpose of the silicon hit detection is to identify and remove these events. The L2 module computes a normalized difference of the calibrated energy E and the previous E<FONT size="+1">sum<FONT size="+1">: </P
+><P 
+
+> </P
+><P 
+
+>    <FONT size="+1"> <FONT size="+1">   <FONT size="+1">   <FONT size="+1">   <FONT size="+1">  <FONT size="+1">                                                           (1)  </P
+><P 
+
+> </P
+><P 
+
+>The result N is compared to an upper or lower silicon hit threshold depending on the sign of N. The five most significant bits of N are sent as flags to the FIFO.  If N is positive, and exceeds the upper silicon hit threshold, then the previous E<FONT size="+1">sum<FONT size="+1"> is much larger than what this channel says is should be. In this case the previous E<FONT size="+1">sum<FONT size="+1"> is ignored, and the current channel calibrated energy is copied to E<FONT size="+1">sum<FONT size="+1">.  If N is negative and below the lower silicon hit threshold, this channel has a much larger energy signal than the previous channels. The new result is discarded and the old value for E<FONT size="+1">sum<FONT size="+1"> is kept. A silicon hit is tagged in the channel data record. </P
+><P 
+
+> </P
+><P 
+
+>When none of the above conditions are satisfied, we assume that the previous E<FONT size="+1">sum<FONT size="+1"> may contribute signal above noise and this channel even more, since it is higher gain. The new  <FONT size="+1">    <FONT size="+1"> is computed as a linear combination of the previous E<FONT size="+1">sum<FONT size="+1"> and this channel's calibrated energy E: </P
+><P 
+
+> </P
+><P 
+
+> <FONT size="+1">    <FONT size="+1">      <FONT size="+1">   <FONT size="+1">                                                  (2) </P
+><P 
+
+> </P
+><P 
+
+>where <I>k</I> can be configured to be 0, 1/2 , 1/4, or 1/8.   </P
+><P 
+
+> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Table 1.  Calculation of Best Energy </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Eshift </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>k </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Formula </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>        </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>1/2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> <FONT size="+1">    <FONT size="+1">        <FONT size="+1">   <FONT size="+1"> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>1/4 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> <FONT size="+1">    <FONT size="+1">        <FONT size="+1">   <FONT size="+1"> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>3 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>1/8 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> <FONT size="+1">    <FONT size="+1">        <FONT size="+1">   <FONT size="+1"> </P
+></TD
+></TR
+></TABLE
+><P 
+
+>   </P
+><P 
+
+>The new value  <FONT size="+1">    <FONT size="+1"> is sent to the FIFO as the current best estimate of the detector energy, and becomes the saved E<FONT size="+1">sum<FONT size="+1"> for the next channel gain selection, if any. </P
+><H3 
+
+><B><I>2.1.4   Real-time Analysis </I></H3
+><P 
+
+></B>    Valid events are analyzed in RAD&rsquo;s Level 3 (L3) firmware. Events are sorted as to whether they are caused by penetrating particles (those that go all the way through the RAD detector stack), stopping particles (those that hit at least A and B and possibly others, but not reaching F2), or neutral particles (those hitting only D and/or E). All events that meet selection criteria are entered into the appropriate histogram. A subset of these are stored in the form of full pulse height records (sometimes referred to as &ldquo;list data&rdquo; format), but storage space for the latter is quite limited. </P
+><H3 
+
+><B><I>2.1.5 Measurements </I></H3
+><P 
+
+></B>The MSL RAD archived RDR data sets contain measurements necessary to satisfy the scientific goals and objectives. Each MSL RAD RDR data set is given a unique alphanumeric identifier (Data Set ID) constructed according to PDS naming conventions (described in <B>section 3.1.2</B>).  Within each data set, there are standard data products (collection of similar files). The Standard Data Product ID is used to link similar data products, and each data product (file) has a unique Data Product ID (file name without extension). The Standard Data Product ID formation and the File Naming Convention for data products are given in <B>section 3.1.3</B>.  Only the ESD (EDR Science Data) and EHP (EDR High Priority Science Data) EDR products are necessary to generate the RDR.  There is only a single type of RDR data product which contains the complete RAD observation science data. </P
+><H2 
+
+>2.2 <B>Data Handling Process </H2
+><P 
+
+></B>Southwest Research Institute is responsible for the production and delivery of PDS-compliant RDR data archives to PDS. For RAD data products, the relevant PDS personnel are within the Planetary Plasma Interactions (PPI) Node. The personnel at PDS-PPI are responsible for participating in the archive planning efforts and for producing ancillary data (e.g. geometry information, indexes, etc.) for the final data labels and archive volumes. The MSL RAD PI has the final say on what data are included in the archive. </P
+><P 
+
+>The data from the RAD instrument (extracted from EDR files), along with ancillary information such as currently loaded configuration tables, etc., is stored in a database on the RAD Science Operations Center (SOC) server.  To populate this database, new (unprocessed) EDR files, as well as ancillary data sources, are read and parsed, using pipeline software that is run via an automated script within minutes after EDR files are made available to the RAD team from OPGS at JPL.  This extracted data is then written into a series of predefined database tables.  By doing this, the discrete nature of the EDR data (in that each file covers a specific period of time) is converted to a continuous data stream as represented in the database (however, information linking the data to its EDR source file is retained).  In addition, the full power of SQL queries can then be leveraged to search and access the data in a multitude of ways. </P
+><P 
+
+>After the population of the database from new EDR files is completed, new (or updated) RDR files are generated from the data contained in this database.  To accomplish this step, the database is queried to fetch data from the RDR&rsquo;s defined time range, and this data is then formatted and written to the RDR file, conforming to the RDR specification (in this document).  If new data arrives that will update or extend an existing (i.e. previously created) RDR file, a new RDR file is created with a newer version number contained in its filename. </P
+><P 
+
+>Software tools populate the PDS DATA directories with the RDR data files, and generate the corresponding PDS label file (LBL) for each RDR data file (TXT). Associated ancillary data will be used to properly assign values to the keywords in the label files. </P
+><H2 
+
+>2.3 <B>Product Generation </H2
+><H3 
+
+><I>2.3.1 Data Production and Transfer Methods </I></H3
+><P 
+
+></B>The SwRI MSL RAD software team produces the RAD RDR product archive collection in cooperation with the PDS Planetary Plasma Interactions (PPI) Node at the University of California, Los Angeles (UCLA).  </P
+><P 
+
+>The SwRI RAD team produces the individual RDR data files and the associated detached PDS labels for each of the standard data products. All RDR data files are ASCII text (TXT), and each file contains one Mars day (sol) of data. The data will be transferred electronically at least once every six months to the PDS-PPI node. The PDS-PPI team is responsible for producing any ancillary data (e.g., indexes, geometry information) necessary for ingesting the RAD RDR data into the PDS for public release. </P
+><H3 
+
+><B><I>2.3.2 Volume Creation </I></H3
+><P 
+
+></B>SwRI will generate the PDS required files (AAREADME, ERRATA, CATALOG files, etc.) before the first data are created and submitted to PDS. The MSL RAD team will collect the PDS RDR data files and labels onto logical archive e-volumes (electronic volumes). Each logical e-volume will contain data for a specified time interval.  Once all data and ancillary files are generated and organized, the archive e-volume is ready for validation. PDS software tools will be used to ensure all files are present and conform to PDS standards. Any errors are corrected and the archive e-volumes are ready for submission to the PDS-PPI node.  </P
+><H3 
+
+><B><I>2.3.3 Volume Validation </I></H3
+><P 
+
+></B>The RAD team and PPI node validate volumes in two ways. Before any volumes are produced, a peer review panel validates the structure and content of the archive volumes. Once volume production begins, the peer review panel may spot check volumes as deemed necessary by the PDS team. </P
+><P 
+
+> </P
+><P 
+
+>The peer review panel consists of members of the instrument team and scientists selected by the PDS and RAD teams.  In addition, the PDS PPI Node staff reviews the RAD RDR data sets. The PDS personnel are responsible for validating that the volume(s) are fully compliant with PDS standards. The instrument team and chosen science reviewers are responsible for verifying the content of the data set, the completeness of the documentation, and the usability of the data in its archive format. The peer review process is a two-part process. First, the panel reviews this document and verifies that a volume produced to this specification will be useful. Next, the panel reviews a specimen volume to verify that the volume meets this specification and is indeed acceptable. </P
+><H3 
+
+><B><I>2.3.4 Volume Identification </I></H3
+><P 
+
+></B>Each RAD archive e-volume bears a unique volume identifier (VOLUME_ID keyword in the VOLDESC.CAT file) of the form: MSLRAD_100x, where MSL identifies the spacecraft (Mars Science Laboratory), RAD identifies the experiment, and x identifies whether this is EDR or RDR data. Therefore, possible Volume ID are: </P
+><P 
+
+> </P
+><DL 
+
+><DD 
+
+>1. MSLRAD_1001: for the EDR data volume </DD
+><DD 
+
+>2. MSLRAD_1002: for the RDR data volume </DD
+></DL
+><P 
+
+> </P
+><P 
+
+>These two archive volumes are part of the volume set: </P
+><P 
+
+> </P
+><P 
+
+> VOLUME_SET_ID:  USA_NASA_PDS_MSLRAD_1000 </P
+><P 
+
+> </P
+><P 
+
+>MARS SCIENCE LABORATORY: RADIATION ASSESSMENT DETECTOR </P
+><P 
+
+> </P
+><H2 
+
+>2.4 <B>Overview of Data Products </H2
+><H3 
+
+><I>2.4.1 Pre-Flight Data Products </I></H3
+><P 
+
+></B>No pre-flight data products are planned for archival at this time. </P
+><H3 
+
+><B><I>2.4.2 Cruise and Surface Operations Data Products </I></H3
+><P 
+
+></B>MSL RAD began operations in cruise shortly after launch, following the first trajectory correction maneuver.  RAD was turned off several sols prior to arrival at Mars in preparation for entry, descent, and landing.  After rover and instrument checkouts following landing at the surface of Mars, RAD began regular observations.  The products generated during cruise and surface operations are identical in format.  <FONT color="#FF0000"> </P
+><H3 
+
+><FONT color="#000000"><B><I>2.4.3 Sub-System and Instrument Health Tests </I></H3
+><P 
+
+></B>The sub-system tests contribute to the characterization and calibration of the instrumentation. The data generated by these tests are used to  compute calibrations (e.g., temperature dependent sensor efficiencies). The test data are not archived in the RDR, but are used to produce the RDR from the EDR data. </P
+><H3 
+
+><B><I>2.4.4 Instrument Calibration and Configuration Tables </I></H3
+><P 
+
+></B>The raw ground calibration data are not archived, but the calibration data derived from these tests are used to configure on-board tables that process detector data within the instrument.  These tables are not returned as part of the EDR, but a unique identifier (checksum) is returned, and this is matched to proper table information stored in the DB.  The information from the configuration tables is embedded in the relevant RDR products. </P
+><P 
+
+>The calibration and configuration tables also provide the necessary information to identify the range of Z (atomic number) for the particles detected by RAD.  Tables that map the Z information to RAD histograms are provided by the RAD project as part of the calibration data.  </P
+><H3 
+
+><B><I>2.4.5 Software </I></H3
+><P 
+
+></B>No software is provided as part of the RAD RDR PDS delivery. </P
+><H3 
+
+><B><I>2.4.6 Documentation </I></H3
+><P 
+
+></B>Most of the documentation provided in the archive volumes is either in the form of PDS catalog (.CAT) files in the CATALOG directory or are in the DOCUMENT directory. The document provided in the DOCUMENT directory is: </P
+><DL 
+
+><DD 
+
+>1. This RDR SIS document in PDF. </DD
+></DL
+><H3 
+
+><B><I>2.4.7 Derived and Other Data Products </I></H3
+><P 
+
+></B>Beyond those specified in this document, there are no other derived data products that RAD intends to deliver to PDS. </P
+><H3 
+
+><B><I>2.4.8 Ancillary Data Usage </I></H3
+><P 
+
+></B>None. </P
+><H1 
+
+><FONT size="+1"><B>3 Archive Format and Contents </H1
+><H2 
+
+><FONT size="+1"></B>3.1 <B>Format and Conventions </H2
+><H3 
+
+><I>3.1.1 Deliveries and Archive Volume Format </I></H3
+><P 
+
+></B>During the mission, RAD RDR data are to be delivered at least every six months, starting from the date of landing, upon review completion and PDS acceptance and approval. Each delivery will be packaged into archive e-volumes with the following naming convention: </P
+><P 
+
+> MSLRAD_1002_YYYYMM </P
+><P 
+
+> where YYYYMM identifies the start year (YYYY) and month (MM) of the data collection. </P
+><H3 
+
+><B><I>3.1.2 Data Set ID Formation </I></H3
+><P 
+
+></B>The MSL RAD RDR data set identifier (DATA_SET_ID) conforms to the PDS format and is specified by:  MSL-M-RAD-3-RDR-V1.0 </P
+><P 
+
+>where MSL is the instrument host, M specifies Mars as the target, RAD is the instrument, 3 is the CODMAC processing level, RDR is the data set type, and V1.0 is for version 1.0. </P
+><P 
+
+>The MSL RAD RDR data set name is then: </P
+><P 
+
+> MARS SCIENCE LAB RADIATION ASSESSMENT DETECTOR RDR V1.0  </P
+><H3 
+
+><B><I>3.1.3 File Naming Convention </I></H3
+><P 
+
+></B>There are four (4) MSL RAD RDR standard data products: (1) Counts (which contains L1 and L2 count information), (2) Pulse Height Analysis (PHA), (3) Histograms (further split into stopping, penetrating, and neutral), and (4) Dosimetry (which contains linear energy transfer (LET), dose weighted equivalent (DWE), and total dose).   For a given Mars sol, each of these products are packaged into a single RDR file, named as follows:<FONT color="#FF0000"> </P
+><P 
+
+><FONT color="#000000">RAD_RDR_&lt;Time Period&gt;_V&lt;NN&gt;.TXT </P
+><P 
+
+> </P
+><P 
+
+>where &lt;Time Period&gt; = YYYY_DDD_HH_MM_SSSS where YYYY is the Earth year, DDD is the Julian Day of the calendar year, HH is the hour, and MM is the minute at which the first observation in the file began.  SSSS is the mission elapsed SOL number at which observations began, with SSSS=0000 being the start of surface operations.  Cruise data is indicated through the use of a &ldquo;C&rdquo; in the first sol identifier entry. E.g., C134 would indicate the 134<FONT size="+1">th<FONT size="+1"> day of cruise while 0134 would indicate the 134<FONT size="+1">th<FONT size="+1"> sol of surface operations.  </P
+><P 
+
+>&lt;NN&gt; = the integer version number, beginning with 01. </P
+><H2 
+
+>3.2 <B>Standards Used in Data Product Generation </H2
+><H3 
+
+><I>3.2.1 PDS Standards </I></H3
+><P 
+
+></B>The 3.8 PDS standards are used, dated February 27, 2009. </P
+><H3 
+
+><B><I>3.2.2</I><I> Time Standards</I><I> </I></H3
+><P 
+
+></B>SCLK refers to the time based on the rover compute element (RCE).  RCLK is the RAD internal time.  The RCLK is synchronized with SCLK only when RAD communicates with the RCE.  Therefore, offsets between these two time standards are possible.  When observations are taken, they are stamped with the RCLK.  Based on RAD engineering temperatures, the drift of the RCLK with respect to SCLK can be estimated.  The SCLK  time reported in the RDR is the drift-corrected RCLK time corresponding to the best estimate of the beginning time of the observation. </P
+><H2 
+
+>3.3 <B>Data Validation </H2
+><P 
+
+></B>The RAD team and PPI node validate data product contents and formats in two ways. Before any data sets are produced and delivered, a peer review panel validates the structure and content of the data sets. PDS has provided a volume validation tool (VTOOL) that is to be used by the SwRI team to check each data set volume before sending to PDS for public release.  Once data set production begins, the peer review panel may spot check data sets as deemed necessary by the PDS. </P
+><P 
+
+>The peer review panel consists of members selected by the RAD project and the PPI PDS node.   The PDS personnel are responsible for validating that the data sets are fully compliant with PDS standards. The instrument team and chosen science reviewers are responsible for verifying the content of the data set, the completeness of the documentation, and the usability of the data in its archive format. The peer review process is a two-part process. First, the panel reviews this document and verifies that data sets produced to this specification will be useful. Next, the panel reviews specimen data sets to verify that they meet this specification and is indeed acceptable. </P
+><H2 
+
+>3.4 <B>Content </H2
+><H3 
+
+><I>3.4.1 Root Directory </I></H3
+><P 
+
+></B>The following files are contained in the root directory, and are produced by SwRI with the assistance of the PDS PPI node at UCLA. These two files are required by the PDS Archive Volume organization standards. </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><I>Table 5:</I><I> </I><I>Root Directory Contents</I><B><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><FONT size="+1">File Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>File Contents  </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>AAREADME.TXT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>This file completely describes the Volume organization and contents (PDS label attached). </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>ERRATA.TXT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A cumulative listing of all known errors, omissions, and areas of non-conformance with PDS standards on this and all previous volumes in the volume set. </P
+></TD
+></TR
+></TABLE
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><FONT size="+1"><I>Table 5:</I><I> </I><I>Root Directory Contents</I><B><I> </I></DD
+></DL
+></TH
+></TR
+></TABLE
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><FONT size="+1">File Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>File Contents  </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>VOLDESC.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A description of the contents of the Volume in a PDS format readable by both humans and computers. </P
+></TD
+></TR
+></TABLE
+><H3 
+
+><FONT size="+1"><B><I>3.4.2 INDEX Directory </I></H3
+><P 
+
+></B>The files in the INDEX directory are produced by PDS.  </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><I>Table 6:</I><I> </I><I>Index Directory Contents</I><B><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><FONT size="+1">File Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>File Contents  </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>INDXINFO.TXT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A description of the contents of the INDEX directory </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>INDEX.TAB </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A table listing the MSL RAD  Data Products for the data set </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>INDEX.LBL </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A PDS detached label that describes INDEX.TAB </P
+></TD
+></TR
+></TABLE
+><H3 
+
+><FONT size="+1"><B><I>3.4.3 DOCUMENT Directory </I></H3
+><P 
+
+></B>The document directory contains this RDR SIS document in MS Word, PDF, and HTML. Since this document is required for use of the archive data set, PDS standards require that it be available in some ASCII format, and HTML is an acceptable ASCII format. The following files are contained in the DOCUMENT directory.  </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><I>Table 7:</I><I> </I><I>Document Directory Contents</I><B><I> </I></DD
+></DL
+></TH
+></TR
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><FONT size="+1">File Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>File Contents  </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>DOCINFO.TXT  </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A description of the contents of the DOCUMENT directory </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_RDR_SIS.HTM </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>The RAD Reduced Data Record Software Interface Specification. </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_RDR_SIS.PDF </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>The RAD Reduced Data Record Software Interface Specification. </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_RDR_SIS.LBL </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>The PDS detached label that describes the RAD Reduced Data Record Software Interface Specification. </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#212121"> TIMING_ERRORS.TXT<FONT color="#000000"> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Contains known timing errors in this version of the dataset that will be corrected in a later version </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><FONT color="#212121">TIMING_ERRORS.LBL<FONT color="#000000"> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS label for above </P
+></TD
+></TR
+></TABLE
+><H3 
+
+><FONT size="+1"><B><I>3.4.4 CATALOG Directory </I></H3
+><P 
+
+></B>The files in the CATALOG directory provide a top-level understanding of the Mars Science Laboratory  RAD  Experiment and its data products.<FONT color="#FF0000"> <FONT color="#000000">The MSL Project team provides the mission and spacecraft files. The MSL RAD team provides information for the instrument and data set files formats these files into PDS standard form. All catalog files are ASCII text files with &lt;CR&gt;&lt;LF&gt; line termination and line lengths are no longer than 72 characters. </P
+><P 
+
+><FONT color="#FF0000"> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><DL 
+
+><DD 
+
+><FONT color="#000000"><I>Table 8:</I><I> </I><I>Catalog Directory Contents</I><B><I> </I></DD
+></DL
+></TH
+></TR
+></TABLE
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TH 
+ valign="top"
+><P 
+
+><FONT size="+1">File Name </P
+></TH
+><TH 
+ valign="top"
+><P 
+
+>File Contents  </P
+></TH
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+></B>CATINFO.TXT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A description of the contents of the CATALOG directory </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>MSL_MISSION.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS mission catalog description of the MSL mission </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>MSL_INSTHOST.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS instrument host (spacecraft) catalog description of the MSL spacecraft </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_INST.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS instrument catalog description of the RAD instrument </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_RDR_DS.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS Data Set catalog description of the MSL RAD RDR data set. </P
+><P 
+
+> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>RAD_PERSON.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>PDS personnel catalog description of RAD Team members and other persons involved with the generation of Data Products </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>MSL_REF.CAT </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>RAD references mentioned in other *.CAT files </P
+></TD
+></TR
+></TABLE
+><H3 
+
+><FONT size="+1"><B><I>3.4.5 CALIBRATION Directory </I></H3
+><P 
+
+></B>There are no plans to include a CALIBRATION directory for RAD data set deliveries. </P
+><H3 
+
+><B><I>3.4.6 GEOMETRY Directory </I></H3
+><P 
+
+></B>The GEOMETRY directory does not exist.  The latitude, longitude, altitude, and rover deck zenith angle are included in the science data products, thus there is no need for a GEOMETRY directory.   </P
+><H3 
+
+><B><I>3.4.7 BROWSE Directory </I></H3
+><P 
+
+></B>RAD data sets do not have browse products, thus a BROWSE directory does not exist. </P
+><H3 
+
+><B><I>3.4.8 SOFTWARE Directory </I></H3
+><P 
+
+></B>RAD does not provide software, thus the SOFTWARE directory does not exist. </P
+><H3 
+
+><B><I>3.4.9 GAZETTER Directory </I></H3
+><P 
+
+></B>There are no plans to include a GAZETTER directory for RAD data set deliveries. </P
+><H3 
+
+><B><I>3.4.10 EXTRAS Directory </I></H3
+><P 
+
+></B>This directory contains &ldquo;Z-Mask&rdquo; mapping tables.  These data include the the ASCII histogram masks that may be used to approximately identify the range of Z represented in the 2-D histogram products. </P
+><H3 
+
+><B><I>3.4.11 LABEL Directory </I></H3
+><P 
+
+></B>There is no label directory, since all FMT files are located in the DATA directory. </P
+><H3 
+
+><B><I>3.4.12 DATA (Standard Products) Directory </I></H3
+><P 
+
+></B>The DATA directory contains the actual Data Products for RAD.  The DATA directory has files using the naming conventions described in &sect;<A href="#LinkTarget_310" href="#">
+<B>3.1.3</A>
+</B>. Refer to <B>&sect;<A href="#LinkTarget_319" href="#">
+4</A>
+</B> for the data product descriptions, data file contents and structures, and sample labels. </P
+><H1 
+
+><FONT size="+1"><B>4 Detailed Interface Specifications </H1
+><P 
+
+><FONT size="+1"></B>This section describes the contents of the RAD standard product archive e-volumes (or data sets). Appendix A contains information about the PDS software to read and validate the data products. The complete directory structure is shown in Appendix B. </P
+><H2 
+
+>4.1 <B>Structure and Organization Overview </H2
+><P 
+
+></B>For each data set release, new data files are added based on time period, so the DATA directory grows with each release.  There is one data file per sol.  Each file may contain multiple observations taken during the sol.  Each observation will contain the following RAD RDR data products: Counters, Histograms, Dosimetry, and PHA. </P
+><H2 
+
+>4.2 <B>Data Product Design </H2
+><H3 
+
+><I>4.2.1 General Data Product Format </I></H3
+><P 
+
+></B>The RAD Reduced Data Record (RDR) is comprised of four data product types (Counts, PHAs, Histograms, and Dosimetry) derived from the RAD Experiment Data Record (EDR).  Each product type may have multiple product instances.  For example, there are histograms for stopped, penetrating, and neutral particles.  The RDRs are in human readable ASCII format and have, in general, undergone calibration and decompression from the binary EDR data.   </P
+><P 
+
+>The RAD project is obligated to archive the RDR data to PDS in PDS compliant format.  The PDS RDR Archive Volumes are organized in a manner similar to the EDRs:  There  is one file for each sol, and each of these files contains one sol&rsquo;s worth of observations (e.g., there may be multiple observations in a single file).   </P
+><P 
+
+>The contents of an RDR file are structured and organized with the hierarchical sections described below.  Headers can include information relevant to interpretation of the data, or may be simply tokens to identify the subsections.  Each of the headers and sections identified are described more fully below. </P
+><P 
+
+><FONT size="+1"><B>FILE HEADER </P
+><P 
+
+> OBSERVATION #1 HEADER </P
+><P 
+
+> COUNT HEADER </P
+><P 
+
+> L1 COUNT HEADER </P
+><P 
+
+>        L1 COUNT DATA </P
+><P 
+
+> L2 COUNT HEADER </P
+><P 
+
+>        L2 COUNT DATA </P
+><P 
+
+> HISTOGRAM HEADER </P
+><P 
+
+>  STOPPING PARTICLE (SP) HEADER </P
+><P 
+
+>    A1 SP HEADER </P
+><P 
+
+>          A1   SP HISTOGRAM DATA </P
+><P 
+
+>   A2 SP HEADER </P
+><P 
+
+>          A2   SP HISTOGRAM DATA </P
+><P 
+
+>  PENETRATING  PARTICLE (PP) HEADER </P
+><P 
+
+>   A1 PP HEADER </P
+><P 
+
+>          A1 PP HISTOGRAM DATA </P
+><P 
+
+>   A2 PP HEADER </P
+><P 
+
+>           A2   PP HISTOGRAM DATA  </P
+><P 
+
+>  NEUTRAL HEADER </P
+><P 
+
+>  D HEADER </P
+><P 
+
+>         D HISTOGRAM DATA </P
+><P 
+
+>  E HEADER </P
+><P 
+
+>         E HISTOGRAM DATA </P
+><P 
+
+>  D/E HEADER </P
+><P 
+
+>         D/E HISTOGRAM DATA </P
+><P 
+
+> DOSIMETRY HEADER </P
+><P 
+
+>  DOSE HEADER  </P
+><P 
+
+>   DOSE DATA </P
+><P 
+
+>   LET HEADER </P
+><P 
+
+>   LET DATA </P
+><P 
+
+>   </P
+><P 
+
+>   </P
+><P 
+
+> PHA HEADER </P
+><P 
+
+>  PHA DATA </P
+><P 
+
+> </P
+><P 
+
+> OBSERVATION #2 HEADER </P
+><P 
+
+>&hellip; </P
+><P 
+
+> OBSERVATION #N HEADER </P
+><P 
+
+>&hellip; </P
+><P 
+
+>&lt;EOF&gt; </P
+><H4 
+
+><FONT size="+1"></B><I>4.2.1.1 The FILE Header </I></H4
+><P 
+
+>The <B>FILE HEADER</B> section is organized and structured as follows: </P
+><P 
+
+>SOFTWARE_VERSION=&lt;VERSION&gt; </P
+><P 
+
+>RDR_VERSION=&lt;RDR_VERSION&gt; </P
+><P 
+
+>CREATION_TIME=&lt;YYYY-DDD HH:MM:SS &gt; </P
+><P 
+
+>START_SOL=<B>&lt;SSSS&gt; </P
+><P 
+
+></B>START_TIME=&lt;<B>YYYY-DDD HH:MM:SS</B>&gt; </P
+><P 
+
+>where  &lt;<B>SSSS</B>&gt; is the sol number (<B>SSS</B>S) of when the observations begin.  For data obtained during cruise, the sol number is preceded by a &ldquo;C&rdquo;.  E.g., C134 indicates the data starts on the 134<FONT size="+1">th<FONT size="+1"> sol of cruise.    &lt;<B>YYYY-DDD HH:MM:SS&gt; </B>is the start time of the observation in Earth units (UTC), where </P
+><P 
+
+><B> YYYY  </B>is the year </P
+><P 
+
+> <B>DDD</B> is the day of the calendar year </P
+><P 
+
+> <B>HH </B>is the hour </P
+><P 
+
+> <B>MM<I> </I></B>is the minute </P
+><P 
+
+> <B>SS</B> is the second </P
+><H4 
+
+><I>4.2.1.2 The Observation Section </I></H4
+><P 
+
+>The observation section contains an observation header and observation data for each of the observations taken during the sol.  The header section is contains the following information: </P
+><P 
+
+>[OBSERVATION:  NN] </P
+><P 
+
+>EDR_FILENAME=&lt;XXXXX&gt; </P
+><P 
+
+>START_OBS_MARS=&lt;<B>SSSS HH:MM:SS&gt; </P
+><P 
+
+></B>START_OBS_UTC= &lt;<B>YYYY-DDD HH:MM:SS</B>&gt; </P
+><P 
+
+>ROVER_LAT=<B>&lt;LAT&gt; </P
+><P 
+
+></B>ROVER_LON=&lt;<B>LON&gt; </P
+><P 
+
+></B>ROVER_ELEV=<B>&lt;ELEV&gt; </P
+><P 
+
+>ROVER_AZIMUTH=&lt;AZIMUTH&gt; </P
+><P 
+
+></B>ROVER_ZENITH=&lt;<B>ZENITH&gt; </P
+><P 
+
+></B>QC=&lt;<B>QC&gt; </P
+><P 
+
+></B> <I>(</I><I>&hellip;RAD PRODUCTS INSERTED HERE&hellip; </I><I>) </I></P
+><P 
+
+>where <B>NN </B>is the observation number in the sol, beginning with 00, the time format is as described for the file header except that it refers to the start time of the observation, and the time in START_TIME_MARS contains the LMST time, not UTC on Earth. Rover position and QC are not yet implemented (they are placeholders now), but when active: <B>&lt;LAT&gt;, &lt;LON&gt;,</B> and<B> &lt;ELEV&gt; </B>are the rover location in degrees and meters as appropriate, &lt;<B>ZENITH&gt;<I> </I></B>is the zenith angle of the rover deck in degrees, time notations are as described above, and &lt;<B>QC&gt;<I> </I></B>is an 8 bit number that provides quality information for the data, with bits set as follows: </P
+><P 
+
+><B>QC= 00000000   </B>No quality control issues identified </P
+><P 
+
+> <B>00000001 </B>Unknown quality controls issues may exist </P
+><P 
+
+>  </P
+><P 
+
+> <B>00000100</B> RAD is in DAN mode </P
+><P 
+
+> <B>00001000 </B>RAD was in Solar Event mode </P
+><P 
+
+>Higher order bits are reserved for future codes.  As an example, QC=00000101 would indicate that RAD was in DAN mode and, additionally, there may be quality control issues with the data. </P
+><H4 
+
+><I>4.2.1.3 The COUNTER SECTION </I></H4
+><P 
+
+>The number of events detected by the L1 and L2 logic are recorded by counters.  For the L1 logic, there are 36 possible VIRENA channels of which only a maximum of 32 may be active at any given time.  The EVIL table configuration determines which of the 36 VIRENA channels are active via the &ldquo;Detector Select Mask.&rdquo;  This EVIL configuration is stored on the ground and is crossreferenced by using a unique checksum to match it with the EDR data acquired under that configuration. It is expected that changes to the Detector Select Mask will be extremely rare. For each of the selected channels, the number of fast and slow triggers are recorded.  Processing of the events requires a short, but finite amount of time for which the readout is &ldquo;dead&rdquo;.  The system live and dead time are also recorded.  For the L2 Trigger Menu logic, there are 16 entries, each of which corresponds to configurable logic for coincidence between channels.  Both the number of events that match the criteria for each entry, and the number of events that are correspondingly read, are counted.  The L2 Trigger Menu also determines what channels are read, depending on the matching logic for the respective entry.   </P
+><P 
+
+>The Counter Section begins with a header containing only the token: </P
+><P 
+
+><B>[COUNTERS: NN] </P
+><P 
+
+></B>where NN is the observation number.  Following this key word is the counter information. </P
+><H5 
+
+>4.2.1.3.1 L1 Counters and EVIL Table </H5
+><P 
+
+>The L1 Counter begins with the key word and observation number NN <B>[COUNTER_L1: NN], </B>followed by the L1 counter data. </P
+><P 
+
+>The L1 Counts and EVIL Table information necessary to interpret the L1 counts are formatted in the RDR as indicated in <A href="#LinkTarget_331" href="#">
+Table 9:</A>
+ <I>Format of the L1 Count Data</I>.  There are 36 rows corresponding to the total number of channels. The columns provide data for each listed channel.<FONT size="+1"> </P
+><P 
+
+><FONT size="+1"> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+><FONT size="+1">Table 10.  <I>Format of the L1 Count Data</I> </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>Ch </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Name </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Fast </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Slow </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Duration </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Alive % </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Fast DAC </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Slow DAC </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Fast actual </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Slow actual </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Input gain </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Fast shaper </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Slow shaper </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>ID0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>F0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>S0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>D0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_F0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_S0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Actual_F1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Actual_S2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Gain_I0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>FS0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>SS0 </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>ID1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>F1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>S1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>D1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_F1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_S1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Actual_F2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Actual_S2 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Gain_I1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>FS1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>SS1 </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>ID35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>F35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>S35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>D35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>A35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_F35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>DAC_S35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Actual_S35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Gain_I35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>FS35 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>SS35 </P
+></TD
+></TR
+></TABLE
+><P 
+
+><FONT size="+1"> </P
+><P 
+
+>The first column is the VIRENA channel number, and the second column is the channel name (ID) as identified in the EVIL table configuration.  The ID naming convention is HHP-xG, where HH is the detector (e.g., A1), P refers to the gain channel (U, H, I, M, N, L), and xG is the gain </P
+><P 
+
+>setting.  The third column is the fast trigger counts (F), the fourth column is the slow trigger counts (S), the fifth column is the time duration the detector was active, and the sixth column is the fractional time the detector was active during the observation (this is the duration divided by the total observation time).  The next two columns are the baseline trigger thresholds, which can be compared to the actual settings (Actual1, Actual 2).  Actual settings are based on the temperature at the start of the observation and are set automatically by RAD at the start of the observation.   Columns 11-13 are the gain settings. A value of &ldquo;-1&rdquo; for any of the counts indicates that the channel was not active, and &ldquo;-2&rdquo; indicates data is missing or not applicable.  In general, there will be four inactive channels and 32 active channels.   </P
+><P 
+
+>The EDR data from which the RDR is derived does not directly contain all the information needed to determine which channels are active, nor does it have thresholds, gain settings or fast tokens.  It is necessary to consult the on-ground EVIL table configuration in order to associate the EDR channels with a specific RAD channel.  Each EVIL table is identified by a unique identifier (the checksum), and this checksum is recorded in the EDR.  Given the EVIL table checksum in the EDR, the EVIL table information is accessed from the RAD database and the information is provided in the RDR.   </P
+><H5 
+
+>4.2.1.3.2 L2 Counts and L2 Trigger Menu </H5
+><P 
+
+>The L2 Counter information begins with the token <B>COUNTER_L2, </B>followed by the L2 counter data.  The L2 Counts and L2 Trigger Menu information are recorded in the RDR with the format shown in <A href="#LinkTarget_331" href="#">
+Table 10:</A>
+  The first column is the entry number, the second is the number of matching events counted in the observation, and the third is the number of events that were read in the observation.  Each L2 matching entry is associated with logical expressions to determine which specific channels are digitized and processed for an event.  The L2 Trigger Menu information is not contained in the EDR, but is associated with the EVIL Table information that can be accessed by the unique checksum identifier. The remaining columns in <A href="#LinkTarget_331" href="#">
+Table 10:</A>
+ reflect the EVIL configuration.  The fourth column is a channel bit mask of the channels that are to be inspected, the fifth column is a channel bit mask indicating the value the respective slow trigger must be for that channel to evaluate to &ldquo;TRUE&rdquo;.   If all channels selected in column 1 evaluate to &ldquo;TRUE&rdquo; then the respective entry will be &ldquo;TRUE&rdquo;.  The sixth column is a bit mask identifying which channels are to be read  if the logical expression in column 7 evaluates to true.  (This is referred to as the readout mask.) The seventh column indicates either &ldquo;H&rdquo; or &ldquo;L&rdquo; for high or low priority, respectively, and the eighth column is a Boolean value that when &ldquo;TRUE&rdquo; overrides the readout mask and instead reads all the channels from a given detector if any channel from the detector has a slow token bit set. The last column is a logical expression that combines both the &ldquo;Inspect&rdquo; and &ldquo;Require&rdquo; logic (e.g., A1+B+!C).  There are 16 possible L2 entries, but only those with nonzero readout masks are included in the L2 Count section. </P
+><P 
+
+> </P
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TD  
+ valign="top"
+><DL 
+
+><DD 
+
+><I>Table 9:  </I></DD
+></DL
+></TD
+><TD  
+ valign="top"
+><DL 
+
+><DD 
+
+><I>Table 10:</I><I> </I><I>L2 Counts</I><I> </I></DD
+></DL
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Count0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Read0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Inspect0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Require0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Readout0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Priority0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Too0 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Logic0 </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Count1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Read15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Inspect1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Require1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Readout1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+> </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Too1 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Logic1 </P
+></TD
+></TR
+></TABLE
+><TABLE 
+ border=0 cellspacing=0 cellpadding=2
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>&hellip; </P
+></TD
+></TR
+><TR  
+
+><TD  
+ valign="top"
+><P 
+
+>15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Count15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Read15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Inspect15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Require15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Readout15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Priority15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Too15 </P
+></TD
+><TD  
+ valign="top"
+><P 
+
+>Logic15 </P
+></TD
+></TR
+></TABLE
+><H4 
+
+><I>4.2.1.4 Histograms </I></H4
+><P 
+
+>The Histograms begin with the key word and observation number NN <B>[HISTOGRAMS: NN], </B>followed by the individual histograms. </P
+><P 
+
+>Histograms are 1-D or 2-D matrices of the energy of events classified by whether a charged particle stopped in the instrument, a charged particle penetrated the instrument, or whether a it was a neutral particle.   Furthermore, there is both a high priority (H) and low priority (L) histogram in the EDR for each of the particle histograms.  Where the A detector is involved, there is both an A-inner (A2) and A-outer (A1) histogram in the EDR.  For example, for stopped particles, there are four raw histograms in the EDR:  A1HP, A1LP, A2HP, A2LP.  To produce the RDR histograms, the raw low and high EDR histograms are normalized by count rates (Events/Read), the normalized HP and LP histograms are added together, and the resulting sum is again normalized by the fraction of dead time over the observation, as described below.  </P
+><H5 
+
+>4.2.1.4.1 Stopping </H5
+><P 
+
+>Stopping particles (SP) do not make it completely through the RAD instrument. In RAD terminology we define a stopping particle as having stopped in either of the detectors B, C, D, or E.  There are two stopped particle histograms: those based on A1 and those based on A2, meaning particles with a flight path either through A1 or A2.  The high and low priority counts for each of these detectors are combined and normalized according to the total counts, the number of read events, and the detector dead time.  The histograms are constructed as: </P
+><P 
+
+>     <FONT size="+1">  <FONT size="+1">     <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">   (1) </P
+><P 
+
+>and </P
+><P 
+
+>     <FONT size="+1">  <FONT size="+1">     <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  (2) </P
+><P 
+
+>  </P
+><P 
+
+>where    and    are the raw histograms obtained from the EDR,    and    are the counts and reads for  for high/low priority triggers as obtained from the L2 counts, and  <FONT size="+1">     <FONT size="+1"> is the fraction of time that the instrument was live, as obtained from the L1 count dead time.  The histograms are 2-D arrays of E<FONT size="+1">total<FONT size="+1">/E(A) vs E<FONT size="+1">total<FONT size="+1">*E(A), where E<FONT size="+1">total<FONT size="+1"> is the total energy deposited in the detectors (A+B+C+D+E) and E(A) is the larger of the energy deposits in detectors A1 and A2. </P
+><P 
+
+> </P
+><P 
+
+>The SP section begins with a header containing only the keyword token <B>SP_HIST</B>.  This is followed by the SP histogram data.   The histogram data is a formatted 16x12 element table.  The stopping particle histogram section is then: </P
+><P 
+
+> [HISTOGRAM_SP_A1: NN] </P
+><P 
+
+>   <B>XC1  XC2  XC3 &hellip; XC15        XC16 </P
+><P 
+
+>   XW1  XW2  XW3 &hellip; XW15     XW16 </P
+><P 
+
+>YC1    YW1  V<FONT size="+1">1,1  <FONT size="+1">V<FONT size="+1">1,2  <FONT size="+1">V<FONT size="+1">1,3 &hellip; <FONT size="+1">V<FONT size="+1">1,15                 <FONT size="+1">V<FONT size="+1">1,16<FONT size="+1"> </P
+><P 
+
+>YC2  YW2  V<FONT size="+1">2,1  <FONT size="+1">V<FONT size="+1">2,2  <FONT size="+1">V<FONT size="+1">2,3&hellip;  <FONT size="+1">V<FONT size="+1">2,15                 <FONT size="+1">V<FONT size="+1">2,16<FONT size="+1"> </P
+><P 
+
+>&hellip; </P
+><P 
+
+>YC12 YW12  V<FONT size="+1">12,1  <FONT size="+1">V<FONT size="+1">12,2  <FONT size="+1">V<FONT size="+1">12,3  &hellip;<FONT size="+1">V<FONT size="+1">12,15               <FONT size="+1">V<FONT size="+1">12,16<FONT size="+1"> </P
+><P 
+
+>   </P
+><P 
+
+></B>[HISTOGRAM_SP_A2: NN] </P
+><P 
+
+>   <B>XC1  XC2  XC3 &hellip; XC15        XC16 </P
+><P 
+
+>   XW1  XW2  XW3 &hellip; XW15      XW16 </P
+><P 
+
+>YC1    YW1  V<FONT size="+1">1,1  <FONT size="+1">V<FONT size="+1">1,2  <FONT size="+1">V<FONT size="+1">1,3 &hellip; <FONT size="+1">V<FONT size="+1">1,15                   <FONT size="+1">V<FONT size="+1">1,16<FONT size="+1"> </P
+><P 
+
+>YC2  YW2  V<FONT size="+1">2,1  <FONT size="+1">V<FONT size="+1">2,2  <FONT size="+1">V<FONT size="+1">2,3&hellip;  <FONT size="+1">V<FONT size="+1">2,15                   <FONT size="+1">V<FONT size="+1">2,16<FONT size="+1"> </P
+><P 
+
+>&hellip; </P
+><P 
+
+>YC12   YW12 V<FONT size="+1">12,1  <FONT size="+1">V<FONT size="+1">12,2  <FONT size="+1">V<FONT size="+1">12,3  &hellip;<FONT size="+1">V<FONT size="+1">12,15               <FONT size="+1">V<FONT size="+1">12,16<FONT size="+1"> </P
+><P 
+
+></B> </P
+><P 
+
+><B> </P
+><P 
+
+></B>where <B>XC1 </B>through <B>XC16</B> are the bin centers and XW1 through XW16 give the respective bin widths, both are energy ratio values (dimensionless). </P
+><P 
+
+><B>YC1</B> through<B> YC12 (the y-axis bin centers) and YW1 through YW12 (the respective bin widths)</B> are given in energy squared (MeV<FONT size="+1">2<FONT size="+1">).  <B>V<FONT size="+1">x,y<FONT size="+1"></B> is the number of events binned in row x and column y. </P
+><P 
+
+> </P
+><H5 
+
+>4.2.1.4.2 Penetrating </H5
+><P 
+
+>Penetrating particles (PP) are those that pass completely through the RAD instrument.  The PP sections begin with the header <B>HISTOGRAM_PP_&lt;detector&gt;: NN</B>. The histograms for these events are processed as for the stopping histogram, but using the appropriate penetrating histograms and count information. In version 2.5 of RAD Flight Software, only A2 penetrating particle information is recorded, and  A1 is not used in this context. In version 2.6, there will also be A1 penetrating particle histograms. Each penetrating particle histogram is a 2-D array of E(ABC) vs E(E)/E(ABC) where E(E) is the energy deposited in the E detector and E(ABC) is the sum of energies deposited in A, B, and C. The histogram is dimensioned 24x3, but is otherwise structured and formatted exactly as the SP histogram.   The x-axis units are MeV and the y-axis are energy ratios (dimensionless).  Like for stopping particles, the histograms are constructed as:        <FONT size="+1">     <FONT size="+1">   <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">   <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  </P
+><P 
+
+>and        <FONT size="+1">     <FONT size="+1">   <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">   <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  </P
+><P 
+
+> </P
+><P 
+
+>The definition for A1, when implemented, will be conceptually identical. The table format is also similar to that for stopping particles, but the dimensions are different.  Instead of 12 rows of 16 values, penetrating histograms have 3 rows of 24 values. </P
+><H4 
+
+><I>4.2.1.5 Neutral  </I></H4
+><P 
+
+>There are three neutral histogram data products.  One is for only the D detector, one is for only E, and one that combines D and E, i.e. events in which energy is deposited in both D and E.  The first two are 1-D histograms (vectors) that show the number of events within a given energy bin (both center and width are given) with energy in MeV<FONT color="#FF0000">.<FONT color="#000000">  They are constructed as: </P
+><P 
+
+>    <FONT size="+1">  <FONT size="+1">     <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1">  (3) </P
+><P 
+
+>and  </P
+><P 
+
+>    <FONT size="+1">  <FONT size="+1">     <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1">  <FONT size="+1"> <FONT size="+1"> <FONT size="+1"> <FONT size="+1">   (4) </P
+><P 
+
+>The final neutral histogram is a 2-D array of E(D) vs. E(E), with the number of counts for each matrix element obtained by the normalization procedure in Eq. (3) and (4).  Units are once again constructed in MeV.  Each of the three neutral histogram data begin first with the keyword token <B>HISTOGRAM_NEUTRAL_D, HISTOGRAM_NEUTRAL_E, </B>and <B>HISTOGRAM_NEUTRAL_DE, </B>respectively.  The data following these keywords is formatted as with the previous stopping and penetrating histograms with the dimensions of 1x48 for D and E, and 8x8 for DE.   </P
+><H4 
+
+><I>4.2.1.6 Dosimetry </I></H4
+><P 
+
+>Dosimetry consists of Linear Energy Transfer (LET) and Total Dose (DOSE).  The Dosimetry section begins with <B>[DOSIMETRY: NN] </B>followed by the B detector thickness (DETECTOR_B_THICKNESS) in micrometers (&#61549;m) and the B and E detector mass (DETECTOR_B_MASS and DETECTOR_E_MASS) in grams.  The next subsection is the dose identified by [DOSIMETRY_TOTAL_DOSE_B: NN] and [DOSIMETRY_TOTAL_DOSE_E: NN].   Within these dose sections, the total dose for the B and E detectors are given in microGray / hour (&#61549;Gy/h).    </P
+><P 
+
+>The next subsection is the linear energy transfer: </P
+><P 
+
+><B> </P
+><P 
+
+>[DOSIMETRY_LET_B_A1: NN] and [DOSIMETRY_LET_B_A2]. </P
+><P 
+
+></B>LET is a 1-D (vector) array of E(B), containing counts in bins of energy deposited in B. The nomenclature _A1 and _A2 in this case refers to particles having passed through either A1 or A2 before depositing energy in detector B.   These energy deposit values have been normalized by </P
+><P 
+
+>the detector thickness, and thus are given in units of keV/&#61549;m.  There is one histogram / array for both the A1 and A2 detectors segments. </P
+><H4 
+
+><I>4.2.1.7 PHAs </I></H4
+><P 
+
+>RAD records the PHAs of selected high priority events.  The number of PHAs will vary from observation to observation.  In general, there were N blocks of PHA information.  Each block starts with the PHA header [PHA: NN] where NN is the observation number for the sol.  Below the PHA header is the SCLK time of the event and the UTC time of the event, the software prority (0 to 3) and the hardware priority (0 or 1).  The next two records are bit masks, L2_MATCHING_MASK (16 bits) and SLOW_TOKEN_MASK (32 bits).  Note that the L2 matching mask is also known as the L2 trigger mask.  A &quot;token&quot; refers to the output of a discriminator for a particular channel. That is, the signal in that channel is either above or below the threshold.  Therefore, the token is either set, or it's not.  Fast and slow refer to signals that are analyzed at different stages of amplification. We have 32 channels, each of which has both a fast token and a slow token. The bits, taken together, are referred to as masks. So there's a 32-bit (4 byte) fast token mask, and a 32-bit slow token mask.  The onboard logic is interrupt-driven by fast tokens, but only a handful of them are enabled.  Any time one of the fast tokens is set, the Level 2 logic (aka &quot;L2&quot;) inspects the slow tokens (all of which are enabled), for purposes of determining if there is a match to one or more of the 16 pre-defined patterns, which are referred to as the L2 triggers. If the slow token pattern matches an L2 trigger, then the corresponding bit in another mask is set.  This mask is called the L2 mask or the L2 matching mask.  Note that each observation is subdivided into 16 equally spaced time periods so that PHA timings will be quantized to those time intervals.  Following the bit masks are entries for each of the 36 channels (numbered according to the L1 table). Each entry contains of a rad_nn value and a corr_nn value. Rad_00 through rad_35 give the energy deposit measured in the respective channel as calculated with the currently used EVIL table configuration. Corr__00 through corr_35 are reserved for corrected energy calculations that would differ from the on-board energy calculation (as used for rad_nn).Negative numbers for the energy indicate that the channel was not read.  The number of recorded PHA events is variable.   </P
+><P 
+
+>PHAs are recorded as 14 bit ADC values that are compressed on-board to 8 bits.  The reading in units of ADC counts is related to the energy deposited. (This is a highly linear relationship for the A, B, and C detectors, less so for D, E, and F.) The counts have been converted to energy units (MeV) in the RDR product (both for rad_nn and corr_nn). </P
+><P 
+
+>Note that an actual example of PHA data would be difficult to show here due to very long line lengths. </P
+><P 
+
+> </P
+><H2 
+
+>4.3 <B>Extra Calibration Data </H2
+><P 
+
+></B>Based on pre-launch RAD calibration campaigns and subsequent radiation transport modeling, the RAD team provides a histogram mask that maps each element of a histogram to a range of Z.  These maps are presented in ASCII format.  The maps are included in the EXTRAS directory.  <I>Note that these mappings represent our best knowledge at the time they were created, and these mappings may be corrected or refined later.</I> </P
+><H3 
+
+><B><I>4.3.1 Z-mask for Stopping Particle Histogram </I></H3
+><P 
+
+></B>To interpret the stopping particle histogram data, a so-called 'Z-mask' is provided. This Z-mask aims to help identify which particle species with which energies contribute to the counts in a given bin of the histogram. For this, the Z-mask is created with the same dimensions as the stopping particle histogram (currently 16 x-axis bins times 12 y-axis bins). As each bin can contain a larger array of ion species (with different charge numbers Z) with a wide range of energies, the Z-mask cannot provide exact information about the particles found in a given bin, but still aims to provide the range of ion species and energies encountered in a given bin. </P
+><P 
+
+>Each field of the Z-mask corresponds to the respective bin in the histogram and contains a 3 to 4 character code. This code is composed of a letter and two numbers. </P
+><P 
+
+>The letter value ranges from A to G and indicates the charge Z of particle species found in the given bin. The legend for this is given in the descriptive text below the Z-mask. Furthermore, the letter also corresponds to a maximum energy (in MeV/nuc) for which particles in that Z range can be stopped in the detectors (also given in the legend). </P
+><P 
+
+>The numbers following the letter in the code provide an energy range of particles found in a given bin. Note that, here, the energy range is indicated by a percentage of the maximum stoppable energy of the considered particle species. The first number gives the lower end of that range (the numbers going from 0 to 9 and corresponding to a percentage of maximum energy as described in the legend). The second number respectively indicates the upper end of the energy range (numbers going from 1 to 10 and indicating percentages as given in the legend). </P
+><P 
+
+>So with the code of a given bin, one can gain the following information: which range of charges Z the particles in that bin have, the lower and upper limit of percentages of the maximum stopping energy of these particles in that bin. As an example, let's take an arbitrary code: The field for x-bin 7 and y-bin 9 contains the code 'D23'. According to the legend the 'D' refers to particles of the charge range 3 to 5 (so Li to Be), with a maximum stopping energy of 145 MeV/nuc. The first number '2' refers to 16 to 25 % of that maximum energy (or, 23.2 to 36.25 MeV/nuc) and represents the lower limit of energies found in that bin. The second number '3' refers to 26 to 35 % of the maximum energy (or, 37.7 to 50.75 MeV/nuc). All said, the counts in that bin stem from Li, B, and Be ions in an energy range somewhere between 23 to 50 MeV/nuc. </P
+><H3 
+
+><B><I>4.3.2 Z-mask for Penetrating Particle Histogram </I></H3
+><P 
+
+></B>The Z-mask for the penetrating particle histogram serves the same purpose as its stopping counterpart. It is arranged in the same dimensions as the histogram (currently 24 x-axis bins and 3 y-axis bins). Again, each bin can contain a wide array of ion species with a large range of energies. The Z-mask code contains of two parts: one capital letter, followed by one or more small letters. </P
+><P 
+
+>The first, capital, letter (ranging from A to G) gives the range of charges Z of the particles encountered in this bin (as per the legend provided below the Z-mask). The small letters indicate the energy range of these particles. Here, a distinction in three energy ranges was conducted: 'l' (low) indicating particles with energies below 500 MeV/nuc, 'm' (for medium) for particles with energies between 500 MeV/nuc and 1 GeV/nuc, and 'h' (high) for energies above 1 GeV/nuc. As </P
+><P 
+
+>an example, a code of 'Ehm' stands for particle species with charge Z from 6 to 8 (i.e., carbon, nitrogen, and oxygen) and energies of 500 MeV/nuc &ndash; 1 GeV/nuc ('m') and above ('h'). </P
+><P 
+
+>For each histogram, a corresponding mask will be provided that identifies the range of Z covered by each element of the histogram. </P
+><P 
+
+> </P
+><P 
+
+> </P
+><H1 
+
+><FONT size="+1"><B>Appendix A.  Available Software to Read PDS Files </H1
+><P 
+
+><FONT size="+1"></B> </P
+><P 
+
+>There are no available PDS tools that can display the RAD RDR data. However, there are non-PDS generic tools that can be used. All RAD RDR files are ASCII and can be loadable into most any text editor or parsed by any number of scripting or programming languages.   </P
+><P 
+
+><FONT color="#FF0000"> </P
+><P 
+
+><FONT color="#000000"> </P
+></DIV
+></BODY>
+</HTML>
