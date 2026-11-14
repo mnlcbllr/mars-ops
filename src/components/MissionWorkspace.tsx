@@ -125,20 +125,12 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
       <Button type="button" variant="outline" size="sm" disabled={busy || !run} onClick={() => void mission.exportReport()}>
         {phase === "exporting" ? "Exporting…" : "Export JSON"}
       </Button>
-      <Button form="mission-scenario" type="submit" size="sm" disabled={busy || placingBase}>
+      <Button form="mission-scenario" type="submit" size="sm" disabled={busy || placingBase || placingSite}>
         {phase === "validating" ? "Validating…" : phase === "solving" ? "Planning…" : "Run mission"}
       </Button>
     </header>
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
-        <nav aria-label="Map controls" className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
-          <Button size="sm" variant={layer === "imagery" ? "secondary" : "ghost"} aria-pressed={layer === "imagery"} onClick={() => setLayer("imagery")}>Imagery</Button>
-          <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
-          <label className="ml-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Slope / unknown</label>
-        </nav>
-        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base. Use “Cancel base placement” to exit, or edit the coordinates by keyboard.</p>}
-        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site. Use “Cancel site placement” to exit, or edit the coordinates by keyboard afterwards.</p>}
-        {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
         <section aria-label="Terrain map" className="relative min-h-40 flex-1">
           <Terrain3D
             elevation={workspace.elevation} width={geo.width} height={geo.height}
@@ -146,7 +138,24 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             lit={layer === "heights"} exaggeration={1} markers={markers} legs={result?.legs ?? []} selectedLeg={selectedLeg}
             inspected={inspected} placing={placingBase || placingSite} resetSignal={0} onPick={pick} onMesh={() => {}}
           />
-          <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">
+          {/* HUD: status floats over the map, clear of the control cluster. */}
+          <div className="pointer-events-none absolute left-1/2 top-14 z-10 flex w-[min(100%-1.5rem,28rem)] -translate-x-1/2 flex-col items-center gap-2">
+            {(placingBase || placingSite) && <p role="status"
+              className="rounded-md bg-background/85 px-3 py-1.5 text-center text-xs shadow backdrop-blur-md">
+              {placingBase
+                ? "Click known terrain to place the base. Use “Cancel base placement” to exit, or edit the coordinates by keyboard."
+                : "Click known terrain to add a candidate site. Use “Cancel site placement” to exit, or edit the coordinates by keyboard afterwards."}
+            </p>}
+            {mapError && <p role="alert"
+              className="rounded-md bg-background/85 px-3 py-1.5 text-center text-xs text-status-warning shadow backdrop-blur-md">{mapError}</p>}
+          </div>
+          <div role="group" aria-label="Map layers"
+            className="pointer-events-auto absolute left-3 top-3 z-10 flex items-center gap-1 rounded-lg bg-background/80 p-1 shadow backdrop-blur-md">
+            <Button size="sm" variant={layer === "imagery" ? "secondary" : "ghost"} aria-pressed={layer === "imagery"} onClick={() => setLayer("imagery")}>Imagery</Button>
+            <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
+            <label className="ml-1 flex items-center gap-1.5 px-1.5 text-xs"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Hazards</label>
+          </div>
+          <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-sm rounded-lg bg-background/85 px-3 py-2 text-xs shadow backdrop-blur-md">
             {inspected ? <><p>{latLon(inspected.latlon)}</p>
               <p>{fmt(inspected.elevation_m, 1)} m · {fmt(inspected.slope_deg, 1)}° · {inspected.terrain.replaceAll("_", " ").toLowerCase()}</p></>
               : <p>Click the map to inspect elevation, slope and coverage.</p>}
@@ -170,18 +179,18 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <p>{workspace.info.manifest.region_name}</p>
           <p className="text-xs text-muted-foreground">{workspace.info.real_data_verified ? "Verified source data" : "Source data not verified"} · {fmt(geo.cell_size_x_m, 1)} m raster · {fmt(grid.cell_x_m, 1)} m planning cells</p>
           <ul className="space-y-1 text-xs text-muted-foreground">
-            <li>Square B — scenario base</li>
-            <li>Rings — candidate sites; numbered discs — visit order; dashed rings — sites the plan left out</li>
-            <li>Pink line — planned round trip</li>
-            {showHazards && <><li>Orange / hatching — above {fmt(maxSlope, 1)}° slope limit</li><li>Dark \\ hatching — unknown terrain</li></>}
-            {layer === "heights" && <li>Blue: dark = {fmt(workspace.info.elevation_min_m)} m; light = {fmt(workspace.info.elevation_max_m)} m</li>}
+            <li>B square — base</li>
+            <li>Rings — candidates · numbers — visit order · dashed — left out</li>
+            <li>Pink line — planned route</li>
+            {showHazards && <li>Orange — over the slope limit · dark hatch — unknown terrain</li>}
+            {layer === "heights" && <li>Blue shading — low to high elevation</li>}
           </ul>
           {workspace.info.manifest.layers.map((source) => <div key={source.id} className="space-y-1 break-words text-xs text-muted-foreground">
             <p>{source.instrument} · {source.origin_type}</p><p>{source.product_id}</p><p>{source.observation_date}</p>
             <p>{source.license_and_credit}</p>
           </div>)}
         </details>
-        <p className="text-xs text-muted-foreground">Slope limits, resource rates and candidate sites are scenario assumptions. Orbital data cannot establish astronaut safety.</p>
+        <p className="text-xs text-muted-foreground">Assumptions are user-defined. Orbital data cannot establish astronaut safety.</p>
       </aside>
     </div>
   </main>;

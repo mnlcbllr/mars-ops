@@ -225,14 +225,14 @@ describe("mission presentation", () => {
     state.scenario.budget.energy_reserve_wh = null;
     const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false} datasetId="jezero-small" onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain('id="mission-scenario"');
-    expect(html).toContain("EVA limit (min)");
+    expect(html).toContain("Time limit (min)");
     expect(html).toContain('value="360"');
-    expect(html).toContain("No energy limit set.");
-    expect(html).toContain("maximum activity (min)");
+    expect(html).toContain("No energy limit.");
+    expect(html).toContain("Max stay (min)");
     expect(html).toContain("Add candidate on map");
     expect(html).toContain("Save plan");
     expect(html).toContain("Load a saved plan");
-    expect(html).toContain("Model assumptions");
+    expect(html).toContain("Assumptions");
     expect(html).toContain("session-only");
   });
 });
