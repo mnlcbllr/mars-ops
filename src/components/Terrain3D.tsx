@@ -39,6 +39,8 @@ interface Terrain3DProps {
   exaggeration: number;
   markers: Marker[];
   legs: PlannedLeg[];
+  originalLegs?: PlannedLeg[];
+  currentPosition?: LocalPoint | null;
   selectedLeg: number | null;
   inspected: PointInspection | null;
   placing: boolean;
@@ -289,17 +291,21 @@ export function Terrain3D(props: Terrain3DProps) {
       return Number.isNaN(value) ? null : value;
     };
 
-    legs.forEach((leg, index) => {
+    const drawRoute = (routes: PlannedLeg[], original: boolean) => routes.forEach((leg, index) => {
       if (leg.path.length < 2) return;
       const positions = leg.path.flatMap((p, i) => [p.x_m, leg.elevation_m[i]! + OVERLAY_LIFT_M, -p.y_m]);
       const geometry = new LineGeometry();
       geometry.setPositions(positions);
-      const selected = index === selectedLeg;
-      const material = new LineMaterial({ color: selected ? INK_LIGHT : ROUTE, linewidth: selected ? 6 : 4 });
+      const selected = !original && index === selectedLeg;
+      const material = new LineMaterial({ color: original ? 0xb0b0b0 : props.currentPosition ? 0x54d3e5 : selected ? INK_LIGHT : ROUTE,
+        linewidth: original ? 2 : selected ? 6 : 4, dashed: original, dashSize: 12, gapSize: 8 });
       const line = new Line2(geometry, material);
+      line.computeLineDistances();
       line.renderOrder = selected ? 2 : 1;
       s.overlay.add(line);
     });
+    drawRoute(props.originalLegs ?? [], true);
+    drawRoute(legs, false);
 
     // Constant on-screen size: a sprite's scale is a fraction of the view height.
     const pixel = (2 * Math.tan(THREE.MathUtils.degToRad(FOV_DEG / 2))) / viewportHeight;
@@ -334,6 +340,19 @@ export function Terrain3D(props: Terrain3DProps) {
       sprite(canvas, MARKER_CANVAS.anchorX, marker.x_m, marker.y_m, z);
     }
 
+    if (props.currentPosition) {
+      const p = props.currentPosition;
+      const z = surface(p.x_m, p.y_m);
+      if (z !== null) {
+        const [canvas, ctx] = canvas2x(160, 40);
+        ctx.fillStyle = "#101319"; ctx.fillRect(3, 8, 24, 24);
+        ctx.strokeStyle = "#54d3e5"; ctx.lineWidth = 3; ctx.strokeRect(3, 8, 24, 24);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
+        ctx.fillText("SIM", 5, 24); ctx.fillText("Current", 34, 24);
+        sprite(canvas, 15, p.x_m, p.y_m, z);
+      }
+    }
+
     if (inspected?.elevation_m != null) {
       const [canvas, ctx] = canvas2x(32, 32);
       for (const [color, lineWidth] of [[INK_DARK, 4], [INK_LIGHT, 1.5]] as const) {
@@ -354,7 +373,7 @@ export function Terrain3D(props: Terrain3DProps) {
       sprite(canvas, 16, inspected.local.x_m, inspected.local.y_m, inspected.elevation_m);
     }
     s.invalidate();
-  }, [legs, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
+  }, [legs, props.originalLegs, props.currentPosition, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
 
   if (failure) {
     return (

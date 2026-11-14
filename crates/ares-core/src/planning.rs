@@ -17,10 +17,11 @@ use crate::resources::{
     check_budget, invalid_inputs, resource_use, Activity, ConstraintCheck, ResourceBudget,
     ResourceModel, ResourceUse,
 };
-use crate::route::{find_leg, Leg, RouteError, Search};
+use crate::route::{find_leg_masked, Leg, RouteError, Search};
 use crate::terrain::{PlanningGrid, TerrainClass};
 use crate::LocalPoint;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::time::Instant;
 
 /// Identifier used for the base in leg endpoints.
@@ -268,6 +269,45 @@ fn site_problem(site: &ScientificSite, earlier: &[ScientificSite]) -> Option<Str
 /// Deterministic baseline: cheapest-insertion by utility per added EVA second,
 /// then extend activities with whatever every resource still allows.
 pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionResult {
+    plan_greedy_masked(grid, scenario, &HashSet::new())
+}
+
+/// The same planner, with contingency-event cells refused for every leg.
+/// The overlay is per-run: the terrain and all stored products stay untouched.
+pub fn plan_greedy_masked(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    blocked: &HashSet<usize>,
+) -> MissionResult {
+    plan_from(grid, scenario, blocked, scenario.base, false, false)
+}
+
+/// Continuation ends at scenario.base, not at the current location. An empty
+/// science itinerary is permitted when only the mandatory return still fits.
+pub fn plan_continuation(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    blocked: &HashSet<usize>,
+    current: LocalPoint,
+    exact: bool,
+) -> MissionResult {
+    plan_from(grid, scenario, blocked, current, true, exact)
+}
+
+/// Enumerate ordered subsets at fixed minimum activity durations, with a
+/// deterministic evaluation cap and greedy incumbent. No continuous optimum claim.
+pub fn plan_exact_small(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionResult {
+    plan_from(grid, scenario, &HashSet::new(), scenario.base, false, true)
+}
+
+fn plan_from(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    blocked: &HashSet<usize>,
+    current: LocalPoint,
+    continuation: bool,
+    exact: bool,
+) -> MissionResult {
     let mut result = MissionResult {
         status: PlanStatus::Infeasible,
         solver: SolverInfo {
@@ -288,8 +328,9 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
     };
 
     let report = validate_scenario(grid, scenario);
-    result.issues = report.issues;
-    if !report.ok {
+    result.issues = report.issues.into_iter()
+        .filter(|i| !(continuation && i.code == "NoSites")).collect();
+    if result.issues.iter().any(|i| i.severity == Severity::Error) {
         let base_data_missing = result.issues.iter().any(|i| {
             i.severity == Severity::Error
                 && matches!(i.code.as_str(), "BaseOutsideCoverage" | "BaseOnUnknownTerrain")
@@ -311,7 +352,7 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
 
     // ---- Route the legs (preprocessing for the planner) ----------------------
     let routing_started = Instant::now();
-    let table = LegTable::route(grid, scenario, &mut result);
+    let table = LegTable::route(grid, scenario, blocked, current, &mut result);
     result.timing.routing_ms = routing_started.elapsed().as_secs_f64() * 1e3;
 
     // ---- Select, order and schedule ------------------------------------------
@@ -352,8 +393,23 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
         }
     }
 
-    if !order.is_empty() {
+    if !exact && !order.is_empty() {
         extend_activities(&problem, &order, &mut dwell);
+    }
+    if exact {
+        // Fixed-duration comparison: the baseline incumbent uses the same minima.
+        let mut search = Enumeration { problem: &problem, best: order.clone(),
+            best_utility: problem.evaluate(&order, &dwell).filter(|e| e.feasible()).map_or(-1.0, |e| e.utility),
+            best_time: f64::INFINITY, evaluations: 0, capped: false };
+        if scenario.sites.len() <= 8 {
+            search.visit(&mut Vec::new(), &dwell);
+        } else {
+            search.capped = true;
+        }
+        order = search.best.clone();
+        result.solver = SolverInfo { name: "ExactSmallPlanner".into(), version: "1".into(),
+            description: format!("{}; fixed minimum activity durations, maximum user-defined utility; tie: lower EVA then input order. {} evaluations. Routing included separately. No continuous-allocation optimum claim.",
+                if search.capped { "Bounded search / greedy fallback (not proven optimal)" } else { "Exhaustive ordered-subset search completed" }, search.evaluations) };
     }
     result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
 
@@ -382,7 +438,7 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
         });
     }
 
-    if order.is_empty() {
+    if order.is_empty() && !(continuation && problem.evaluate(&order, &dwell).is_some_and(|e| e.feasible())) {
         let only_missing_data = !result.excluded.is_empty()
             && result.excluded.iter().all(|e| {
                 matches!(
@@ -397,9 +453,13 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
         };
         result.issues.push(Issue {
             severity: Severity::Error,
-            code: "NoFeasiblePlan".into(),
-            message: "No candidate site can be visited and returned from within the declared limits."
-                .into(),
+            code: if continuation { "ReturnInfeasible" } else { "NoFeasiblePlan" }.into(),
+            message: if continuation {
+                match problem.evaluate(&[], &dwell) {
+                    None => "No terrain route from the current position to the original base under the event overlay and slope/coverage rules.".into(),
+                    Some(e) => format!("Return to original base exceeds remaining allowance: {}", e.checks.iter().filter(|c| !c.satisfied).map(describe_shortfall).collect::<Vec<_>>().join("; ")),
+                }
+            } else { "No candidate site can be visited and returned from within the declared limits.".into() },
             site_id: None,
         });
         return result;
@@ -409,8 +469,8 @@ pub fn plan_greedy(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionRe
     let eval = problem.evaluate(&order, &dwell).expect("selected sites are mutually routed");
     debug_assert!(eval.feasible());
     let mut clock = scenario.model.overhead_s.value;
-    let mut previous = BASE_ID.to_string();
-    let mut previous_node = 0;
+    let mut previous = if continuation { "CURRENT" } else { BASE_ID }.to_string();
+    let mut previous_node = table.start;
     for &site in &order {
         let s = &scenario.sites[site];
         let leg = table.leg(previous_node, site + 1).expect("routed").clone();
@@ -461,6 +521,7 @@ fn describe_shortfall(check: &ConstraintCheck) -> String {
 /// Routed legs between the base (node 0) and each site (node `index + 1`).
 struct LegTable {
     nodes: usize,
+    start: usize,
     legs: Vec<Option<Leg>>,
     /// Site indices with a route to and from the base.
     reachable: Vec<usize>,
@@ -469,16 +530,25 @@ struct LegTable {
 impl LegTable {
     /// Route base ↔ site and site ↔ site legs, recording unreachable sites in
     /// `result.excluded` and search effort in `result.timing`.
-    fn route(grid: &PlanningGrid, scenario: &MissionScenario, result: &mut MissionResult) -> LegTable {
+    fn route(
+        grid: &PlanningGrid,
+        scenario: &MissionScenario,
+        blocked: &HashSet<usize>,
+        current: LocalPoint,
+        result: &mut MissionResult,
+    ) -> LegTable {
         let model = scenario.model.traversal();
-        let nodes = scenario.sites.len() + 1;
-        let mut table = LegTable { nodes, legs: vec![None; nodes * nodes], reachable: Vec::new() };
+        let separate_start = current != scenario.base;
+        let nodes = scenario.sites.len() + 1 + usize::from(separate_start);
+        let start = if separate_start { nodes - 1 } else { 0 };
+        let mut table = LegTable { nodes, start, legs: vec![None; nodes * nodes], reachable: Vec::new() };
         let position = |node: usize| match node {
             0 => scenario.base,
+            n if separate_start && n == start => current,
             n => scenario.sites[n - 1].position,
         };
         let mut route = |table: &mut LegTable, a: usize, b: usize| -> Result<(), RouteError> {
-            let leg = find_leg(grid, &model, position(a), position(b), Search::AStar)?;
+            let leg = find_leg_masked(grid, &model, position(a), position(b), Search::AStar, blocked)?;
             result.timing.legs_routed += 1;
             result.timing.cells_expanded += leg.cells_expanded;
             table.legs[b * nodes + a] = Some(leg.reversed());
@@ -489,11 +559,14 @@ impl LegTable {
         let already_excluded: Vec<String> =
             result.excluded.iter().map(|e| e.site_id.clone()).collect();
         let mut unreachable = Vec::new();
+        let _ = route(&mut table, start, 0);
         for (i, site) in scenario.sites.iter().enumerate() {
             if already_excluded.contains(&site.id) {
                 continue;
             }
-            match route(&mut table, 0, i + 1) {
+            match route(&mut table, 0, i + 1).and_then(|_| {
+                if separate_start { route(&mut table, start, i + 1) } else { Ok(()) }
+            }) {
                 Ok(()) => table.reachable.push(i),
                 Err(error) => unreachable.push((site.id.clone(), error)),
             }
@@ -510,6 +583,7 @@ impl LegTable {
             let code = match &error {
                 RouteError::RouteCrossesUnknownTerrain => "RouteCrossesUnknownTerrain",
                 RouteError::BlockedBySlopeRule => "BlockedBySlopeRule",
+                RouteError::BlockedByEvent => "BlockedByEvent",
                 RouteError::OutsideCoverage { .. } => "SiteOutsideCoverage",
                 RouteError::UnknownTerrainAtEndpoint { .. } => "SiteOnUnknownTerrain",
                 RouteError::SlopeRuleAtEndpoint { .. } => "SiteOnSteepTerrain",
@@ -525,6 +599,41 @@ impl LegTable {
 
     fn leg(&self, from: usize, to: usize) -> Option<&Leg> {
         self.legs[from * self.nodes + to].as_ref()
+    }
+}
+
+struct Enumeration<'a> {
+    problem: &'a Problem<'a>,
+    best: Vec<usize>,
+    best_utility: f64,
+    best_time: f64,
+    evaluations: usize,
+    capped: bool,
+}
+
+impl Enumeration<'_> {
+    fn visit(&mut self, order: &mut Vec<usize>, dwell: &[f64]) {
+        // Instance and evaluation bounds, rather than wall-clock cutoffs, keep replay deterministic.
+        if self.evaluations >= 100_000 {
+            self.capped = true;
+            return;
+        }
+        self.evaluations += 1;
+        if let Some(e) = self.problem.evaluate(order, dwell).filter(|e| e.feasible()) {
+            if e.utility > self.best_utility || (e.utility == self.best_utility && e.totals.eva_time_s < self.best_time) {
+                self.best = order.clone();
+                self.best_utility = e.utility;
+                self.best_time = e.totals.eva_time_s;
+            }
+        }
+        for &next in &self.problem.table.reachable {
+            if !order.contains(&next) {
+                order.push(next);
+                self.visit(order, dwell);
+                order.pop();
+                if self.capped { break; }
+            }
+        }
     }
 }
 
@@ -555,11 +664,8 @@ impl Problem<'_> {
     /// `None` if a needed leg does not exist. The return to base is always included.
     fn evaluate(&self, order: &[usize], dwell: &[f64]) -> Option<Evaluation> {
         let (mut distance_m, mut travel_time_s) = (0.0, 0.0);
-        let mut node = 0;
+        let mut node = self.table.start;
         for next in order.iter().map(|&site| site + 1).chain(std::iter::once(0)) {
-            if next == node {
-                continue; // empty itinerary: base to base
-            }
             let leg = self.table.leg(node, next)?;
             distance_m += leg.distance_m;
             travel_time_s += leg.time_s;

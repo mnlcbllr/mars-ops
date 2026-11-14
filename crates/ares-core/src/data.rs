@@ -54,6 +54,8 @@ pub enum LayerKind {
     Elevation,
     /// Display imagery (PNG). Not a source of heights.
     Imagery,
+    /// Registered qualitative infrared brightness PNG; not temperature/hazard.
+    InfraredContext,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

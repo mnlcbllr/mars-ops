@@ -9,6 +9,8 @@
 //! longitude differences as distances.
 
 pub mod data;
+pub mod contingency;
+pub mod mission;
 pub mod geo;
 pub mod inspect;
 pub mod planning;
@@ -18,6 +20,9 @@ pub mod resources;
 pub mod route;
 pub mod session;
 pub mod terrain;
+
+#[cfg(test)]
+mod mission_tests;
 
 use serde::{Deserialize, Serialize};
 

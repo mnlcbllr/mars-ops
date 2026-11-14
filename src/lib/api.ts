@@ -10,9 +10,10 @@ import type {
   PointInspection,
   SolvedRun,
   ValidationReport,
+  SimulationSnapshot, MissionAction, CellRef,
 } from "./types";
 
-export type DisplayLayer = "imagery" | "elevation" | "slope";
+export type DisplayLayer = "imagery" | "elevation" | "slope" | "infrared_context";
 
 export const api = {
   listDatasets: () => invoke<DatasetSummary[]>("list_datasets"),
@@ -23,7 +24,12 @@ export const api = {
   inspect: (p: LocalPoint, max_slope_deg: number) =>
     invoke<PointInspection>("inspect_map_point", { x_m: p.x_m, y_m: p.y_m, max_slope_deg }),
   validate: (scenario: MissionScenario) => invoke<ValidationReport>("validate_scenario", { scenario }),
-  solve: (scenario: MissionScenario) => invoke<SolvedRun>("solve_mission", { scenario }),
+  solve: (scenario: MissionScenario, exact = false) => invoke<SolvedRun>("solve_mission", { scenario, exact }),
+  startSimulation: (run_id: number) => invoke<SimulationSnapshot>("start_simulation", { run_id }),
+  simulationAction: (snapshot: SimulationSnapshot, action: MissionAction) =>
+    invoke<SimulationSnapshot>("simulation_action", { run_id: snapshot.run_id, generation: snapshot.generation, revision: snapshot.revision, action }),
+  resetSimulation: (run_id: number) => invoke<void>("reset_simulation", { run_id }),
+  previewBlockage: (centre: LocalPoint, radius_m: number) => invoke<CellRef[]>("preview_blockage", { centre, radius_m }),
   /** Writes the run to Documents/ARES/reports and resolves to the file path. */
   exportReport: (run_id: number) => invoke<string>("export_mission_report", { run_id }),
   /** Writes the scenario (no result) to Documents/ARES/plans and resolves to the file path. */

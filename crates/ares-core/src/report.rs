@@ -49,6 +49,9 @@ pub struct MissionReport {
     pub planning_grid: PlanningGridRef,
     pub scenario: MissionScenario,
     pub result: MissionResult,
+    /// Optional extension: old schema-v1 reports remain readable and unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub simulation: Option<crate::mission::MissionState>,
     /// What this report must not be read as.
     pub disclaimers: Vec<String>,
 }
@@ -111,6 +114,7 @@ impl MissionReport {
             },
             scenario,
             result,
+            simulation: None,
             disclaimers: vec![
                 "Research prototype. Not validated astronaut flight software.".into(),
                 "FEASIBLE_MODELED means every declared constraint holds under the stated \

@@ -1,9 +1,9 @@
 import { useEffect, useReducer, useRef } from "react";
 import { api, errorText } from "./api";
-import type { LocalPoint, MissionScenario, ResourceModel, SolvedRun, ValidationReport } from "./types";
+import type { LocalPoint, MissionScenario, ResourceModel, SolvedRun, ValidationReport, SimulationSnapshot, MissionAction } from "./types";
 
 export type CoefficientKey = Exclude<keyof ResourceModel, "model_version">;
-export type MissionPhase = "idle" | "validating" | "solving" | "exporting" | "saving";
+export type MissionPhase = "idle" | "validating" | "solving" | "exporting" | "saving" | "simulating";
 
 export interface MissionState {
   scenario: MissionScenario;
@@ -13,6 +13,7 @@ export interface MissionState {
   error: string | null;
   exportPath: string | null;
   savePath: string | null;
+  simulation: SimulationSnapshot | null;
 }
 
 type Action =
@@ -25,25 +26,27 @@ type Action =
   | { type: "startSave" }
   | { type: "saved"; path: string }
   | { type: "failed"; message: string };
+type SimulationAction = { type: "simulationRequest" } | { type: "simulationUpdated"; snapshot: SimulationSnapshot; expected: SimulationSnapshot | null }
+  | { type: "simulationReset" };
 
 export function initialMission(scenario: MissionScenario): MissionState {
   return {
     scenario, phase: "idle",
-    validation: null, run: null, error: null, exportPath: null, savePath: null,
+    validation: null, run: null, error: null, exportPath: null, savePath: null, simulation: null,
   };
 }
 
-export function missionReducer(state: MissionState, action: Action): MissionState {
+export function missionReducer(state: MissionState, action: Action | SimulationAction): MissionState {
   switch (action.type) {
     case "edit": {
-      if (state.phase !== "idle") return state;
+      if (state.phase !== "idle" || state.simulation) return state;
       return {
         ...state, scenario: action.scenario,
         run: null, validation: null, error: null, exportPath: null, savePath: null,
       };
     }
     case "startRun":
-      return state.phase === "idle"
+      return state.phase === "idle" && !state.simulation
         ? { ...state, phase: "validating", validation: null, run: null, error: null, exportPath: null, savePath: null }
         : state;
     case "validated":
@@ -66,6 +69,14 @@ export function missionReducer(state: MissionState, action: Action): MissionStat
       return state.phase === "saving" ? { ...state, phase: "idle", savePath: action.path } : state;
     case "failed":
       return { ...state, phase: "idle", error: action.message };
+    case "simulationRequest":
+      return state.phase === "idle" && state.run ? { ...state, phase: "simulating", error: null, exportPath: null } : state;
+    case "simulationUpdated":
+      if (state.phase !== "simulating" || action.snapshot.run_id !== state.run?.run_id || state.simulation !== action.expected) return state;
+      if (action.expected && (action.snapshot.generation !== action.expected.generation || action.snapshot.revision !== action.expected.revision + 1)) return state;
+      return { ...state, phase: "idle", simulation: action.snapshot };
+    case "simulationReset":
+      return state.phase === "simulating" ? { ...state, phase: "idle", simulation: null, exportPath: null } : state;
   }
 }
 
@@ -130,8 +141,8 @@ export function useMission(scenario: MissionScenario) {
     return () => { mounted.current = false; };
   }, []);
 
-  const run = async () => {
-    if (locked.current) return;
+  const run = async (exact = false) => {
+    if (locked.current || state.simulation) return;
     locked.current = true;
     dispatch({ type: "startRun" });
     try {
@@ -140,7 +151,7 @@ export function useMission(scenario: MissionScenario) {
       if (!mounted.current) return;
       dispatch({ type: "validated", report });
       if (!report.ok) return;
-      const run = await api.solve(input);
+      const run = await api.solve(input, exact);
       if (mounted.current) dispatch({ type: "solved", run });
     } catch (failure) {
       if (mounted.current) dispatch({ type: "failed", message: errorText(failure) });
@@ -177,8 +188,27 @@ export function useMission(scenario: MissionScenario) {
     }
   };
 
+  const simulation = async (action?: MissionAction | "reset") => {
+    if (locked.current || !state.run) return;
+    locked.current = true;
+    dispatch({ type: "simulationRequest" });
+    const expected = state.simulation;
+    try {
+      if (action === "reset") {
+        await api.resetSimulation(state.run.run_id);
+        if (mounted.current) dispatch({ type: "simulationReset" });
+      } else {
+        const snapshot = expected && action ? await api.simulationAction(expected, action)
+          : await api.startSimulation(state.run.run_id);
+        if (mounted.current) dispatch({ type: "simulationUpdated", snapshot, expected });
+      }
+    } catch (failure) {
+      if (mounted.current) dispatch({ type: "failed", message: errorText(failure) });
+    } finally { locked.current = false; }
+  };
+
   return {
-    state, run, exportReport, savePlan,
-    edit: (scenario: MissionScenario) => dispatch({ type: "edit", scenario }),
+    state, run, exportReport, savePlan, simulation,
+    edit: (scenario: MissionScenario) => { if (!locked.current) dispatch({ type: "edit", scenario }); },
   };
 }

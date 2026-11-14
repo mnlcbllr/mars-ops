@@ -79,7 +79,7 @@ export function ScenarioEditor({
         parent = parent.parentElement;
       }
     }}>
-    <fieldset disabled={phase !== "idle"} className="space-y-4">
+    <fieldset disabled={phase !== "idle" || !!state.simulation} className="space-y-4">
       <label className="grid gap-1 text-xs text-muted-foreground">Scenario name
         <Input required value={scenario.name} onChange={(event) => onChange({ ...scenario, name: event.target.value })} />
       </label>

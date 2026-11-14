@@ -5,7 +5,7 @@
 //!
 //! Model (all parameters are scenario assumptions, not certified limits):
 //! * a cell is traversable if its elevation and slope are known and its slope
-//!   does not exceed `max_slope_deg`;
+//!   does not exceed `max_slope_deg`, and no event has blocked it for this run;
 //! * moves go to the 8 neighbours; a diagonal move is allowed only if both
 //!   cells it squeezes between are traversable (no corner cutting);
 //! * a move of horizontal length `h` and height change `dz` covers surface
@@ -15,7 +15,7 @@ use crate::terrain::PlanningGrid;
 use crate::LocalPoint;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::{BinaryHeap, HashSet, VecDeque};
 
 /// Numeric traversal assumptions used by the router.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -73,6 +73,8 @@ pub enum RouteError {
     RouteCrossesUnknownTerrain,
     #[error("no connection exists under the scenario slope limit")]
     BlockedBySlopeRule,
+    #[error("an injected event blocks every remaining connection")]
+    BlockedByEvent,
 }
 
 /// Minimum-time leg from `from` to `to` on `grid` under `model`.
@@ -83,8 +85,24 @@ pub fn find_leg(
     to: LocalPoint,
     search: Search,
 ) -> Result<Leg, RouteError> {
-    let start = locate(grid, model, from, Endpoint::Start)?;
-    let goal = locate(grid, model, to, Endpoint::Goal)?;
+    find_leg_masked(grid, model, from, to, search, &HashSet::new())
+}
+
+/// Minimum-time leg that also refuses the cells of `blocked`.
+///
+/// `blocked` is a per-run overlay for contingency events: it never modifies
+/// the terrain, the grid or any stored product. Endpoints on blocked cells are
+/// refused, so a mission can never be re-routed *into* a blocked cell.
+pub fn find_leg_masked(
+    grid: &PlanningGrid,
+    model: &TraversalModel,
+    from: LocalPoint,
+    to: LocalPoint,
+    search: Search,
+    blocked: &HashSet<usize>,
+) -> Result<Leg, RouteError> {
+    let start = locate(grid, model, from, Endpoint::Start, blocked)?;
+    let goal = locate(grid, model, to, Endpoint::Goal, blocked)?;
     let n = grid.width * grid.height;
     let (goal_col, goal_row) = (goal % grid.width, goal / grid.width);
     let heuristic = |idx: usize| -> f64 {
@@ -99,6 +117,7 @@ pub fn find_leg(
             }
         }
     };
+    let passable = |idx: usize| traversable(grid, model, idx) && !blocked.contains(&idx);
 
     let mut best_time = vec![f64::INFINITY; n];
     let mut came_from = vec![u32::MAX; n];
@@ -118,7 +137,7 @@ pub fn find_leg(
         if idx == goal {
             return Ok(build_leg(grid, model, &came_from, goal, cells_expanded));
         }
-        for next in neighbours(grid, idx, |i| traversable(grid, model, i)) {
+        for next in neighbours(grid, idx, passable) {
             if closed[next] {
                 continue;
             }
@@ -135,9 +154,16 @@ pub fn find_leg(
         }
     }
 
-    // No route. Say whether missing data or the slope rule is what stands in the way.
-    let known_or_passable = |i: usize| is_unknown(grid, i) || traversable(grid, model, i);
-    if connected(grid, start, goal, known_or_passable) {
+    // No route. Say what stands in the way: the event overlay, the slope rule,
+    // or missing data. Unknown cells are never mistaken for a blocked route.
+    let real_terrain_ignoring_events = |i: usize| traversable(grid, model, i);
+    if !blocked.is_empty() && connected(grid, start, goal, &real_terrain_ignoring_events) {
+        // Without the overlay a route exists on the real terrain, so the
+        // injected events caused the failure.
+        return Err(RouteError::BlockedByEvent);
+    }
+    let unknowns_passable = |i: usize| is_unknown(grid, i) || traversable(grid, model, i);
+    if connected(grid, start, goal, unknowns_passable) {
         Err(RouteError::RouteCrossesUnknownTerrain)
     } else {
         Err(RouteError::BlockedBySlopeRule)
@@ -184,6 +210,7 @@ fn locate(
     model: &TraversalModel,
     p: LocalPoint,
     endpoint: Endpoint,
+    blocked: &HashSet<usize>,
 ) -> Result<usize, RouteError> {
     let (col, row) = grid.cell_of(p).ok_or(RouteError::OutsideCoverage { endpoint })?;
     let idx = grid.index(col, row);
@@ -195,6 +222,9 @@ fn locate(
             endpoint,
             slope_deg: grid.slope_deg[idx] as f64,
         });
+    }
+    if blocked.contains(&idx) {
+        return Err(RouteError::BlockedByEvent);
     }
     Ok(idx)
 }
@@ -242,6 +272,17 @@ fn step(grid: &PlanningGrid, model: &TraversalModel, from: usize, to: usize) -> 
     let grade = rise_m.abs() / horizontal;
     let time_s = distance_m / model.flat_speed_m_s * (1.0 + model.slope_time_penalty * grade);
     Step { distance_m, time_s, rise_m }
+}
+
+/// Validate and cost one computed route edge without allocating an A* search.
+pub fn edge_cost(grid: &PlanningGrid, model: &TraversalModel, from: LocalPoint, to: LocalPoint, blocked: &HashSet<usize>) -> Result<(f64, f64), RouteError> {
+    let a = locate(grid, model, from, Endpoint::Start, blocked)?;
+    let b = locate(grid, model, to, Endpoint::Goal, blocked)?;
+    if !neighbours(grid, a, |i| traversable(grid, model, i) && !blocked.contains(&i)).any(|i| i == b) {
+        return Err(RouteError::BlockedByEvent);
+    }
+    let cost = step(grid, model, a, b);
+    Ok((cost.distance_m, cost.time_s))
 }
 
 fn build_leg(
@@ -321,6 +362,7 @@ impl Leg {
         std::mem::swap(&mut leg.ascent_m, &mut leg.descent_m);
         leg
     }
+
 }
 
 #[cfg(test)]
@@ -529,6 +571,83 @@ mod tests {
         let err =
             find_leg(&g, &WALK, at(&g, 1, 2), at(&g, 5, 2), Search::AStar).unwrap_err();
         assert_eq!(err, RouteError::BlockedBySlopeRule);
+    }
+
+    // ---- Event overlay -------------------------------------------------------
+
+    /// The same walled grid, but the wall is an event overlay, not terrain.
+    fn overlaid_wall() -> PlanningGrid {
+        let mut g = flat(7, 7, 1.0);
+        for row in 1..=5 {
+            block(&mut g, 3, row);
+        }
+        g
+    }
+
+    #[test]
+    fn the_overlay_refuses_blocked_cells_but_leaves_terrain_alone() {
+        let g = flat(7, 7, 1.0);
+        let mut blocked = HashSet::new();
+        for row in 1..=5 {
+            blocked.insert(g.index(3, row));
+        }
+        let leg = find_leg_masked(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar, &blocked)
+            .unwrap();
+        for p in &leg.path {
+            let (col, row) = g.cell_of(*p).unwrap();
+            assert!(!(col == 3 && (1..=5).contains(&row)), "path enters overlay at {col},{row}");
+        }
+        // The same grid without the overlay routes straight through: the source
+        // data was never modified.
+        let open = find_leg(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar).unwrap();
+        assert_eq!(open.distance_m, 4.0);
+    }
+
+    #[test]
+    fn an_overlay_wall_that_cuts_every_path_is_blocked_by_event() {
+        let g = overlaid_wall();        let mut blocked = HashSet::new();
+        for row in 0..7 {
+            blocked.insert(g.index(3, row));
+        }
+        let err = find_leg_masked(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar, &blocked)
+            .unwrap_err();
+        assert_eq!(err, RouteError::BlockedByEvent);
+    }
+
+    #[test]
+    fn an_endpoint_on_a_blocked_cell_is_refused() {
+        let g = flat(5, 5, 1.0);
+        let mut blocked = HashSet::new();
+        blocked.insert(g.index(3, 3));
+        let err = find_leg_masked(&g, &WALK, at(&g, 1, 1), at(&g, 3, 3), Search::AStar, &blocked)
+            .unwrap_err();
+        assert_eq!(err, RouteError::BlockedByEvent);
+    }
+
+    #[test]
+    fn overlay_failure_is_not_mistaken_for_unknown_terrain_or_slope() {
+        // A wall of *blocked* cells diagonally between two known cells.
+        let g = flat(7, 7, 1.0);
+        let mut blocked = HashSet::new();
+        for (col, row) in [(3, 1), (3, 2), (3, 3), (3, 4), (3, 5), (2, 2), (2, 3), (2, 4), (4, 2), (4, 3), (4, 4)] {
+            blocked.insert(g.index(col, row));
+        }
+        // Not fully cut: a route exists around the top. Widen the blockage to cut it.
+        for row in 0..7 {
+            blocked.insert(g.index(3, row));
+        }
+        let err = find_leg_masked(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar, &blocked)
+            .unwrap_err();
+        assert_eq!(err, RouteError::BlockedByEvent);
+
+        // Unknown terrain still reports its own error under an unrelated overlay.
+        let mut g2 = flat(7, 5, 1.0);
+        for row in 0..5 {
+            unknown(&mut g2, 3, row);
+        }
+        let err2 = find_leg_masked(&g2, &WALK, at(&g2, 1, 2), at(&g2, 5, 2), Search::AStar, &blocked)
+            .unwrap_err();
+        assert_eq!(err2, RouteError::RouteCrossesUnknownTerrain);
     }
 
     /// Deterministic bumpy terrain with scattered blocked and unknown cells.

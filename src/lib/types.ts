@@ -164,6 +164,7 @@ export interface MissionReport {
   planning_grid: { cell_x_m: number; cell_y_m: number; raster_cells_per_planning_cell: number };
   scenario: MissionScenario;
   result: MissionResult;
+  simulation?: SimulationMission;
   disclaimers: string[];
 }
 
@@ -206,7 +207,7 @@ export interface BBoxDeg {
 export interface LayerRecord {
   id: string;
   display_name: string;
-  kind: "ELEVATION" | "IMAGERY";
+  kind: "ELEVATION" | "IMAGERY" | "INFRARED_CONTEXT";
   file: string;
   origin_type: EvidenceKind;
   provider: string;
@@ -272,4 +273,40 @@ export interface PlanSummary {
   file: string;
   name: string;
   dataset_id: string;
+}
+
+export interface CellRef { col: number; row: number }
+export type ResourceKind = "EVA_TIME" | "ENERGY" | "CONSUMABLE";
+export type ContingencyEvent =
+  | { kind: "BLOCK_CELLS"; cells: CellRef[]; reason: string }
+  | { kind: "DELAY"; seconds: number; reason: string }
+  | { kind: "RESOURCE_ADJUSTMENT"; resource: ResourceKind; amount: number; reason: string };
+export type MissionAction =
+  | { kind: "ADVANCE"; steps: number }
+  | { kind: "INJECT"; dataset_id: string; event: ContingencyEvent }
+  | { kind: "REPLAN"; exact: boolean };
+export type SimulationPhase = { phase: "OVERHEAD" } | { phase: "TRAVELING"; leg_index: number; waypoint: number }
+  | { phase: "WORKING"; leg_index: number } | { phase: "RETURNED" };
+export interface SimulationMission {
+  scenario: MissionScenario;
+  manifest_sha256: string;
+  original_plan: MissionResult;
+  plan: MissionResult;
+  position: LocalPoint;
+  phase: SimulationPhase;
+  plan_valid: boolean;
+  completed: string[];
+  utility_earned: number;
+  used: ResourceUse;
+  adjusted_budget: ResourceBudget;
+  events: ContingencyEvent[];
+  timeline: { at_s: number; position: LocalPoint; action: MissionAction }[];
+  revisions: { at_s: number; position: LocalPoint; completed: string[]; dropped: string[]; plan: MissionResult }[];
+  activity_durations_s: [string, number][];
+}
+export interface SimulationSnapshot {
+  run_id: number;
+  generation: number;
+  revision: number;
+  mission: SimulationMission;
 }
