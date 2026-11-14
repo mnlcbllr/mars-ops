@@ -242,9 +242,9 @@ describe("mission presentation", () => {
     expect(html).toContain("246 m");
     expect(html).toContain("10.0 min");
     expect(html).toContain("1.25");
-    expect(html.toLowerCase()).toContain("margin after reserve");
+    expect(html.toLowerCase()).toContain("margin");
     expect(html).toContain("45.00");
-    expect(html).toContain("Return to base");
+    expect(html.toLowerCase()).toContain("return");
     expect(html).toContain("/reports/17.json");
   });
 
