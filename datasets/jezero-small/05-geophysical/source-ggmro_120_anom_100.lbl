@@ -1,0 +1,84 @@
+PDS_VERSION_ID               = PDS3
+RECORD_TYPE                  = FIXED_LENGTH
+FILE_RECORDS                 = 2880
+RECORD_BYTES                 = 46080
+^IMAGE                       = ("GGMRO_120_ANOM_100.IMG",1)
+INSTRUMENT_HOST_NAME         = "MARS RECONNAISSANCE ORBITER"
+TARGET_NAME                  = "MARS" 
+INSTRUMENT_NAME              = "RADIO SCIENCE SUBSYSTEM"
+DATA_SET_ID                  = "MRO-M-RSS-5-SDP-V1.0"
+PRODUCT_ID                   = "GGMRO_120_ANOM_100.IMG"
+PRODUCT_VERSION_ID           = "V1.0"
+PRODUCER_ID                  = "MRO GRAVSCI TEAM"
+PRODUCER_FULL_NAME           = "ANTONIO GENOVA"
+PRODUCER_INSTITUTION_NAME    = "NASA/GODDARD SPACE FLIGHT CENTER"
+START_TIME                   = 1998-03-27T08:00:00.000
+STOP_TIME                    = 2015-03-30T00:00:00.000
+SOFTWARE_NAME                = "HIGEN;V9.0"
+PRODUCT_CREATION_TIME        = 2016-02-12T17:30:00.000
+PRODUCT_RELEASE_DATE         = 2016-03-01
+
+DESCRIPTION                  = "
+ This file contains a digital map of the Mars gravity anomalies
+ derived from spherical harmonic coefficients of the NASA GMM-3
+ gravity field. Each point gives the Mars gravity anomaly
+ in milligals, which is the anomaly of the model gravity defined 
+ with respect to the reference ellipsoid with 
+ semi-major-axis = 3396.0 km, GM = 0.4282837285418775E+05 km**3/s**2,
+ 1/flattening = 196.877360, and rotation rate = 7.088218066303858D-05 rad/s.
+ The GMM3_120_ANOM_100 gravity anomaly map is computed from a truncated
+ GMM-3 solution (from degree 2 up to degree 100).
+
+ This map is in simple cylindrical projection at a resolution of 
+ 16 pixels per degree.
+
+ This work was completed by A. Genova as a postdoctoral scientist at NASA
+ Goddard Space Flight Center as part of the MRO Gravity Science Team, and 
+ under the direction of M.T. Zuber and F.G. Lemoine.  The reference for the 
+ GMM-3 gravity field is GENOVAETAL2016, under review by Icarus."
+
+OBJECT               = IMAGE
+  LINES                      = 2880
+  LINE_SAMPLES               = 5760
+  SAMPLE_TYPE                = PC_REAL
+  SAMPLE_BITS                = 64
+  UNIT                       = "MILLIGALS"
+  OFFSET                     = 0.0E+00
+  SCALING_FACTOR             = 1.0E+00
+  DESCRIPTION                = "The Digital Map contains
+   values of the gravity anomaly.  The values can be obtained
+   by multiplying the sample in the map by SCALING_FACTOR
+   and then adding OFFSET.  One milligal equals 0.01 mm/s/s."
+END_OBJECT           = IMAGE
+
+OBJECT               = IMAGE_MAP_PROJECTION
+  ^DATA_SET_MAP_PROJECTION     = "DSMAP.CAT"
+  COORDINATE_SYSTEM_TYPE       = "BODY-FIXED ROTATING"
+  COORDINATE_SYSTEM_NAME       = PLANETOCENTRIC
+  MAP_PROJECTION_TYPE          = "SIMPLE CYLINDRICAL"
+  A_AXIS_RADIUS                = 3396.0 <km>
+  B_AXIS_RADIUS                = 3396.0 <km>
+  C_AXIS_RADIUS                = 3396.0 <km>
+  FIRST_STANDARD_PARALLEL      = "N/A"
+  SECOND_STANDARD_PARALLEL     = "N/A"
+  POSITIVE_LONGITUDE_DIRECTION = "EAST"
+  CENTER_LATITUDE              = 0. <deg>
+  CENTER_LONGITUDE             = 180. <deg>
+  REFERENCE_LATITUDE           = 0.0 <deg>
+  REFERENCE_LONGITUDE          = 0.0 <deg>
+  LINE_FIRST_PIXEL             = 1
+  LINE_LAST_PIXEL              = 2880
+  SAMPLE_FIRST_PIXEL           = 1
+  SAMPLE_LAST_PIXEL            = 5760
+  MAP_PROJECTION_ROTATION      = 0.0 <deg>
+  MAP_RESOLUTION               = 16 <pix/deg>
+  MAP_SCALE                    = "N/A"
+  MAXIMUM_LATITUDE             = 90 <deg>
+  MINIMUM_LATITUDE             = -90 <deg>
+  EASTERNMOST_LONGITUDE        = 360 <deg>
+  WESTERNMOST_LONGITUDE        = 0 <deg>
+  LINE_PROJECTION_OFFSET       = 1439.5
+  SAMPLE_PROJECTION_OFFSET     = 2879.5
+END_OBJECT           = IMAGE_MAP_PROJECTION
+
+END
