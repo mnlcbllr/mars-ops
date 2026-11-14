@@ -18,7 +18,7 @@ function solved(input = scenario()): SolvedRun {
   return {
     run_id: 17,
     report: {
-      report_schema_version: 1, generated_utc: "2026-11-14T00:00:00Z", software: "ARES", software_version: "test", code_revision: "test",
+      report_schema_version: 1, generated_utc: "2026-11-14T00:00:00Z", software: "HYDE", software_version: "test", code_revision: "test",
       dataset: { dataset_id: input.dataset_id, manifest_sha256: "test", real_data_verified: false, layers: [] },
       planning_grid: { cell_x_m: 4, cell_y_m: 4, raster_cells_per_planning_cell: 4 },
       scenario: input, disclaimers: ["Research prototype; not flight software."],
@@ -164,6 +164,7 @@ describe("mission workflow", () => {
     expect(original).toEqual(before);
     expect(first.model.max_slope_deg.value).toBe(10);
     expect(first.model.max_slope_deg.source_type).toBe("USER_DEFINED");
+    expect(first.model.max_slope_deg.citation_or_assumption).toStartWith("User-edited in HYDE. ");
     expect(first.model.max_slope_deg.range).toBeNull();
     expect(second.model.max_slope_deg.version).toBe(original.model.max_slope_deg.version + 2);
     expect(second.model.max_slope_deg.citation_or_assumption).toBe(first.model.max_slope_deg.citation_or_assumption);

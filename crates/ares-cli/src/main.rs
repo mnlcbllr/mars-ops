@@ -1,4 +1,4 @@
-//! Headless ARES: verify a packaged dataset, inspect a point, plan a mission.
+//! Headless HYDE: verify a packaged dataset, inspect a point, plan a mission.
 //!
 //! Exit codes: 0 success / feasible plan, 1 usage or data error, 2 no feasible plan.
 
@@ -10,7 +10,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str = "\
-ares-cli — headless ARES
+ares-cli — headless HYDE
 
 USAGE:
   ares-cli verify-manifest <dataset_dir>

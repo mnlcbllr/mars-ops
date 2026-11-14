@@ -1,6 +1,6 @@
 [package]
 name = "ares-core"
-description = "ARES scientific core: Mars raster data, terrain metrics, routing and mission planning. Independent of Tauri."
+description = "HYDE scientific core: Mars raster data, terrain metrics, routing and mission planning. Independent of Tauri."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

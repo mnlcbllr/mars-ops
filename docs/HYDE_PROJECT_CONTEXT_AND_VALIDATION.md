@@ -1,4 +1,4 @@
-# ARES — Project Context, Scientific Validation, and Implementation Specification
+# HYDE — Project Context, Scientific Validation, and Implementation Specification
 
 > **Coding-agent handoff** — NASA Space Apps Challenge 2026, Challenge #11: **Interplanetary Survival Guide: Martian Map**  
 > **Target:** Desktop application using **Tauri v2 + React/TypeScript frontend + Rust backend**.  
@@ -9,7 +9,7 @@
 
 ## 0. Instructions to the coding agent — read this first
 
-You are building **ARES (Adaptive Resource & Exploration System)** as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements.
+You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration System) as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements. HYDE is the project brand, not a claim that the HyDE optimizer is implemented; the current solver remains GreedyPlanner.
 
 **Non-negotiable rules**
 
@@ -36,11 +36,11 @@ You are building **ARES (Adaptive Resource & Exploration System)** as a transpar
 
 ## 1. Executive summary
 
-**One-sentence product:** ARES is an interactive Mars map and resource-aware science excursion planner that combines traceable orbital observations with constrained mission optimization to explain *what science objectives can be visited, in what order, using which route, and within which hypothetical mission resource limits*.
+**One-sentence product:** HYDE is an interactive Mars map and resource-aware science excursion planner that combines traceable orbital observations with constrained mission optimization to explain *what science objectives can be visited, in what order, using which route, and within which hypothetical mission resource limits*.
 
-**Challenge alignment:** The official Space Apps challenge calls for a layered Martian mapping experience integrating information from multiple Mars missions to help future astronauts plan safe and scientifically valuable Marswalks. ARES must do **data integration and interpretation first**; mission scheduling, optimization and resource accounting are an added decision-support layer. A generic route finder alone is not an adequate interpretation of the entire challenge.
+**Challenge alignment:** The official Space Apps challenge calls for a layered Martian mapping experience integrating information from multiple Mars missions to help future astronauts plan safe and scientifically valuable Marswalks. HYDE must do **data integration and interpretation first**; mission scheduling, optimization and resource accounting are an added decision-support layer. A generic route finder alone is not an adequate interpretation of the entire challenge.
 
-**Core user story:** A mission designer explores an actual region on Mars, reviews NASA-sourced imagery and elevation layers, marks candidate research locations, sets EVA time / energy / consumable assumptions, and generates a *feasible round-trip itinerary*. ARES explains its trade-offs and shows how a reference planner compares with a candidate HyDE method.
+**Core user story:** A mission designer explores an actual region on Mars, reviews NASA-sourced imagery and elevation layers, marks candidate research locations, sets EVA time / energy / consumable assumptions, and generates a *feasible round-trip itinerary*. HYDE explains its trade-offs and shows how a reference planner compares with a candidate HyDE method.
 
 **Primary research opportunity:** Test whether **HyDE — Hybrid Differential Evolution with warm-started increasing-population CMA-ES (IPOP-CMA-ES)** — improves the *quality or robustness of continuous/mixed mission-planning decisions* under a constrained evaluation budget relative to appropriate classical methods. **This is a hypothesis, not a demonstrated fact.**
 
@@ -50,7 +50,7 @@ You are building **ARES (Adaptive Resource & Exploration System)** as a transpar
 
 | Field | Decision |
 |---|---|
-| Working name | **ARES — Adaptive Resource & Exploration System** |
+| Working name | **HYDE** |
 | NASA Space Apps 2026 category | **Challenge #11 — Interplanetary Survival Guide: Martian Map** |
 | Related areas | Mars, human exploration, planetary mapping, geospatial science, software, operations research |
 | Main task | Layered Mars map + constrained multi-stop science excursion planning |
@@ -68,11 +68,11 @@ You are building **ARES (Adaptive Resource & Exploration System)** as a transpar
 
 Mars surface exploration requires planners to reconcile **spatial information** (terrain, slopes, hazards, geology) with **operational decisions** (which scientific observations to complete, when, and in what order) under limited **time, energy, and life-support consumables**. Relevant data come from different instruments, spatial resolutions, coverage extents, data products and reference frames. An integrated map is useful, but it does not automatically produce feasible or scientifically efficient activity plans.
 
-**ARES should solve the bounded engineering problem:**
+**HYDE should solve the bounded engineering problem:**
 
 > For one documented Mars region and a declared, approximate mission-resource model, produce and compare feasible round-trip science itineraries while exposing the geospatial evidence, modeled assumptions, algorithmic trade-offs, and uncertainty behind each recommendation.
 
-### 2.2 What ARES is **not**
+### 2.2 What HYDE is **not**
 
 - Not a NASA-approved mission planning system, certified traverse planner, or substitute for astronaut/rover hazard assessment.
 - Not a live Mars weather, radiation, oxygen or life-support monitor.
@@ -96,7 +96,7 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 
 **RQ1 — Integration:** Can heterogeneous NASA/USGS Mars products be aligned into one traceable, region-specific layered view with clearly disclosed coverage and uncertainty?
 
-**RQ2 — Feasibility:** Can ARES construct a round-trip science mission plan that respects declared EVA time, energy, consumables, terrain and reserve constraints?
+**RQ2 — Feasibility:** Can HYDE construct a round-trip science mission plan that respects declared EVA time, energy, consumables, terrain and reserve constraints?
 
 **RQ3 — Algorithmic value:** Compared against resource-constrained scheduling and routing baselines, does the team's faithfully reproduced HyDE improve feasible mission utility, convergence, robustness, or runtime under defined evaluation budgets?
 
@@ -108,7 +108,7 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 - H2: The advantage, if present, will vary with dimensionality, nonlinearity, resource tightness and objective-evaluation cost.
 - H3: Explicit uncertainty and reserve constraints reduce brittle plans compared to naive unconstrained score maximization.
 
-**Contribution boundaries:** ARES may contribute a **validated integration workflow**, **transparent simulation-based decision support**, and **empirical evidence about algorithm applicability**. Avoid claiming to have discovered a previously unsolved NASA problem. NASA has prior related work on astronaut traverse planning and metabolic workload using **Hybrid A*** (see sources).
+**Contribution boundaries:** HYDE may contribute a **validated integration workflow**, **transparent simulation-based decision support**, and **empirical evidence about algorithm applicability**. Avoid claiming to have discovered a previously unsolved NASA problem. NASA has prior related work on astronaut traverse planning and metabolic workload using **Hybrid A*** (see sources).
 
 ---
 
@@ -118,7 +118,7 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 
 The accessible search-indexed challenge summary identifies a **layered map using data from multiple Mars missions** to support astronaut safety and scientifically useful Marswalks. The full challenge page intermittently returned a retrieval error during preparation of this brief. **The coding agent must reopen the official challenge page and inspect the exact full statement, resources, rules and submission rubric before final submission.** This document does not pretend to quote an unverified full rubric.
 
-### ARES challenge-coverage checklist
+### HYDE challenge-coverage checklist
 
 - [ ] Map displays an actual named region on Mars with verified spatial coordinates.
 - [ ] At least **two distinct NASA-mission/instrument source layers** are visible and attributable (e.g., MRO CTX imagery + MGS MOLA topography); **prefer three** including a local MRO HiRISE DTM or CRISM science data.
@@ -229,7 +229,7 @@ All null placeholders **must** be filled from downloaded product metadata for re
 
 Suggested layout at 1440×900:
 
-- **Top bar (48–56px):** ARES / dataset status / region / `Run mission`.
+- **Top bar (48–56px):** HYDE / dataset status / region / `Run mission`.
 - **Map (65–75% viewport width):** NASA geospatial layer; route, sites, scale, north indicator, concise legend; proper pan/zoom; no procedural decorative map if real data is available.
 - **Right rail (300–360px):** Resource inputs (oxygen/energy/time), mission goal, compact objectives list, action button.
 - **Bottom dock or collapsible detail:** 3–4 KPIs (`Science objectives`, `Time used`, `Resource reserve`, `Plan status`) and short itinerary; optional **Compare** tab.
@@ -328,7 +328,7 @@ A route may look feasible under assumed speed or power use and become infeasible
 
 **Not verified here:** exact source code, pseudocode, DE mutation variant, crossover rate, CMA-ES covariance adaptation formulas, switching criterion, warm-start details, treatment of box/hard constraints, and original benchmark results. **Do not invent these and call the result a faithful reproduction.**
 
-### 8.2 How to encode ARES for a continuous optimizer
+### 8.2 How to encode HYDE for a continuous optimizer
 
 Science-site selection/order is **discrete**; waypoint placement, dwell time and allocation are **continuous**. Two options:
 
@@ -407,13 +407,13 @@ Use one canonical evaluation function and a consistent definition of an **object
 ### 9.2 Suggested repository layout
 
 ```text
-ares/
+hyde/
   README.md
   LICENSE
   LIMITATIONS.md
   DATA_CATALOG.md
   docs/
-    ARES_PROJECT_CONTEXT_AND_VALIDATION.md
+    HYDE_PROJECT_CONTEXT_AND_VALIDATION.md
     SCIENTIFIC_METHOD.md
     BENCHMARK_PROTOCOL.md
     SUBMISSION_CHECKLIST.md

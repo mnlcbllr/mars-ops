@@ -83,7 +83,7 @@ export function planningScenario(state: MissionState): MissionScenario {
 
 export function editCoefficient(scenario: MissionScenario, key: CoefficientKey, value: number): MissionScenario {
   const coefficient = scenario.model[key];
-  const note = "User-edited in ARES. ";
+  const note = "User-edited in HYDE. ";
   return {
     ...scenario,
     model: {

@@ -1,6 +1,6 @@
 [package]
 name = "ares-app"
-description = "ARES desktop shell: a thin IPC layer over ares-core."
+description = "HYDE desktop shell: a thin IPC layer over ares-core."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

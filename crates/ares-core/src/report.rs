@@ -95,7 +95,7 @@ impl MissionReport {
         MissionReport {
             report_schema_version: 1,
             generated_utc: utc_iso8601(now),
-            software: "ARES — Adaptive Resource & Exploration System".into(),
+            software: "HYDE".into(),
             software_version: env!("CARGO_PKG_VERSION").into(),
             code_revision: CODE_REVISION.into(),
             dataset: DatasetRef {
@@ -141,7 +141,7 @@ impl MissionReport {
         let stamp: String = self.generated_utc.chars().filter(char::is_ascii_alphanumeric).collect();
         for attempt in 1..=9999u32 {
             let suffix = if attempt == 1 { String::new() } else { format!("_{attempt}") };
-            let path = dir.join(format!("ares-report_{id}_{stamp}{suffix}.json"));
+            let path = dir.join(format!("hyde-report_{id}_{stamp}{suffix}.json"));
             match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
                 Ok(mut file) => {
                     file.write_all(&json)?;

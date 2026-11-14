@@ -26,7 +26,7 @@ export function App() {
   return (
     <main className="flex h-full flex-col bg-background text-foreground">
       <header className="flex min-h-14 items-center gap-4 border-b px-5">
-        <h1 className="text-lg font-semibold tracking-widest">ARES</h1>
+        <h1 className="text-lg font-semibold tracking-widest">HYDE</h1>
         <span className="text-sm text-muted-foreground">Mars excursion planner</span>
         <span className="ml-auto text-xs text-muted-foreground">Research prototype · not flight software</span>
       </header>

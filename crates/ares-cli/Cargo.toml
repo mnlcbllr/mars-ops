@@ -1,6 +1,6 @@
 [package]
 name = "ares-cli"
-description = "Headless ARES: dataset verification and mission planning without the desktop shell."
+description = "Headless HYDE: dataset verification and mission planning without the desktop shell."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

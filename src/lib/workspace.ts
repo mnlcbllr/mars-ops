@@ -37,7 +37,7 @@ function raster(bytes: ArrayBuffer, width: number, height: number) {
 
 export async function loadWorkspace(): Promise<Workspace> {
   if (!isTauri()) {
-    throw new Error("Open the ARES desktop app with bun tauri dev. Dataset access, mission planning and report export require the native runtime, not a regular browser tab.");
+    throw new Error("Open the HYDE desktop app with bun tauri dev. Dataset access, mission planning and report export require the native runtime, not a regular browser tab.");
   }
   const datasets = await api.listDatasets();
   const dataset = datasets[0];

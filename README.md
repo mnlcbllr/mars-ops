@@ -1,4 +1,4 @@
-# ARES
+# HYDE
 
 Offline Mars terrain viewer and scenario-based excursion planner. Research prototype, not operational astronaut planning software.
 
@@ -19,7 +19,7 @@ Use the desktop window: a regular browser does not provide the native dataset/pl
 2. Optionally place the base on the map. Only known terrain within the declared slope limit is accepted; coordinates are also keyboard-editable.
 3. Select **Run mission**. Native validation runs first, followed by the deterministic greedy baseline. Warnings may exclude sites; validation errors block planning.
 4. Review the route in 2D or 3D. Expand **Resource checks & itinerary**, select a leg, or inspect excluded-site reasons. Feasibility is relative to the declared model, not a safety claim.
-5. Select **Export JSON**. The app writes the current report to `Documents/ARES/reports` (or its application-data directory if Documents is unavailable), and displays the actual path. It never overwrites an existing report.
+5. Select **Export JSON**. The app writes a `hyde-report_*.json` report to the existing `Documents/ARES/reports` folder (or its application-data directory if Documents is unavailable), and displays the actual path. It never overwrites an existing report.
 
 Edits invalidate previous results and exports. Inputs are locked during validation, planning and export. Drafts are session-only; the exported report includes the selected scenario, model provenance, dataset hashes, solver result and limitations. Report import is not implemented. Displayed metrics are rounded for readability; the report retains the backend's numeric values.
 
@@ -37,4 +37,8 @@ Headless planning smoke test (prints the plan; does not write a report):
 cargo run -p ares-cli -- plan datasets/jezero-small
 ```
 
-See [LIMITATIONS.md](LIMITATIONS.md) and [the project specification](docs/ARES_PROJECT_CONTEXT_AND_VALIDATION.md).
+## Name and compatibility
+
+HYDE is the project name, not a claim that the HyDE optimization algorithm is implemented. The current solver remains **GreedyPlanner**. Existing report schemas, dataset/model IDs, the installed-app identifier and report storage location are unchanged. Internal Rust crate and CLI names retain `ares-*` for compatibility; previously exported reports remain readable as JSON.
+
+See [LIMITATIONS.md](LIMITATIONS.md) and [the project specification](docs/HYDE_PROJECT_CONTEXT_AND_VALIDATION.md).

@@ -293,6 +293,9 @@ mod tests {
         assert!(session.validate(&scenario).unwrap().ok);
 
         let report = session.solve(scenario.clone()).unwrap();
+        assert_eq!(report.software, "HYDE");
+        assert_eq!(report.report_schema_version, 1);
+        assert_eq!(report.result.solver.name, "GreedyPlanner");
         assert_eq!(report.result.status, PlanStatus::FeasibleModeled);
         // 5 cells of 4 m each way at 1 m/s, plus 100 s of work.
         let totals = report.result.totals.as_ref().unwrap();
@@ -323,7 +326,7 @@ mod tests {
         for path in [&first, &second] {
             assert_eq!(path.parent().unwrap(), out);
             let name = path.file_name().unwrap().to_str().unwrap();
-            assert!(name.starts_with("ares-report_tiny_") && name.ends_with(".json"), "{name}");
+            assert!(name.starts_with("hyde-report_tiny_") && name.ends_with(".json"), "{name}");
             let read_back: MissionReport = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
             assert_eq!(read_back, report);
         }
@@ -338,6 +341,19 @@ mod tests {
         let out = temp_dir("name-out");
         let path = report.write_to_dir(&out).unwrap();
         // '.', '.', '/' and ' ' each become '_'.
-        assert_eq!(path, out.join("ares-report____evil_id_20261114T050607Z.json"));
+        assert_eq!(path, out.join("hyde-report____evil_id_20261114T050607Z.json"));
+    }
+
+    #[test]
+    fn legacy_report_branding_remains_readable() {
+        let session = open("legacy-report");
+        let mut legacy = session.solve(scenario(&session, "tiny")).unwrap();
+        legacy.software = "ARES — Adaptive Resource & Exploration System".into();
+        // Wall-clock timing precision is unrelated to branding compatibility.
+        legacy.result.timing.routing_ms = 0.0;
+        legacy.result.timing.planning_ms = 0.0;
+        let json = serde_json::to_vec(&legacy).unwrap();
+        let read_back: MissionReport = serde_json::from_slice(&json).unwrap();
+        assert_eq!(read_back, legacy);
     }
 }

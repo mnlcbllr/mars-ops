@@ -4,7 +4,7 @@
 Build-time only: the running application never needs Python or GDAL.
 
 What it does
-  1. Parses the DTM's attached PDS3 label and checks the properties ARES relies on.
+  1. Parses the DTM's attached PDS3 label and checks the properties HYDE relies on.
   2. Hashes the complete source files (a source that is incomplete is recorded
      as NOT verified — the app then refuses to call the data real).
   3. Cuts the region of interest out of the DTM *without resampling*: the output

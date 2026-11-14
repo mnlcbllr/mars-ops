@@ -1,4 +1,4 @@
-//! ARES desktop shell: a thin IPC layer over `ares_core::session`.
+//! HYDE desktop shell: a thin IPC layer over `ares_core::session`.
 //!
 //! No science happens here. Each command hands the request to the core and
 //! returns its answer. The webview gets no filesystem, shell or network
@@ -137,6 +137,7 @@ fn export_mission_report(
         _ => return Err("RunNotAvailable: only the most recent run can be exported".into()),
     };
     let documents = app.path().document_dir().or_else(|_| app.path().app_data_dir()).map_err(message)?;
+    // Retain the legacy storage location so a branding change does not relocate user reports.
     let path = report.write_to_dir(&documents.join("ARES").join("reports")).map_err(message)?;
     Ok(path.display().to_string())
 }
@@ -155,5 +156,5 @@ pub fn run() {
             export_mission_report,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running ARES");
+        .expect("error while running HYDE");
 }
