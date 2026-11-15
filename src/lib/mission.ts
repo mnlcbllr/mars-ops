@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import { api, errorText } from "./api";
+import { fmt, minutes } from "./format";
 import type {
   ContingencyEvent, ContingencyKind, LocalPoint, MissionScenario, ResourceModel, SimulationView,
   SolvedRun, ValidationReport,
@@ -166,6 +167,40 @@ export function simPlanStale(runId: number, state: { events: ContingencyEvent[];
   }
   planStaleness.set(runId, entry);
   return entry.stale;
+}
+
+const LOW_MARGIN_FRACTION = 0.2;
+
+const LOW_MARGIN_LABEL: Record<string, string> = {
+  eva_time: "EVA time",
+  energy: "Energy",
+  consumable: "Consumable",
+};
+
+/**
+ * Automatic, path-driven warnings: no injected event is needed. As the drill
+ * walks the route, consumption grows and every still-passing check whose
+ * margin has dropped into the last LOW_MARGIN_FRACTION of its remaining
+ * budget is flagged, along with a return margin that is a thin slice of the
+ * remaining EVA time. So a marginal plan warns on its own as it unfolds.
+ */
+export function simLowMargins(view: SimulationView): string[] {
+  const warnings: string[] = [];
+  const eva = view.remaining_checks.find((check) => check.resource === "eva_time");
+  for (const check of view.remaining_checks) {
+    if (!check.satisfied || check.available <= 0) continue;
+    if (check.margin > check.available * LOW_MARGIN_FRACTION) continue;
+    const label = LOW_MARGIN_LABEL[check.resource] ?? check.resource;
+    const left = check.resource === "eva_time"
+      ? minutes(check.margin, 1)
+      : `${fmt(check.margin, 1)} ${check.unit}`;
+    warnings.push(`${label} margin low — ${left} left`);
+  }
+  if (eva && eva.available > 0 && view.return_margin_s !== null
+    && view.return_margin_s >= 0 && view.return_margin_s < eva.available * LOW_MARGIN_FRACTION) {
+    warnings.push(`return margin low — ${minutes(view.return_margin_s, 1)} left after returning`);
+  }
+  return warnings;
 }
 
 export function useMission(scenario: MissionScenario) {

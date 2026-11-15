@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
-import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, type MissionState } from "./mission";
+import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, simLowMargins, type MissionState } from "./mission";
 import type { MissionScenario, SimulationView, SolvedRun, ValidationReport } from "./types";
 
 function scenario(): MissionScenario {
@@ -63,6 +63,24 @@ function running(input: MissionState): SimulationView {
 }
 
 describe("mission workflow", () => {
+  test("low margins warn automatically from path consumption, without injected events", () => {
+    const base = running(planned());
+    // 2700 s of 3300 s available leaves well over the 20% threshold: quiet.
+    expect(simLowMargins(base)).toEqual([]);
+    // Still passing, but the margin fell into the last 20% of the remaining budget.
+    const thin = structuredClone(base);
+    thin.remaining_checks[0]!.margin = 600;
+    expect(simLowMargins(thin)).toEqual(["EVA time margin low — 10.0 min left"]);
+    // A violated check is already reported as exceeded, not duplicated as low.
+    const violated = structuredClone(base);
+    violated.remaining_checks[0]!.satisfied = false;
+    expect(simLowMargins(violated)).toEqual([]);
+    // A modeled return that is a thin slice of the remaining EVA time is flagged on its own.
+    const thinReturn = structuredClone(base);
+    thinReturn.return_margin_s = 500;
+    expect(simLowMargins(thinReturn)).toEqual(["return margin low — 8.3 min left after returning"]);
+  });
+
   test("starts idle with no fabricated plan or saved path", () => {
     const state = initialMission(scenario());
     expect(state.run).toBeNull();

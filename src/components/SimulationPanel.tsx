@@ -3,7 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clock, fmt, minutes } from "@/lib/format";
-import { simPlanStale, type MissionState } from "@/lib/mission";
+import { simLowMargins, simPlanStale, type MissionState } from "@/lib/mission";
 import type {
   ConstraintCheck, ContingencyKind, LocalPoint, ResourceKind, SimulationView,
 } from "@/lib/types";
@@ -95,6 +95,7 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
   const replanReasons = view && !settled ? [
     ...view.remaining_checks.filter((c) => !c.satisfied)
       .map((c) => `${CHECK_LABEL[c.resource] ?? c.resource} limit exceeded`),
+    ...simLowMargins(view),
     ...(view.return_margin_s === null ? ["no modeled return route"] : []),
     ...(view.return_margin_s !== null && view.return_margin_s < 0 ? ["return exceeds EVA limit"] : []),
     ...(planStale ? ["plan out of date — contingency since last plan"] : []),
