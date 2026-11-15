@@ -3,7 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars, RouteGraph } from "@/components/MissionCharts";
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
-import { simLowMargins, simPlanStale, type MissionState } from "@/lib/mission";
+import { simPlanStale, simRouteFit, type MissionState } from "@/lib/mission";
 import type {
   CandidateInsight, MissionResult, MissionScenario, PlanStatus,
   ResourceUse, ScientificSite, SimulationView,
@@ -112,7 +112,7 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
     && (sim.remaining_checks.some((c) => !c.satisfied)
       || sim.return_margin_s === null
       || sim.return_margin_s < 0
-      || simLowMargins(sim).length > 0
+      || simRouteFit(sim).length > 0
       || planStale);
   const totals = result.totals;
   return <div className="space-y-2 rounded-lg border p-3">

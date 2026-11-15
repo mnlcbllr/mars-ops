@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import { api, errorText } from "./api";
-import { fmt, minutes } from "./format";
+import { minutes } from "./format";
 import type {
   ContingencyEvent, ContingencyKind, LocalPoint, MissionScenario, ResourceModel, SimulationView,
   SolvedRun, ValidationReport,
@@ -169,38 +169,43 @@ export function simPlanStale(runId: number, state: { events: ContingencyEvent[];
   return entry.stale;
 }
 
-const LOW_MARGIN_FRACTION = 0.2;
-
-const LOW_MARGIN_LABEL: Record<string, string> = {
-  eva_time: "EVA time",
-  energy: "Energy",
-  consumable: "Consumable",
-};
-
 /**
- * Automatic, path-driven warnings: no injected event is needed. As the drill
- * walks the route, consumption grows and every still-passing check whose
- * margin has dropped into the last LOW_MARGIN_FRACTION of its remaining
- * budget is flagged, along with a return margin that is a thin slice of the
- * remaining EVA time. So a marginal plan warns on its own as it unfolds.
+ * Automatic, path-driven warning, with no injected event needed and none
+ * expected: the drill walks the current plan, so "consumed so far plus the
+ * modeled time of the route still ahead" is the projected EVA total. The
+ * backend `remaining_checks` compare consumption against the full budget and
+ * say nothing about the route ahead, and an optimized plan legitimately uses
+ * most of the limit — so an absolute margin threshold would cry wolf on a
+ * healthy plan. This warns only when the remaining route no longer fits (or
+ * nearly no longer fits) the remaining budget, which clears after a replan.
  */
-export function simLowMargins(view: SimulationView): string[] {
-  const warnings: string[] = [];
+export function simRouteFit(view: SimulationView): string[] {
+  const plan = view.state.plan;
+  if (plan.status !== "FEASIBLE_MODELED" || view.state.phase === "INFEASIBLE") return [];
   const eva = view.remaining_checks.find((check) => check.resource === "eva_time");
-  for (const check of view.remaining_checks) {
-    if (!check.satisfied || check.available <= 0) continue;
-    if (check.margin > check.available * LOW_MARGIN_FRACTION) continue;
-    const label = LOW_MARGIN_LABEL[check.resource] ?? check.resource;
-    const left = check.resource === "eva_time"
-      ? minutes(check.margin, 1)
-      : `${fmt(check.margin, 1)} ${check.unit}`;
-    warnings.push(`${label} margin low — ${left} left`);
+  if (!eva || eva.available <= 0) return [];
+  const { phase, leg_index, activity_done_s } = view.state;
+  let remaining = 0;
+  for (let i = leg_index; i < plan.legs.length; i++) {
+    remaining += plan.legs[i]!.time_s * (i === leg_index ? 1 - view.leg_progress : 1);
   }
-  if (eva && eva.available > 0 && view.return_margin_s !== null
-    && view.return_margin_s >= 0 && view.return_margin_s < eva.available * LOW_MARGIN_FRACTION) {
-    warnings.push(`return margin low — ${minutes(view.return_margin_s, 1)} left after returning`);
+  if (phase === "TRAVEL") {
+    for (const stop of plan.stops.slice(leg_index)) remaining += stop.activity_s;
+  } else if (phase === "ACTIVITY") {
+    const stop = plan.stops[leg_index];
+    if (stop) remaining += Math.max(stop.activity_s - activity_done_s, 0);
+    for (const s of plan.stops.slice(leg_index + 1)) remaining += s.activity_s;
   }
-  return warnings;
+  const projected = view.state.consumed.eva_time_s + remaining;
+  // Tolerance covers floating-point noise only, mirroring the backend check.
+  const tolerance = 1e-9 * Math.abs(eva.available);
+  if (projected > eva.available + tolerance) {
+    return [`remaining route exceeds the EVA limit by ${minutes(projected - eva.available, 1)}`];
+  }
+  if (projected > eva.available * 0.95) {
+    return [`remaining route nearly exceeds the EVA limit — ${minutes(eva.available - projected, 1)} left`];
+  }
+  return [];
 }
 
 export function useMission(scenario: MissionScenario) {

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
-import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, simLowMargins, type MissionState } from "./mission";
+import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, simRouteFit, type MissionState } from "./mission";
 import type { MissionScenario, SimulationView, SolvedRun, ValidationReport } from "./types";
 
 function scenario(): MissionScenario {
@@ -63,22 +63,23 @@ function running(input: MissionState): SimulationView {
 }
 
 describe("mission workflow", () => {
-  test("low margins warn automatically from path consumption, without injected events", () => {
+  test("the route-fit warning never fires on a healthy plan, only when the route stops fitting", () => {
+    // consumed equals the whole planned total while only 20% into the first leg:
+    // projected 876 s of 3300 s available. An efficient plan must stay quiet here.
     const base = running(planned());
-    // 2700 s of 3300 s available leaves well over the 20% threshold: quiet.
-    expect(simLowMargins(base)).toEqual([]);
-    // Still passing, but the margin fell into the last 20% of the remaining budget.
-    const thin = structuredClone(base);
-    thin.remaining_checks[0]!.margin = 600;
-    expect(simLowMargins(thin)).toEqual(["EVA time margin low — 10.0 min left"]);
-    // A violated check is already reported as exceeded, not duplicated as low.
-    const violated = structuredClone(base);
-    violated.remaining_checks[0]!.satisfied = false;
-    expect(simLowMargins(violated)).toEqual([]);
-    // A modeled return that is a thin slice of the remaining EVA time is flagged on its own.
-    const thinReturn = structuredClone(base);
-    thinReturn.return_margin_s = 500;
-    expect(simLowMargins(thinReturn)).toEqual(["return margin low — 8.3 min left after returning"]);
+    expect(simRouteFit(base)).toEqual([]);
+    // Projected total lands in the last 5% of the budget: warn before it breaks.
+    const near = structuredClone(base);
+    near.state.consumed.eva_time_s = 3000; // 3000 + 276 ahead = 3276 of 3300
+    expect(simRouteFit(near)).toEqual(["remaining route nearly exceeds the EVA limit — 0.4 min left"]);
+    // Projected total crosses the limit: the route no longer fits.
+    const over = structuredClone(base);
+    over.state.consumed.eva_time_s = 3300; // 3300 + 276 ahead = 3576 of 3300
+    expect(simRouteFit(over)).toEqual(["remaining route exceeds the EVA limit by 4.6 min"]);
+    // An infeasible current plan is reported by its own panel, not double-flagged.
+    const dead = structuredClone(base);
+    dead.state.plan.status = "INFEASIBLE";
+    expect(simRouteFit(dead)).toEqual([]);
   });
 
   test("starts idle with no fabricated plan or saved path", () => {
