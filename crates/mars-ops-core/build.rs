@@ -22,7 +22,7 @@ fn main() {
         }
         _ => "unknown".to_string(),
     };
-    println!("cargo:rustc-env=ARES_GIT_REVISION={revision}");
+    println!("cargo:rustc-env=MARS_OPS_GIT_REVISION={revision}");
     println!("cargo:rerun-if-changed=../../.git/HEAD");
     println!("cargo:rerun-if-changed=../../.git/index");
 }

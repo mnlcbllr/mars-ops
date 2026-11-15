@@ -1,18 +1,18 @@
 [package]
-name = "ares-app"
-description = "HYDE desktop shell: a thin IPC layer over ares-core."
+name = "mars-ops-app"
+description = "MARS-OPS desktop shell: a thin IPC layer over mars-ops-core."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [lib]
-name = "ares_app_lib"
+name = "mars_ops_app_lib"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-ares-core = { path = "../crates/ares-core" }
+mars-ops-core = { path = "../crates/mars-ops-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }

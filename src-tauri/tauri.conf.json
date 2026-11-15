@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "HYDE",
+  "productName": "MARS-OPS",
   "version": "0.1.0",
-  "identifier": "space.ares.planner",
+  "identifier": "space.mars-ops.planner",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "HYDE — Mars excursion planner (research prototype)",
+        "title": "MARS-OPS — Mars excursion planner (research prototype)",
         "width": 1440,
         "height": 900,
         "minWidth": 1100,

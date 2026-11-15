@@ -10,6 +10,7 @@ export interface Workspace {
   slope: Float32Array;
   imagery: HTMLCanvasElement;
   heights: HTMLCanvasElement;
+  infrared: HTMLCanvasElement | null;
 }
 
 export function canvas(width: number, height: number) {
@@ -37,14 +38,15 @@ function raster(bytes: ArrayBuffer, width: number, height: number) {
 
 export async function loadWorkspace(): Promise<Workspace> {
   if (!isTauri()) {
-    throw new Error("Open the HYDE desktop app with bun tauri dev. Dataset access, mission planning and report export require the native runtime, not a regular browser tab.");
+    throw new Error("Open the MARS-OPS desktop app with bun tauri dev. Dataset access, mission planning and report export require the native runtime, not a regular browser tab.");
   }
   const datasets = await api.listDatasets();
   const dataset = datasets[0];
   if (!dataset) throw new Error("No bundled datasets found. Check the app's datasets resource directory.");
   const info = await api.openDataset(dataset.dataset_id);
-  const [packaged, elevationBytes, slopeBytes, imageryBytes] = await Promise.all([
+  const [packaged, elevationBytes, slopeBytes, imageryBytes, infraredBytes] = await Promise.all([
     api.defaultScenario(), api.layer("elevation"), api.layer("slope"), api.layer("imagery"),
+    info.manifest.layers.some((l) => l.kind === "INFRARED_CONTEXT") ? api.layer("infrared_context") : null,
   ]);
   // The user sets every candidate themselves: start with an empty site list.
   // The packaged targets stay with the dataset for the CLI and the report provenance.
@@ -57,17 +59,16 @@ export async function loadWorkspace(): Promise<Workspace> {
     elevationRgba(elevation, info.elevation_min_m ?? 0, info.elevation_max_m ?? 0, rampLut(ELEVATION_RAMP)),
     geo.width, geo.height,
   );
-  const source = new Image();
-  const url = URL.createObjectURL(new Blob([imageryBytes], { type: "image/png" }));
-  let imagery: HTMLCanvasElement;
-  try {
-    source.src = url;
-    await source.decode();
-    const target = canvas(source.naturalWidth, source.naturalHeight);
-    target.context.drawImage(source, 0, 0);
-    imagery = target.image;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-  return { info, scenario, elevation, slope, imagery, heights };
+  const decode = async (bytes: ArrayBuffer) => {
+    const source = new Image();
+    const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    try {
+      source.src = url; await source.decode();
+      const target = canvas(source.naturalWidth, source.naturalHeight);
+      target.context.drawImage(source, 0, 0); return target.image;
+    } finally { URL.revokeObjectURL(url); }
+  };
+  const imagery = await decode(imageryBytes);
+  const infrared = infraredBytes ? await decode(infraredBytes) : null;
+  return { info, scenario, elevation, slope, imagery, heights, infrared };
 }

@@ -4,7 +4,7 @@
 //! Every number here is a model output. The event script is declared in code,
 //! not sampled from Mars, and no result is a claim about NASA performance.
 
-use crate::contingency::{ContingencyKind, ResourceKind};
+use crate::simulation_events::{ContingencyKind, ResourceKind};
 use crate::mission_state::{MissionState, SimulationPhase};
 use crate::planning::{plan_dp, plan_greedy, MissionResult, MissionScenario, PlanStatus};
 use crate::resources::ConstraintCheck;

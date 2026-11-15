@@ -54,6 +54,8 @@ pub enum LayerKind {
     Elevation,
     /// Display imagery (PNG). Not a source of heights.
     Imagery,
+    /// Registered qualitative infrared brightness PNG; not temperature/hazard.
+    InfraredContext,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -342,7 +344,7 @@ pub(crate) mod test_support {
     pub const NODATA: f32 = -3.402_822_6e38;
 
     pub fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("ares-data-test-{}-{tag}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("mars-ops-data-test-{}-{tag}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir

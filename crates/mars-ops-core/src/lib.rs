@@ -1,4 +1,4 @@
-//! HYDE scientific core.
+//! MARS-OPS scientific core.
 //!
 //! Everything that makes a scientific claim lives here, independent of the
 //! desktop shell: reading packaged Mars rasters, terrain metrics, leg routing,
@@ -9,8 +9,10 @@
 //! longitude differences as distances.
 
 pub mod data;
-pub mod benchmark;
 pub mod contingency;
+pub mod mission;
+pub mod benchmark;
+pub mod simulation_events;
 pub mod geo;
 pub mod inspect;
 pub mod mission_state;
@@ -22,6 +24,9 @@ pub mod resources;
 pub mod route;
 pub mod session;
 pub mod terrain;
+
+#[cfg(test)]
+mod mission_tests;
 
 use serde::{Deserialize, Serialize};
 

@@ -25,6 +25,7 @@ pub enum DisplayLayer {
     /// Planning-cell slope: `f32` little-endian degrees, row 0 = north,
     /// `NaN` = unknown.
     Slope,
+    InfraredContext,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -122,6 +123,7 @@ impl Session {
         }
         Ok(match layer {
             DisplayLayer::Imagery => self.dataset.read_layer_verified(LayerKind::Imagery)?,
+            DisplayLayer::InfraredContext => self.dataset.read_layer_verified(LayerKind::InfraredContext)?,
             DisplayLayer::Elevation => f32_le(self.dataset.elevation.data.iter().copied()),
             DisplayLayer::Slope => f32_le(self.known_slope()),
         })
@@ -177,6 +179,12 @@ impl Session {
             SolverChoice::Greedy => plan_greedy(&self.grid, &scenario),
             SolverChoice::ExactSubset => plan_dp(&self.grid, &scenario),
         };
+        Ok(MissionReport::new(&self.dataset, &self.grid, scenario, result))
+    }
+
+    pub fn solve_exact(&self, scenario: MissionScenario) -> Result<MissionReport, SessionError> {
+        self.check_dataset(&scenario)?;
+        let result = crate::planning::plan_exact_small(&self.grid, &scenario);
         Ok(MissionReport::new(&self.dataset, &self.grid, scenario, result))
     }
 }
@@ -330,7 +338,7 @@ mod tests {
         assert!(session.validate(&scenario).unwrap().ok);
 
         let report = session.solve(scenario.clone()).unwrap();
-        assert_eq!(report.software, "HYDE");
+        assert_eq!(report.software, "MARS-OPS");
         assert_eq!(report.report_schema_version, 1);
         assert_eq!(report.result.solver.name, "ExactSubsetDp");
         assert_eq!(report.result.status, PlanStatus::FeasibleModeled);
@@ -363,7 +371,7 @@ mod tests {
         for path in [&first, &second] {
             assert_eq!(path.parent().unwrap(), out);
             let name = path.file_name().unwrap().to_str().unwrap();
-            assert!(name.starts_with("hyde-report_tiny_") && name.ends_with(".json"), "{name}");
+            assert!(name.starts_with("mars-ops-report_tiny_") && name.ends_with(".json"), "{name}");
             let read_back: MissionReport = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
             assert_eq!(read_back, report);
         }
@@ -378,14 +386,14 @@ mod tests {
         let out = temp_dir("name-out");
         let path = report.write_to_dir(&out).unwrap();
         // '.', '.', '/' and ' ' each become '_'.
-        assert_eq!(path, out.join("hyde-report____evil_id_20261114T050607Z.json"));
+        assert_eq!(path, out.join("mars-ops-report____evil_id_20261114T050607Z.json"));
     }
 
     #[test]
     fn legacy_report_branding_remains_readable() {
         let session = open("legacy-report");
         let mut legacy = session.solve(scenario(&session, "tiny")).unwrap();
-        legacy.software = "ARES — Adaptive Resource & Exploration System".into();
+        legacy.software = "MARS-OPS — Adaptive Resource & Exploration System".into();
         // Wall-clock timing precision is unrelated to branding compatibility.
         legacy.result.timing.routing_ms = 0.0;
         legacy.result.timing.planning_ms = 0.0;

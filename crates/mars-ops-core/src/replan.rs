@@ -95,6 +95,7 @@ fn exclusion_code(error: &RouteError) -> &'static str {
         RouteError::UnknownTerrainAtEndpoint { .. } => "SiteOnUnknownTerrain",
         RouteError::SlopeRuleAtEndpoint { .. } => "SiteOnSteepTerrain",
         RouteError::EndpointBlocked { .. } => "SiteBlockedByContingency",
+        RouteError::BlockedByEvent => "BlockedByEvent",
     }
 }
 

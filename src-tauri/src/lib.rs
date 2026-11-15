@@ -1,19 +1,19 @@
-//! HYDE desktop shell: a thin IPC layer over `ares_core::session`.
+//! MARS-OPS desktop shell: a thin IPC layer over `mars_ops_core::session`.
 //!
 //! No science happens here. Each command hands the request to the core and
 //! returns its answer. The webview gets no filesystem, shell or network
 //! access: datasets are read only from the bundled resource directory, and
 //! reports are written only to one fixed folder.
 
-use ares_core::contingency::ContingencyKind;
-use ares_core::data::{dataset_dir, find_datasets, DatasetSummary};
-use ares_core::inspect::PointInspection;
-use ares_core::mission_state::{MissionState, SimulationView};
-use ares_core::planning::{MissionScenario, ValidationReport};
-use ares_core::report::MissionReport;
-use ares_core::report::{utc_iso8601, write_new};
-use ares_core::session::{DatasetInfo, DisplayLayer, Session};
-use ares_core::LocalPoint;
+use mars_ops_core::simulation_events::ContingencyKind;
+use mars_ops_core::data::{dataset_dir, find_datasets, DatasetSummary};
+use mars_ops_core::inspect::PointInspection;
+use mars_ops_core::mission_state::{MissionState, SimulationView};
+use mars_ops_core::planning::{MissionScenario, ValidationReport};
+use mars_ops_core::report::MissionReport;
+use mars_ops_core::report::{utc_iso8601, write_new};
+use mars_ops_core::session::{DatasetInfo, DisplayLayer, Session};
+use mars_ops_core::LocalPoint;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -158,7 +158,7 @@ fn start_simulation(state: State<'_, AppState>, run_id: u64) -> Result<Simulatio
 
 fn with_simulation(
     state: &State<'_, AppState>,
-    change: impl FnOnce(&mut MissionState, &ares_core::terrain::PlanningGrid) -> Result<(), String>,
+    change: impl FnOnce(&mut MissionState, &mars_ops_core::terrain::PlanningGrid) -> Result<(), String>,
 ) -> Result<SimulationView, String> {
     let session = current(state)?;
     let mut guard = lock(&state.simulation);
@@ -211,7 +211,7 @@ fn clear_simulation(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// Write the run that is on screen to `Documents/ARES/reports` and return the
+/// Write the run that is on screen to `Documents/MARS-OPS/reports` and return the
 /// file's path. The webview cannot choose the location.
 #[tauri::command(rename_all = "snake_case")]
 fn export_mission_report(
@@ -233,7 +233,7 @@ fn export_mission_report(
                 simulation
                     .check_dataset(&session.dataset.manifest.dataset_id)
                     .map_err(message)?;
-                report.simulation = Some(simulation.record(&session.grid));
+                report.simulation = Some(mars_ops_core::report::ReportSimulation::Timed(simulation.record(&session.grid)));
                 report.disclaimers.push(
                     "Simulation events are declared model inputs, not observations from Mars."
                         .into(),
@@ -243,14 +243,14 @@ fn export_mission_report(
     }
     let documents = app.path().document_dir().or_else(|_| app.path().app_data_dir()).map_err(message)?;
     // Retain the legacy storage location so a branding change does not relocate user reports.
-    let path = report.write_to_dir(&documents.join("ARES").join("reports")).map_err(message)?;
+    let path = report.write_to_dir(&documents.join("MARS-OPS").join("reports")).map_err(message)?;
     Ok(path.display().to_string())
 }
 
 /// Directory for user-saved mission plans: scenarios without a solved result.
 fn plans_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let documents = app.path().document_dir().or_else(|_| app.path().app_data_dir()).map_err(message)?;
-    Ok(documents.join("ARES").join("plans"))
+    Ok(documents.join("MARS-OPS").join("plans"))
 }
 
 #[derive(serde::Serialize)]
@@ -260,7 +260,7 @@ struct PlanSummary {
     dataset_id: String,
 }
 
-/// Save the edited scenario as pretty JSON in `Documents/ARES/plans` and
+/// Save the edited scenario as pretty JSON in `Documents/MARS-OPS/plans` and
 /// return the file's path. The webview cannot choose the location. A plan
 /// holds no result: load it and run the mission again.
 #[tauri::command]
@@ -270,7 +270,7 @@ fn save_plan(app: AppHandle, scenario: MissionScenario) -> Result<String, String
     let id: String = scenario.dataset_id.chars().map(|c| if keep(c) { c } else { '_' }).collect();
     let seconds = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let stamp: String = utc_iso8601(seconds).chars().filter(char::is_ascii_alphanumeric).collect();
-    let path = write_new(&plans_dir(&app)?, &format!("hyde-plan_{id}_{stamp}"), &json).map_err(message)?;
+    let path = write_new(&plans_dir(&app)?, &format!("mars-ops-plan_{id}_{stamp}"), &json).map_err(message)?;
     Ok(path.display().to_string())
 }
 
@@ -349,5 +349,5 @@ pub fn run() {
             load_plan,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running HYDE");
+        .expect("error while running MARS-OPS");
 }

@@ -1,4 +1,4 @@
-//! Typed contingency events for a running simulated mission.
+//! Typed events for the time-based simulation (legacy waypoint events live in `contingency`).
 //!
 //! Events are declared inputs, not observations: a blocked corridor is a
 //! hypothetical constraint, a delay is simulated extra time, and a resource

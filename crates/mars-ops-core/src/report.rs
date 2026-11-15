@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Source revision the core was built from (`unknown` outside a git checkout).
-pub const CODE_REVISION: &str = env!("ARES_GIT_REVISION");
+pub const CODE_REVISION: &str = env!("MARS_OPS_GIT_REVISION");
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LayerRef {
@@ -39,6 +39,14 @@ pub struct PlanningGridRef {
     pub raster_cells_per_planning_cell: usize,
 }
 
+/// Preserve schema-v1 waypoint reports alongside the time-based simulation record.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ReportSimulation {
+    Timed(SimulationRecord),
+    Waypoint(crate::mission::MissionState),
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MissionReport {
     pub report_schema_version: u32,
@@ -53,7 +61,7 @@ pub struct MissionReport {
     /// Present when the run was advanced in the stateful simulation. Optional
     /// so schema-v1 reports written before simulation existed still read back.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub simulation: Option<SimulationRecord>,
+    pub simulation: Option<ReportSimulation>,
     /// What this report must not be read as.
     pub disclaimers: Vec<String>,
 }
@@ -100,7 +108,7 @@ impl MissionReport {
         MissionReport {
             report_schema_version: 1,
             generated_utc: utc_iso8601(now),
-            software: "HYDE".into(),
+            software: "MARS-OPS".into(),
             software_version: env!("CARGO_PKG_VERSION").into(),
             code_revision: CODE_REVISION.into(),
             dataset: DatasetRef {
@@ -164,7 +172,7 @@ impl MissionReport {
         let id: String =
             self.dataset.dataset_id.chars().map(|c| if keep(c) { c } else { '_' }).collect();
         let stamp: String = self.generated_utc.chars().filter(char::is_ascii_alphanumeric).collect();
-        write_new(dir, &format!("hyde-report_{id}_{stamp}"), &json)
+        write_new(dir, &format!("mars-ops-report_{id}_{stamp}"), &json)
     }
 }
 
@@ -225,7 +233,7 @@ mod tests {
         assert!(!old_json.contains("\"simulation\""));
         assert_eq!(serde_json::from_str::<MissionReport>(&old_json).unwrap(), report);
 
-        report.simulation = Some(SimulationRecord {
+        report.simulation = Some(ReportSimulation::Timed(SimulationRecord {
             schema_version: 1,
             phase: SimulationPhase::Travel,
             elapsed_s: 0.0,
@@ -246,9 +254,16 @@ mod tests {
             remaining_budget: time_only(600.0, 60.0),
             remaining_checks: Vec::new(),
             return_margin_s: Some(0.0),
-        });
+        }));
         let new_json = serde_json::to_string(&report).unwrap();
         assert!(new_json.contains("\"simulation\""));
         assert_eq!(serde_json::from_str::<MissionReport>(&new_json).unwrap(), report);
+        let (grid, scenario) = crate::mission_tests::fixture();
+        let plan = crate::planning::plan_greedy(&grid, &scenario);
+        report.simulation = Some(ReportSimulation::Waypoint(
+            crate::mission::MissionState::start(scenario, plan, "legacy-fixture".into()).unwrap(),
+        ));
+        let legacy_json = serde_json::to_string(&report).unwrap();
+        assert_eq!(serde_json::from_str::<MissionReport>(&legacy_json).unwrap(), report);
     }
 }

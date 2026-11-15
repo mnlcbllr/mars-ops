@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { ContextMenu } from "@base-ui/react/context-menu";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
 import { SimulationPanel } from "@/components/SimulationPanel";
@@ -7,9 +8,15 @@ import { Button } from "@/components/ui/button";
 import { api, errorText } from "@/lib/api";
 import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
-import { markersFor } from "@/lib/markers";
+import { markersFor, type Marker } from "@/lib/markers";
+import { mapShortcut, type PlacementMode } from "@/lib/mapInteraction";
 import { addedSite, useMission } from "@/lib/mission";
 import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@/lib/types";
+
+/** Results panel geometry: nav bar + minimum map area kept visible above it. */
+const RESULTS_DEFAULT = 360;
+const RESULTS_MIN = 140;
+const MAP_KEEP = 260;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
 // Stable identities: new array literals here would rebuild the 3D overlay every render (visible blink).
@@ -19,10 +26,14 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const mission = useMission(workspace.scenario);
   const { state } = mission;
   const { scenario, run, phase } = state;
-  const [layer, setLayer] = useState<"imagery" | "heights">("imagery");
+  const [layer, setLayer] = useState<"imagery" | "heights" | "infrared">("imagery");
   const [showHazards, setShowHazards] = useState(true);
   const [placingBase, setPlacingBase] = useState(false);
   const [placingSite, setPlacingSite] = useState(false);
+  const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
+  const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLElement>(null);
   const [pickingBlock, setPickingBlock] = useState(false);
   const [blockCenter, setBlockCenter] = useState<LocalPoint | null>(null);
   const [blockRadius, setBlockRadius] = useState(40);
@@ -44,6 +55,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const maxSlope = scenario.model.max_slope_deg.value;
 
   useEffect(() => () => { inspection.current++; }, []);
+  // Discard terrain checks started before an edit, solve or simulation lock.
+  useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -59,7 +72,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   }, [blocked, grid.raster_cells_per_planning_cell]);
 
   const texture = useMemo(() => {
-    const base = workspace[layer];
+    const base = workspace[layer] ?? workspace.imagery;
     if (!hazards && !blockedOverlay) return base;
     const { image, context } = canvas(base.width, base.height);
     context.drawImage(base, 0, 0);
@@ -72,14 +85,21 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const shownPlan = simulation
     ? simulation.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan : simulation.state.initial_plan
     : result;
-  const markers = useMemo(() => markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
-    .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m)),
-  [shownScenario, shownPlan, simulation?.state.completed_sites]);
+  const markers = useMemo(() => {
+    const base = markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
+      .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m));
+    // Transient crosshair at the right-click point while the context menu is open.
+    const target: Marker | null = contextPoint && Number.isFinite(contextPoint.x_m) && Number.isFinite(contextPoint.y_m)
+      ? { kind: "target", id: "target", x_m: contextPoint.x_m, y_m: contextPoint.y_m, glyph: "", label: "" }
+      : null;
+    return target ? [...base, target] : base;
+  }, [shownScenario, shownPlan, simulation?.state.completed_sites, contextPoint]);
   const pov = useMemo(() => preview ? { point: preview.point, label: preview.label } : null, [preview]);
   const blockPreview = useMemo(() => pickingBlock && blockCenter ? { center: blockCenter, radius_m: blockRadius } : null,
     [pickingBlock, blockCenter, blockRadius]);
 
   const edit = (updated: MissionScenario) => {
+    if (busy) return;
     if (editingLocked) { setMapError("Reset the simulation before editing the scenario."); return; }
     inspection.current++;
     setInspected(null);
@@ -88,7 +108,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   };
 
   /** Apply a terrain-checked point to a placement mode; false means it was rejected. */
-  const place = (mode: "base" | "site", value: PointInspection): boolean => {
+  const place = (mode: PlacementMode, value: PointInspection): boolean => {
+    if (busy || editingLocked) return false;
     if (value.terrain !== "TRAVERSABLE") {
       setMapError(mode === "base"
         ? "Choose a base inside known terrain and within the declared slope limit."
@@ -113,7 +134,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
       if (request !== inspection.current) return;
       setInspected(value);
       setMapError(null);
-      if (busy) return;
+      if (busy || editingLocked) return;
       const mode = placingBase ? "base" : placingSite ? "site" : null;
       if (mode && place(mode, value)) {
         if (mode === "base") setPlacingBase(false); else setPlacingSite(false);
@@ -127,7 +148,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   // The click before the button counts: when a mode is switched on, the most
   // recently inspected point is re-checked and placed immediately. A newer
   // map click or toggle supersedes it, so only one placement can ever happen.
-  const togglePlacing = (mode: "base" | "site") => {
+  const togglePlacing = (mode: PlacementMode, useInspected = true) => {
+    if (busy) return;
     if (editingLocked) { setMapError("Reset the simulation before editing the scenario."); return; }
     setPickingBlock(false);
     const request = ++inspection.current;
@@ -135,7 +157,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
     const enabling = mode === "base" ? !placingBase : !placingSite;
     setPlacingBase(mode === "base" ? enabling : false);
     setPlacingSite(mode === "site" ? enabling : false);
-    if (enabling && !busy && inspected && Number.isFinite(maxSlope)) {
+    if (enabling && useInspected && inspected && Number.isFinite(maxSlope)) {
       void api.inspect(inspected.local, maxSlope).then((value) => {
         if (request !== inspection.current) return;
         setInspected(value);
@@ -143,6 +165,30 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           if (mode === "base") setPlacingBase(false); else setPlacingSite(false);
         }
       }, (failure) => { if (request === inspection.current) setMapError(errorText(failure)); });
+    }
+  };
+
+  const cancelPlacement = () => {
+    inspection.current++;
+    setPlacingBase(false);
+    setPlacingSite(false);
+    setPickingBlock(false);
+    setMapError(null);
+  };
+
+  const placeAtContext = async (mode: PlacementMode) => {
+    if (!contextPoint || busy || editingLocked) return;
+    cancelPlacement();
+    mapRef.current?.focus({ preventScroll: true });
+    if (!Number.isFinite(maxSlope)) { setMapError("Enter a valid slope limit before placing a point."); return; }
+    const request = ++inspection.current;
+    try {
+      const value = await api.inspect(contextPoint, maxSlope);
+      if (request !== inspection.current) return;
+      setInspected(value);
+      place(mode, value);
+    } catch (failure) {
+      if (request === inspection.current) setMapError(errorText(failure));
     }
   };
 
@@ -173,26 +219,33 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
 
   return <main className="flex h-full flex-col bg-background text-foreground">
     <header className="flex min-h-14 shrink-0 items-center gap-4 border-b px-5">
-      <h1 className="text-lg font-semibold tracking-widest">HYDE</h1>
+      <h1 className="text-lg font-semibold tracking-widest">MARS-OPS</h1>
       <span className="min-w-0 truncate text-sm text-muted-foreground">{workspace.info.manifest.display_name}</span>
       <span className="shrink-0 rounded border px-2 py-1 text-xs">{workspace.info.real_data_verified ? "Data verified" : "Data unverified"}</span>
       <span className="ml-auto text-xs text-muted-foreground">Research prototype · not flight software</span>
       <Button type="button" variant="outline" size="sm" disabled={busy || !run} onClick={() => void mission.exportReport()}>
         {phase === "exporting" ? "Exporting…" : "Export JSON"}
       </Button>
-      <Button form="mission-scenario" type="submit" size="sm" disabled={busy || placingBase || editingLocked}>
+      <Button form="mission-scenario" type="submit" size="sm" disabled={busy || placingBase || placingSite || editingLocked}>
         {phase === "validating" ? "Validating…" : phase === "solving" ? "Planning…" : "Run mission"}
       </Button>
     </header>
-    <div className="flex min-h-0 flex-1">
+    <div ref={rowRef} className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         <nav aria-label="Map controls" className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
           <Button size="sm" variant={layer === "imagery" ? "secondary" : "ghost"} aria-pressed={layer === "imagery"} onClick={() => setLayer("imagery")}>Imagery</Button>
           <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
+          {workspace.infrared && <Button size="sm" variant={layer === "infrared" ? "secondary" : "ghost"} aria-pressed={layer === "infrared"} onClick={() => setLayer("infrared")}>THEMIS · 100 m</Button>}
           <label className="ml-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Slope / unknown</label>
+          <div className="ml-auto flex gap-1">
+            <Button type="button" size="sm" variant={placingBase ? "secondary" : "ghost"} aria-pressed={placingBase}
+              disabled={busy || editingLocked} onClick={() => { togglePlacing("base", false); mapRef.current?.focus(); }}>Base <kbd className="text-[10px] text-muted-foreground">B</kbd></Button>
+            <Button type="button" size="sm" variant={placingSite ? "secondary" : "ghost"} aria-pressed={placingSite}
+              disabled={busy || editingLocked} onClick={() => { togglePlacing("site", false); mapRef.current?.focus(); }}>Candidate <kbd className="text-[10px] text-muted-foreground">C</kbd></Button>
+          </div>
         </nav>
-        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base.</p>}
-        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site.</p>}
+        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base. Esc to cancel.</p>}
+        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site. Esc to cancel.</p>}
         {pickingBlock && <p role="status" className="border-b px-4 py-2 text-xs">Click the map to set the blocked-corridor centre; confirm it in the simulation panel.</p>}
         {editingLocked && <p className="border-b px-4 py-2 text-xs">Simulation active — reset it to edit the scenario.</p>}
         {preview && <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-xs">
@@ -200,7 +253,18 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button type="button" size="sm" variant="outline" onClick={() => { setPreview(null); setViewReset((n) => n + 1); }}>Return to overview</Button>
         </div>}
         {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
-        <section aria-label="Terrain map" className="relative min-h-40 flex-1">
+        <ContextMenu.Root onOpenChange={(open) => { if (!open) setContextPoint(null); }}>
+        <ContextMenu.Trigger render={<section ref={mapRef} tabIndex={0} aria-label="Terrain map" aria-describedby="map-shortcuts"
+          aria-keyshortcuts="B C Escape" className="relative min-h-40 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" />}
+          onPointerDownCapture={(event) => { if (event.target instanceof HTMLCanvasElement) mapRef.current?.focus({ preventScroll: true }); }}
+          onKeyDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            const action = mapShortcut({ ...event, isComposing: event.nativeEvent.isComposing });
+            if (!action) return;
+            event.preventDefault();
+            if (action === "cancel") cancelPlacement();
+            else togglePlacing(action, false);
+          }}>
           <Terrain3D
             elevation={workspace.elevation} width={geo.width} height={geo.height}
             dx={geo.cell_size_x_m} dy={geo.cell_size_y_m} step={4} texture={texture}
@@ -211,14 +275,33 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             blockPreview={blockPreview}
             pov={pov}
             selectedLeg={selectedLeg}
-            inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick} onMesh={() => {}}
+            inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
+            onContextPick={setContextPoint} onMesh={() => {}}
           />
           <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">
             {inspected ? <><p>{latLon(inspected.latlon)}</p>
               <p>{fmt(inspected.elevation_m, 1)} m · {fmt(inspected.slope_deg, 1)}° · {inspected.terrain.replaceAll("_", " ").toLowerCase()}</p></>
               : <p>Click the map to inspect elevation, slope and coverage.</p>}
+            {layer === "infrared" && <p>DERIVED · Odyssey infrared brightness, not temperature or hazards</p>}
           </div>
-        </section>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner className="z-50" sideOffset={4}>
+            <ContextMenu.Popup className="min-w-52 rounded-lg border bg-background p-1 text-sm shadow-xl outline-none">
+              <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => void placeAtContext("base")}>Place base here <kbd className="text-xs text-muted-foreground">B</kbd></ContextMenu.Item>
+              <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => void placeAtContext("site")}>Add candidate here <kbd className="text-xs text-muted-foreground">C</kbd></ContextMenu.Item>
+              {(editingLocked || !contextPoint) && <p className="max-w-56 px-3 py-2 text-xs text-muted-foreground">
+                {editingLocked ? "Reset the simulation to edit locations." : "Right-click the terrain to choose a location."}
+              </p>}
+            </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
+        </ContextMenu.Root>
+        <p id="map-shortcuts" className="border-t px-4 py-1 text-[11px] text-muted-foreground">Right-click to place · With map focused: B base, C candidate, Esc cancel · Shift + drag to pan</p>
         {simulation && (() => {
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;
@@ -255,7 +338,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
           </div>;
         })()}
-        <MissionResults
+        <VResize height={resultsHeight} onHeight={setResultsHeight} min={RESULTS_MIN}
+          containerRef={rowRef} defaultHeight={RESULTS_DEFAULT} />
+        <div className="flex shrink-0 flex-col overflow-hidden" style={{ height: resultsHeight }}>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <MissionResults
           state={state}
           selectedLeg={selectedLeg}
           onSelectLeg={selectLeg}
@@ -273,6 +360,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             void mission.runWith(updated);
           }}
         />
+          </div>
+        </div>
       </div>
       <aside aria-label="Mission configuration" className="w-[360px] shrink-0 space-y-5 overflow-y-auto border-l p-4 text-sm">
         <SimulationPanel
@@ -321,13 +410,52 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           {workspace.info.manifest.layers.map((source) => <div key={source.id} className="space-y-1 break-words text-xs text-muted-foreground">
             <p>{source.instrument} · {source.origin_type}</p><p>{source.product_id}</p><p>{source.observation_date}</p>
             <p>{source.license_and_credit}</p>
+            <details><summary className="cursor-pointer">Coverage, processing & uncertainty</summary>
+              <p>Source: {source.source_url}</p><p>SHA-256: {source.sha256_derived}</p>
+              <p>Projected extent: {source.bbox_projected_m?.join(", ") ?? "unknown"}</p>
+              {source.processing_steps.map((s, i) => <p key={i}>{s}</p>)}
+              {source.quality_notes.map((s, i) => <p key={i}>{s}</p>)}
+            </details>
           </div>)}
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <p><strong>Additional science layers:</strong> available in <code>datasets/jezero-small/01-optical</code>…<code>08-chemical</code> (HiRISE, THEMIS, CRISM, topography, geophysics, atmospheric, radiation, PIXL/APXS) with <code>SHA256SUMS.txt</code> and <code>SOURCE-LINKS.csv</code>. Overlays not yet wired into the UI; verify provenance before use.</p>
-          </div>
+          <p className="text-xs text-muted-foreground">Archive only: CRISM spectral crop (not yet interpreted), global GMM-3 gravity (too coarse for local routing), MEDA sol 45 and PIXL sol 125 (no verified crop-local measurement positions). No radiation or weather hazard map.</p>
         </details>
         <p className="text-xs text-muted-foreground">Slope limits, resource rates and candidates are assumptions — orbital data cannot establish astronaut safety.</p>
       </aside>
     </div>
   </main>;
+}
+
+/** Horizontal drag handle that resizes the results panel below the map. */
+function VResize({ height, onHeight, min, containerRef, defaultHeight }: {
+  height: number;
+  onHeight: (height: number) => void;
+  min: number;
+  containerRef: RefObject<HTMLDivElement | null>;
+  defaultHeight: number;
+}) {
+  const start = useRef<{ y: number; h: number } | null>(null);
+  const max = () => Math.max(min + 40, (containerRef.current?.clientHeight ?? 640) - MAP_KEEP);
+  const clamp = (value: number) => Math.min(max(), Math.max(min, Math.round(value)));
+  return <div role="separator" aria-orientation="horizontal" aria-label="Results panel height"
+    aria-valuenow={height} aria-valuemin={min} aria-valuemax={max()}
+    tabIndex={0} title="Drag to resize the results panel · double-click to reset"
+    className="group flex h-3.5 shrink-0 cursor-row-resize touch-none items-center justify-center outline-none focus-visible:bg-muted/60"
+    onPointerDown={(e) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      start.current = { y: e.clientY, h: height };
+    }}
+    onPointerMove={(e) => {
+      if (start.current) onHeight(clamp(start.current.h - (e.clientY - start.current.y)));
+    }}
+    onPointerUp={() => { start.current = null; }}
+    onPointerCancel={() => { start.current = null; }}
+    onDoubleClick={() => onHeight(defaultHeight)}
+    onKeyDown={(e) => {
+      if (e.key === "ArrowUp") { e.preventDefault(); onHeight(clamp(height + 24)); }
+      if (e.key === "ArrowDown") { e.preventDefault(); onHeight(clamp(height - 24)); }
+      if (e.key === "Home") { e.preventDefault(); onHeight(max()); }
+      if (e.key === "End") { e.preventDefault(); onHeight(min); }
+    }}>
+    <span aria-hidden="true" className="h-1 w-24 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-muted-foreground/70" />
+  </div>;
 }

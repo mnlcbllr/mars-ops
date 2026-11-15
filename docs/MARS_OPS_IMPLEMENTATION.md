@@ -1,6 +1,6 @@
 # MARS-OPS implementation notes
 
-This document records what the current HYDE repository actually implements, how to reproduce it, and what remains blocked. The original specification (`HYDE_PROJECT_CONTEXT_AND_VALIDATION.md`) still governs scope and safety.
+This document records what the current MARS-OPS repository actually implements, how to reproduce it, and what remains blocked. The original specification (`MARS-OPS_PROJECT_CONTEXT_AND_VALIDATION.md`) still governs scope and safety.
 
 ## What works
 
@@ -10,7 +10,7 @@ This document records what the current HYDE repository actually implements, how 
 - **Exact discrete planner with fallback.** `ExactSubsetDp` performs Held-Karp subset and order optimization over the routed leg table at minimum activity durations, then uses the shared greedy dwell extension. `GreedyPlanner` is retained as the transparent baseline and is used when the exact search finishes no better or exhausts its 2.5 s wall-clock budget.
 - **Benchmark harness.** `Session::benchmark` and the CLI `benchmark` command run both solvers on identical open and contingency cases and can write a machine-readable JSON document.
 - **Compact UI.** The existing 3D map remains the only map. It overlays revised routes, the simulated position, corridor preview and blocked cells. The right rail exposes start, advance, boundary advance, event injection, replan, reset, before/after totals and `INFEASIBLE` reasons. Scenario editing is locked while a drill is active.
-- **Report export.** `hyde-report_*.json` keeps schema version 1 and now includes an optional `simulation` object with phase, event timeline, completed work, revised plan, remaining checks, return margin and replan count. Reports without that object still parse.
+- **Report export.** `mars-ops-report_*.json` keeps schema version 1 and now includes an optional `simulation` object with phase, event timeline, completed work, revised plan, remaining checks, return margin and replan count. Reports without that object still parse.
 
 ## Tauri commands added or extended
 
@@ -25,14 +25,14 @@ This document records what the current HYDE repository actually implements, how 
 | `clear_simulation()` | Discard the drill and restore the editable scenario. |
 | `export_mission_report(run_id)` | Existing command; now attaches the simulation record when the exported run owns the active simulation. |
 
-Rust APIs live in `ares-core`: `contingency`, `replan`, `mission_state`, `benchmark`, `route::BlockOverlay`, `planning::plan_dp`, `session::{SolverChoice, solve_with, benchmark}`. TypeScript mirrors them in `src/lib/types.ts`, `src/lib/api.ts` and `src/lib/mission.ts`.
+Rust APIs live in `mars-ops-core`: `contingency`, `replan`, `mission_state`, `benchmark`, `route::BlockOverlay`, `planning::plan_dp`, `session::{SolverChoice, solve_with, benchmark}`. TypeScript mirrors them in `src/lib/types.ts`, `src/lib/api.ts` and `src/lib/mission.ts`.
 
 ## Benchmark (bundled Jezero scenario)
 
 Command:
 
 ```sh
-cargo run -p ares-cli -- benchmark datasets/jezero-small --out benchmark.json
+cargo run -p mars-ops-cli -- benchmark datasets/jezero-small --out benchmark.json
 ```
 
 Measured on this checkout:
@@ -61,9 +61,9 @@ The contingency script is declared in code, not sampled: 10 min walk, 20 min del
 Repeatable headless checks:
 
 ```sh
-cargo run -p ares-cli -- plan datasets/jezero-small
-cargo run -p ares-cli -- benchmark datasets/jezero-small --out /tmp/mars-ops-benchmark.json
-cargo run -p ares-cli -- verify-manifest datasets/jezero-small
+cargo run -p mars-ops-cli -- plan datasets/jezero-small
+cargo run -p mars-ops-cli -- benchmark datasets/jezero-small --out /tmp/mars-ops-benchmark.json
+cargo run -p mars-ops-cli -- verify-manifest datasets/jezero-small
 ```
 
 `SHA256SUMS.txt` is absent from this checkout, so an external archive checksum comparison cannot be run. `verify-manifest` still re-verifies every manifest-declared layer hash and reports `REAL DATA VERIFIED` for the bundled crop.
@@ -84,9 +84,9 @@ No CRISM, THEMIS, MEDA or PIXL layer was added. Those archives are absent locall
 cargo test --workspace
 bun test src
 bun run build
-cargo run -p ares-cli -- plan datasets/jezero-small
-cargo run -p ares-cli -- benchmark datasets/jezero-small
-cargo run -p ares-cli -- verify-manifest datasets/jezero-small
+cargo run -p mars-ops-cli -- plan datasets/jezero-small
+cargo run -p mars-ops-cli -- benchmark datasets/jezero-small
+cargo run -p mars-ops-cli -- verify-manifest datasets/jezero-small
 ```
 
 Relevant automated coverage:

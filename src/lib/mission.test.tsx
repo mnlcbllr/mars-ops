@@ -18,13 +18,13 @@ function solved(input = scenario()): SolvedRun {
   return {
     run_id: 17,
     report: {
-      report_schema_version: 1, generated_utc: "2026-11-14T00:00:00Z", software: "HYDE", software_version: "test", code_revision: "test",
+      report_schema_version: 1, generated_utc: "2026-11-14T00:00:00Z", software: "MARS-OPS", software_version: "test", code_revision: "test",
       dataset: { dataset_id: input.dataset_id, manifest_sha256: "test", real_data_verified: false, layers: [] },
       planning_grid: { cell_x_m: 4, cell_y_m: 4, raster_cells_per_planning_cell: 4 },
       scenario: input, disclaimers: ["Research prototype; not flight software."],
       result: {
         status: "FEASIBLE_MODELED", solver: { name: "Test planner", version: "1", description: "Synthetic fixture; no optimality claim." },
-        stops: [{ site_id: "S1", arrive_s: 240, activity_s: 60, depart_s: 300, utility: 1.25 }],
+        stops: [{ site_id: "S1", arrive_s: 420, activity_s: 60, depart_s: 480, utility: 1.25 }],
         legs: [
           { from: "BASE", to: "S1", path: [input.base, input.sites[0]!.position], elevation_m: [-2600, -2590], distance_m: 123, time_s: 120, ascent_m: 10, descent_m: 0, max_slope_deg: 5, cells_expanded: 12 },
           { from: "S1", to: "BASE", path: [input.sites[0]!.position, input.base], elevation_m: [-2590, -2600], distance_m: 123, time_s: 120, ascent_m: 0, descent_m: 10, max_slope_deg: 5, cells_expanded: 12 },
@@ -219,7 +219,7 @@ describe("mission workflow", () => {
     expect(original).toEqual(before);
     expect(first.model.max_slope_deg.value).toBe(10);
     expect(first.model.max_slope_deg.source_type).toBe("USER_DEFINED");
-    expect(first.model.max_slope_deg.citation_or_assumption).toStartWith("User-edited in HYDE. ");
+    expect(first.model.max_slope_deg.citation_or_assumption).toStartWith("User-edited in MARS-OPS. ");
     expect(first.model.max_slope_deg.range).toBeNull();
     expect(second.model.max_slope_deg.version).toBe(original.model.max_slope_deg.version + 2);
     expect(second.model.max_slope_deg.citation_or_assumption).toBe(first.model.max_slope_deg.citation_or_assumption);
@@ -227,6 +227,17 @@ describe("mission workflow", () => {
 });
 
 describe("mission presentation", () => {
+  test("results show engine-backed budgets and an interactive round-trip timeline", () => {
+    const state = planned();
+    const html = renderToStaticMarkup(<MissionResults state={state} selectedLeg={0} onSelectLeg={() => {}} />);
+    expect(html).toContain('aria-label="Planned resource budgets"');
+    expect(html).toContain('aria-label="Mission timeline chart"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("left:50%;width:20%");
+    expect(html).toContain("left:70%;width:10%");
+    expect(html).toContain("left:80%;width:20%");
+    expect(html).not.toContain("Resource endpoints match planner totals; shape from declared rates");
+  });
   const render = (state: MissionState) => renderToStaticMarkup(<MissionResults state={state} selectedLeg={null} onSelectLeg={() => {}} />);
 
   test("before a run, metrics and feasibility are not invented", () => {

@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars, RouteGraph } from "@/components/MissionCharts";
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
 import { simPlanStale, type MissionState } from "@/lib/mission";
 import type {
-  CandidateInsight, ConstraintCheck, MissionResult, MissionScenario, PlanStatus,
+  CandidateInsight, MissionResult, MissionScenario, PlanStatus,
   ResourceUse, ScientificSite, SimulationView,
 } from "@/lib/types";
 
@@ -19,13 +20,6 @@ const SIM_PHASE: Record<SimulationView["state"]["phase"], string> = {
 
 type ChartPoint = { label: string; value: number };
 
-function resourceMeta(check: ConstraintCheck) {
-  const scale = check.resource === "eva_time" ? 60 : 1;
-  const unit = check.resource === "eva_time" ? "min" : check.unit;
-  const label = check.resource === "eva_time" ? "EVA time" : check.resource === "energy" ? "Energy" : "Consumable";
-  return { label, unit, scale };
-}
-
 function siteById(scenario: MissionScenario, id: string): ScientificSite | undefined {
   return scenario.sites.find((site) => site.id === id);
 }
@@ -36,23 +30,13 @@ function statusLabel(status: string) {
   return "Excluded";
 }
 
-function shortText(text: string, max = 120): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  return `${cut.slice(0, cut.lastIndexOf(" "))}…`;
-}
-
 /** Captured simulation consumption per run, feeding the usage line charts. */
 type UsageSample = { t: number; eva: number; energy: number; consumable: number };
-const usageHistory = new Map<number, UsageSample[]>();
-
-function recordUsage(runId: number, elapsedS: number, consumed: ResourceUse): UsageSample[] {
-  const prev = usageHistory.get(runId) ?? [];
+function recordUsage(prev: UsageSample[], elapsedS: number, consumed: ResourceUse): UsageSample[] {
   const last = prev[prev.length - 1];
   const kept = last && elapsedS < last.t ? prev.filter((p) => p.t < elapsedS) : prev;
   const next = kept.filter((p) => p.t !== elapsedS);
   next.push({ t: elapsedS, eva: consumed.eva_time_s / 60, energy: consumed.energy_wh, consumable: consumed.consumable });
-  usageHistory.set(runId, next);
   return next;
 }
 
@@ -86,11 +70,13 @@ function LineChart({ title, points, x, unit, color = "#dc2626", cap, ticks, aria
       <span className="tabular-nums text-muted-foreground">{fmt(last.value, 2)} {unit}</span>
     </div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-1 h-14 w-full" role="img" aria-label={ariaLabel}>
+      <title>{ariaLabel}</title>
+      <desc>{points.map((point) => `${point.label}: ${fmt(point.value, 2)} ${unit}`).join("; ")}</desc>
       {cap != null && cap > 0 && <line x1={PAD} x2={W - PAD} y1={yAt(cap)} y2={yAt(cap)} className="text-muted-foreground" stroke="currentColor" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
       <polygon points={area} fill={color} opacity={0.12} />
       <polyline points={path} fill="none" stroke={color} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
       {ticks?.map((t, i) => (t.fx < 0 || t.fx > 1) ? null
-        : <line key={i} x1={PAD + t.fx * (W - 2 * PAD)} x2={PAD + t.fx * (W - 2 * PAD)} y1={PAD} y2={H - PAD} className="text-status-warning" stroke="currentColor" strokeWidth={1} vectorEffect="non-scaling-stroke" />)}
+        : <line key={i} x1={PAD + t.fx * (W - 2 * PAD)} x2={PAD + t.fx * (W - 2 * PAD)} y1={PAD} y2={H - PAD} className="text-status-warning" stroke="currentColor" strokeWidth={1} vectorEffect="non-scaling-stroke"><title>{t.title}</title></line>)}
       {points.length <= 16 && points.map((p, i) => <circle key={i} cx={xAt(i)} cy={yAt(p.value)} r={1.4} fill={color} />)}
     </svg>
     <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -100,69 +86,7 @@ function LineChart({ title, points, x, unit, color = "#dc2626", cap, ticks, aria
   </div>;
 }
 
-/** Cumulative planned usage along the itinerary; endpoints match planner totals, shape from declared rates. */
-function plannedResourceCharts(result: MissionResult, scenario: MissionScenario) {
-  const totals = result.totals;
-  if (!totals || result.stops.length === 0) return [];
-  const model = scenario.model;
-  const overheadS = totals.overhead_s ?? 0;
-  const labels = ["start", ...result.stops.map((s) => s.site_id), "return"];
-  const evaMin = [0, ...result.stops.map((s) => s.depart_s), totals.eva_time_s].map((s) => s / 60);
-
-  const travelH = result.legs.map((l) => l.time_s / 3600);
-  const totalTravelH = travelH.reduce((a, b) => a + b, 0) || 1;
-  const energyAt: number[] = [0];
-  const consAt: number[] = [0];
-  const xAt: number[] = [0];
-  result.legs.forEach((leg, i) => {
-    const share = travelH[i]! / totalTravelH;
-    const isLast = i === result.legs.length - 1;
-    energyAt.push(energyAt[energyAt.length - 1]! + (leg.time_s * model.base_power_w.value + overheadS * share * model.base_power_w.value) / 3600);
-    consAt.push(consAt[consAt.length - 1]! + (leg.time_s / 3600) * model.consumable_rate_travel_per_h.value + (overheadS / 3600) * share * model.consumable_rate_travel_per_h.value);
-    xAt.push(isLast ? totals.eva_time_s : result.stops[i]!.arrive_s);
-    const stop = result.stops[i];
-    if (!stop) return;
-    const site = siteById(scenario, stop.site_id);
-    energyAt.push(energyAt[energyAt.length - 1]! + stop.activity_s * (site?.activity_power_w ?? model.base_power_w.value) / 3600);
-    consAt.push(consAt[consAt.length - 1]! + (stop.activity_s / 3600) * model.consumable_rate_activity_per_h.value);
-    xAt.push(stop.depart_s);
-  });
-  const xMin = xAt.map((s) => s / 60);
-
-  const scaled = (series: number[], total: number) => {
-    const end = series[series.length - 1] ?? 0;
-    if (total <= 0) return series.map(() => 0);
-    if (end <= 0) return series.map((_, i) => (total * i) / Math.max(series.length - 1, 1));
-    return series.map((v) => (v / end) * total);
-  };
-  const charts: { title: string; unit: string; points: ChartPoint[]; x: number[]; cap: number | null; color: string }[] = [{
-    title: "EVA time along route",
-    unit: "min",
-    points: evaMin.map((value, i) => ({ label: labels[i] ?? "", value })),
-    x: evaMin, cap: (result.checks.find((c) => c.resource === "eva_time")?.budget ?? 0) / 60, color: "#dc2626",
-  }];
-  if (totals.energy_wh > 0) {
-    const energy = scaled(energyAt, totals.energy_wh);
-    charts.push({
-      title: "Planned energy use",
-      unit: "Wh",
-      points: energy.map((value, i) => ({ label: labels[Math.min(i, labels.length - 1)] ?? "", value })),
-      x: xMin, cap: result.checks.find((c) => c.resource === "energy")?.budget ?? scenario.budget.energy_budget_wh, color: "#b91c1c",
-    });
-  }
-  if (totals.consumable > 0) {
-    const cons = scaled(consAt, totals.consumable);
-    charts.push({
-      title: "Planned consumable use",
-      unit: scenario.budget.consumable_unit ?? "units",
-      points: cons.map((value, i) => ({ label: labels[Math.min(i, labels.length - 1)] ?? "", value })),
-      x: xMin, cap: result.checks.find((c) => c.resource === "consumable")?.budget ?? scenario.budget.consumable_budget, color: "#ef4444",
-    });
-  }
-  return charts;
-}
-
-function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteId, onPreviewSite }: {
+function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteId, onPreviewSite, selectedLeg, onSelectLeg }: {
   result: MissionResult;
   scenario: MissionScenario;
   insights: CandidateInsight[];
@@ -170,6 +94,8 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
   planStale: boolean;
   previewSiteId?: string | null;
   onPreviewSite?: (point: { x_m: number; y_m: number }, label: string) => void;
+  selectedLeg: number | null;
+  onSelectLeg: (index: number | null) => void;
 }) {
   const counts = { selected: 0, excluded: 0, infeasible: 0 };
   for (const insight of insights) {
@@ -195,44 +121,21 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       {sim && <span className="rounded bg-status-warning/20 px-1.5 py-0.5">Sim: {SIM_PHASE[sim.state.phase]} · {sim.state.replans} replan{sim.state.replans === 1 ? "" : "s"}</span>}
       {replanAdvised && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Replan advised</span>}
     </div>
-    <p className="flex flex-wrap items-center gap-x-1 text-xs">
-      Route: <span>BASE</span>
-      {result.stops.map((stop) => {
-        const site = siteById(scenario, stop.site_id);
-        return <span key={stop.site_id} className="flex items-center gap-x-1">
-          <span aria-hidden>→</span>
-          <Button type="button" size="sm" variant={previewSiteId === stop.site_id ? "secondary" : "ghost"}
-            className="h-5 px-1.5 text-xs" title={site ? `${site.id} · ${site.name}` : stop.site_id}
-            onClick={() => site && onPreviewSite?.(site.position, `${site.id} · ${site.name}`)}>
-            {stop.site_id}
-          </Button>
-        </span>;
-      })}
-      <span aria-hidden>→</span><span>BASE{result.stops.length === 0 ? " (no stops)" : ""}</span>
-    </p>
     {sim && <p className="text-xs text-muted-foreground">
       {clock(sim.state.elapsed_s)} · {sim.state.completed_sites.length}/{result.stops.length} stops done
       {sim.return_margin_s !== null && ` · return margin ${minutes(sim.return_margin_s, 1)}`}
       {dropped.length > 0 && ` · dropped: ${dropped.join(", ")}`}
     </p>}
-    {insights.length > 0 && <ul className="space-y-0.5 text-xs">
-      {insights.map((insight) => {
-        const site = siteById(scenario, insight.site_id);
-        return <li key={insight.site_id} className="flex flex-wrap items-baseline gap-x-1.5">
-          {site && onPreviewSite
-            ? <button type="button" className="font-medium underline decoration-dotted" onClick={() => onPreviewSite(site.position, `${site.id} · ${site.name}`)}>{insight.site_id}</button>
-            : <strong>{insight.site_id}</strong>}
-          <span className={insight.status === "INFEASIBLE" ? "text-status-critical" : insight.status === "SELECTED" ? "" : "text-muted-foreground"}>{statusLabel(insight.status)}</span>
-          <span className="min-w-0 text-muted-foreground">{shortText(insight.explanation)}{insight.reason_code ? ` (${insight.reason_code})` : ""}</span>
-        </li>;
-      })}
-    </ul>}
-    {totals && <dl className="grid grid-cols-4 gap-2 pt-1">
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Sites</dt><dd className="text-base font-medium">{result.stops.length}/{scenario.sites.length}</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Time (planned)</dt><dd className="text-base font-medium">{minutes(totals.eva_time_s, 1)}</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Distance</dt><dd className="text-base font-medium">{fmt(totals.distance_m, 0)} m</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Utility</dt><dd className="text-base font-medium">{fmt(result.utility, 2)}</dd></div>
-    </dl>}
+    <div className="flex flex-wrap items-start gap-3">
+      <RouteGraph base={scenario.base} sites={scenario.sites} result={result} dropped={dropped}
+        selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} />
+      {totals && <dl className="grid min-w-64 flex-1 grid-cols-2 gap-2 self-center">
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Sites</dt><dd className="text-base font-medium">{result.stops.length}/{scenario.sites.length}</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Time (planned)</dt><dd className="text-base font-medium">{minutes(totals.eva_time_s, 1)}</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Distance</dt><dd className="text-base font-medium">{fmt(totals.distance_m, 0)} m</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Utility</dt><dd className="text-base font-medium">{fmt(result.utility, 2)}</dd></div>
+      </dl>}
+    </div>
   </div>;
 }
 
@@ -250,22 +153,30 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
   const issues = result?.issues ?? validation?.issues ?? [];
   const leg = selectedLeg === null ? null : result?.legs[selectedLeg];
   const insights = (result?.candidate_insights ?? []) as CandidateInsight[];
+  const maxPriority = Math.max(1e-9, ...scenario.sites.map((site) => site.preference_weight));
   const sim = state.simulation;
+  const [history, setHistory] = useState<{ runId: number | null; samples: UsageSample[] }>({ runId: null, samples: [] });
+
+  useEffect(() => {
+    if (!sim || !run) { setHistory({ runId: null, samples: [] }); return; }
+    setHistory((previous) => ({
+      runId: run.run_id,
+      samples: recordUsage(previous.runId === run.run_id ? previous.samples : [], sim.state.elapsed_s, sim.state.consumed),
+    }));
+  }, [sim, run]);
 
   const usage = useMemo(() => {
-    if (!sim || !run) return null;
-    const samples = recordUsage(run.run_id, sim.state.elapsed_s, sim.state.consumed);
+    if (!sim || !run || history.runId !== run.run_id) return null;
+    const samples = history.samples;
     const t = samples.map((s) => s.t / 60);
     const span = Math.max((t[t.length - 1] ?? 0) - (t[0] ?? 0), 1e-9);
     const ticks = sim.state.events.map((e) => ({ fx: (e.at_elapsed_s / 60 - (t[0] ?? 0)) / span, title: `T+${clock(e.at_elapsed_s)}` }));
     return { t, ticks, samples };
-  }, [sim, run]);
+  }, [sim, run, history]);
   const planStale = useMemo(
     () => (sim && run ? simPlanStale(run.run_id, sim.state) : false),
     [sim, run],
   );
-
-  const plannedCharts = result ? plannedResourceCharts(result, scenario) : [];
 
   return <section aria-label="Mission results" className="max-h-[46vh] shrink-0 space-y-3 overflow-y-auto border-t bg-background px-4 py-3 text-sm" aria-busy={phase !== "idle"}>
     <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -283,45 +194,24 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
 
     {result && <>
       <MissionBrief result={result} scenario={scenario} insights={insights} sim={sim} planStale={planStale}
-        previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} />
+        previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} />
 
-      {plannedCharts.length > 0 && <details open className="rounded-lg border p-3">
-        <summary className="cursor-pointer font-medium">Graphs (modeled estimates)</summary>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {plannedCharts.map((chart) => <LineChart key={chart.title} title={chart.title} points={chart.points}
-            x={chart.x} unit={chart.unit} cap={chart.cap} color={chart.color} ariaLabel={chart.title} />)}
-          <div className="rounded border p-2">
-            <p className="text-[11px] font-medium">Travel time per leg</p>
-            <LineChart title="Travel per leg" unit="min" color="#f87171"
-              points={result.legs.map((l, i) => ({ label: `${i + 1}${l.from === "BASE" ? "↑" : l.to === "BASE" ? "↓" : ""}`, value: l.time_s / 60 }))}
-              ariaLabel="Travel time per leg" />
-          </div>
-        </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">Resource endpoints match planner totals; shape from declared rates. Dashed line: budget limit.</p>
-        <div className="mt-2 space-y-1 border-t pt-2">
-          <p className="text-[11px] font-medium">Planned usage vs limits</p>
-          {result.checks.map((check) => {
-            const { label, unit, scale } = resourceMeta(check);
-            return <div key={check.resource} className="flex flex-wrap justify-between gap-x-3 text-xs">
-              <span>{label}</span>
-              <span className={check.satisfied ? "tabular-nums text-muted-foreground" : "tabular-nums text-status-critical"}>
-                {fmt(check.used / scale, 2)} / {fmt(check.budget / scale, 2)} {unit} · reserve {fmt(check.reserve / scale, 2)} · margin {fmt(check.margin / scale, 2)} · {check.satisfied ? "OK" : "Violated"}
-              </span>
-            </div>;
-          })}
-        </div>
+      <MissionCharts result={result} selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} />
 
-        {usage && <div className="mt-3 grid gap-2 border-t pt-3 md:grid-cols-2 xl:grid-cols-3">
+      {usage && <details className="rounded-lg border p-3">
+        <summary className="cursor-pointer text-xs font-medium">Simulation usage history</summary>
+        {sim && <div className="mt-3"><ResourceBars checks={sim.remaining_checks} /></div>}
+        <div className="mt-3 grid gap-2 border-t pt-3 md:grid-cols-2 xl:grid-cols-3">
           {[
-            { title: "Simulated EVA time used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.eva })), cap: result.checks.find((c) => c.resource === "eva_time")?.budget },
-            { title: "Simulated energy used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.energy })), cap: result.checks.find((c) => c.resource === "energy")?.budget ?? scenario.budget.energy_budget_wh },
-            { title: "Simulated consumable used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.consumable })), cap: result.checks.find((c) => c.resource === "consumable")?.budget ?? scenario.budget.consumable_budget },
+            { title: "Simulated EVA time used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.eva })), cap: (sim?.remaining_checks.find((c) => c.resource === "eva_time")?.available ?? 0) / 60 },
+            { title: "Simulated energy used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.energy })), cap: sim?.remaining_checks.find((c) => c.resource === "energy")?.available ?? null },
+            { title: "Simulated consumable used", points: usage.samples.map((s) => ({ label: clock(s.t), value: s.consumable })), cap: sim?.remaining_checks.find((c) => c.resource === "consumable")?.available ?? null },
           ].filter((chart) => (chart.points[chart.points.length - 1]?.value ?? 0) > 0 || (chart.cap ?? 0) > 0)
             .map((chart) => <LineChart key={chart.title} title={chart.title} points={chart.points} x={usage.t}
               unit={chart.title.includes("EVA") ? "min" : chart.title.includes("energy") ? "Wh" : scenario.budget.consumable_unit ?? "units"}
               cap={chart.cap} ticks={usage.ticks} color="#991b1b" ariaLabel={chart.title} />)}
-          <p className="text-[11px] text-muted-foreground md:col-span-2 xl:col-span-3">Amber ticks: injected events.</p>
-        </div>}
+          <p className="text-[11px] text-muted-foreground md:col-span-2 xl:col-span-3">Sampled at simulation updates. Dashed: available after reserve. Amber ticks: injected events.</p>
+        </div>
       </details>}
 
       {result.totals && <details>
@@ -344,7 +234,8 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
 
       {insights.length > 0 && <details className="rounded-lg border p-3">
         <summary className="cursor-pointer font-medium">Candidate details & POV</summary>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
+          <CandidateGlance insights={insights} evaLimitS={scenario.budget.eva_limit_s} />
           {insights.map((insight) => {
             const site = siteById(scenario, insight.site_id);
             return <details key={insight.site_id} className="rounded border p-2 text-xs">
@@ -362,13 +253,19 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
                   {site.required ? "Make optional & replan" : "Require in plan & replan"}
                 </Button>}
               </div>}
-              <div className="mt-2 space-y-1 text-muted-foreground">
-                <p className="text-foreground">{insight.explanation}</p>
-                <p>Terrain: {insight.terrain.replaceAll("_", " ").toLowerCase()}{insight.site_slope_deg != null ? ` · ${fmt(insight.site_slope_deg, 1)}°` : ""} · reachable {insight.reachable_from_base ? "yes" : "no"} · feasible alone {insight.feasible_alone ? "yes" : "no"}</p>
-                {site && <p>Objective: priority {fmt(site.preference_weight, 2)}, {minutes(site.activity_min_s, 0)}–{minutes(site.activity_max_s, 0)}, {fmt(site.activity_power_w, 0)} W · {site.evidence_kind}</p>}
-                {insight.planned_activity_s > 0 && <p>Planned: utility {fmt(insight.planned_utility, 3)}, activity {minutes(insight.planned_activity_s, 1)}.</p>}
-                {insight.standalone_eva_time_s != null && <p>Standalone round trip: {fmt(insight.standalone_distance_m, 0)} m, EVA {minutes(insight.standalone_eva_time_s, 1)}.</p>}
-                {insight.standalone_checks.length > 0 && <p>Checks: {insight.standalone_checks.map((c) => `${resourceMeta(c).label} ${c.satisfied ? "ok" : "violated"} (${fmt(c.margin / (c.resource === "eva_time" ? 60 : 1), 2)} ${resourceMeta(c).unit})`).join("; ")}.</p>}
+              <p className="mt-2 text-foreground">{insight.explanation}</p>
+              <div className="mt-2 grid gap-3 lg:grid-cols-2">
+                <div className="space-y-2">
+                  {site && <ObjectiveBars site={site} plannedS={insight.planned_activity_s}
+                    maxPriority={maxPriority} />}
+                  <p className="text-muted-foreground">Terrain: {insight.terrain.replaceAll("_", " ").toLowerCase()}{insight.site_slope_deg != null ? ` · ${fmt(insight.site_slope_deg, 1)}°` : ""} · reachable {insight.reachable_from_base ? "yes" : "no"} · feasible alone {insight.feasible_alone ? "yes" : "no"}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[11px] font-medium">Standalone round trip{insight.standalone_distance_m != null ? ` · ${fmt(insight.standalone_distance_m, 0)} m` : ""}</p>
+                  {insight.standalone_checks.length > 0
+                    ? <ResourceBars checks={insight.standalone_checks} compact />
+                    : <p className="text-muted-foreground">No standalone route under the declared model.</p>}
+                </div>
               </div>
             </details>;
           })}

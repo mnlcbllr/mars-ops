@@ -5,7 +5,7 @@
 //! on Mars: events are declared inputs, time is modeled EVA time, and every
 //! resource figure is an estimate under the scenario's assumptions.
 
-use crate::contingency::{ContingencyError, ContingencyEvent, ContingencyKind, ResourceKind};
+use crate::simulation_events::{ContingencyError, ContingencyEvent, ContingencyKind, ResourceKind};
 use crate::planning::{MissionResult, MissionScenario, PlanStatus};
 use crate::replan::{remaining_budget, return_margin, ReplanRequest};
 use crate::resources::{check_budget, ConstraintCheck, ResourceBudget, ResourceUse};
@@ -581,7 +581,7 @@ impl MissionState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contingency::GridCellRef;
+    use crate::simulation_events::GridCellRef;
     use crate::planning::{plan_greedy, ScientificSite};
     use crate::provenance::EvidenceKind;
     use crate::resources::test_support::{bare_model, coef, time_only};

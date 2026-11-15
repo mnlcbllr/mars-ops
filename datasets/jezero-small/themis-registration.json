@@ -1,0 +1,72 @@
+{
+  "source_file": "02-thermal/jezero-THEMIS-dir.tif",
+  "source_crop_sha256": "36998a9f3efab9a284da353503cc3535b74a444aeebcae302cd23ff9d334d2f0",
+  "source_bounds": [
+    4572945.554195119,
+    1074099.9999999998,
+    4614445.554195119,
+    1115599.9999999998
+  ],
+  "output_sha256": "4b572d8d6add0ed0c1d2695ee27db1c7acf71347b80d3729b43d7ec91b645308",
+  "coverage_fraction": 1.0,
+  "output_transform": [
+    4.0386533074844,
+    0.0,
+    -2899.7530747739,
+    0.0,
+    -4.0386533074844,
+    1095404.9462524215
+  ],
+  "checks": [
+    {
+      "row": 0,
+      "col": 0,
+      "lat_deg": 18.487459800883464,
+      "lon_east_deg": 77.47936882032246,
+      "source_row": 197,
+      "source_col": 196,
+      "brightness_dn": 149
+    },
+    {
+      "row": 0,
+      "col": 511,
+      "lat_deg": 18.487459800883464,
+      "lon_east_deg": 77.51542809950745,
+      "source_row": 197,
+      "source_col": 217,
+      "brightness_dn": 141
+    },
+    {
+      "row": 511,
+      "col": 0,
+      "lat_deg": 18.45262921184133,
+      "lon_east_deg": 77.47936882032246,
+      "source_row": 218,
+      "source_col": 196,
+      "brightness_dn": 133
+    },
+    {
+      "row": 511,
+      "col": 511,
+      "lat_deg": 18.45262921184133,
+      "lon_east_deg": 77.51542809950745,
+      "source_row": 218,
+      "source_col": 217,
+      "brightness_dn": 145
+    },
+    {
+      "row": 256,
+      "col": 256,
+      "lat_deg": 18.4700104255512,
+      "lon_east_deg": 77.49743374296699,
+      "source_row": 207,
+      "source_col": 206,
+      "brightness_dn": 180
+    }
+  ],
+  "limitations": [
+    "Effective source resolution 100 m; output ~4 m pixels do not add information. Qualitative 8-bit daytime infrared brightness, NOT calibrated temperature, thermal inertia, live weather or hazard probability.",
+    "sha256_source is the local 415x415 archive crop, NOT the full upstream mosaic (not downloaded/rehashed here). Product identity comes from SOURCE-LINKS.csv and embedded CRS; upstream content authenticity inherits that archive's provenance.",
+    "Georeference alignment verified, not independent surface feature/control-point accuracy. Different sphere radii handled through planetary lat/lon. Original observation dates, physical registration uncertainty and radiometric calibration are unknown."
+  ]
+}
