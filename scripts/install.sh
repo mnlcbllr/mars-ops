@@ -25,7 +25,7 @@ readonly RESOURCE_PKG="mars-ops-app"
 
 PREFIX="${HOME}/.local"
 REPO="${REPO_DEFAULT}"
-REF=""
+REF="${MARS_OPS_REF:-}"
 SOURCE=""
 OFFLINE=0
 SKIP_DEPS=0
@@ -58,7 +58,7 @@ Options:
   --system         Install into /usr/local instead of $HOME/.local
   --source DIR     Build from an existing checkout instead of cloning
   --repo URL       Git repository to clone (default: https://github.com/mnlcbllr/mars-ops.git)
-  --ref REF        Git ref to build (default: the default branch)
+  --ref REF        Git ref to build (default: the default branch, or $MARS_OPS_REF)
   --offline        Use only cached Rust and JavaScript packages
   --skip-deps      Do not install system packages or toolchains
   --dry-run        Print what would happen without changing anything
@@ -67,6 +67,7 @@ Options:
 
 Examples:
   curl -fsSL https://raw.githubusercontent.com/mnlcbllr/mars-ops/main/scripts/install.sh | sh
+  curl -fsSL https://raw.githubusercontent.com/mnlcbllr/mars-ops/josh/scripts/install.sh | sh -s -- --ref josh
   sh scripts/install.sh --prefix ~/.local --source .
   sh scripts/install.sh --system --skip-deps
 EOF
