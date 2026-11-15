@@ -186,6 +186,11 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       || sim.return_margin_s === null
       || sim.return_margin_s < 0
       || planStale);
+  // A plan that "passes" with (near-)zero margin after reserve breaks under any
+  // perturbation, so flag it at planning time too.
+  const tight = result.checks
+    .filter((c) => c.satisfied && c.margin < 60)
+    .map((c) => resourceMeta(c).label);
   const totals = result.totals;
   return <div className="space-y-2 rounded-lg border p-3">
     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -194,6 +199,7 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       {insights.length > 0 && <span className="text-muted-foreground">{counts.selected} selected · {counts.excluded} excluded · {counts.infeasible} infeasible</span>}
       {sim && <span className="rounded bg-status-warning/20 px-1.5 py-0.5">Sim: {SIM_PHASE[sim.state.phase]} · {sim.state.replans} replan{sim.state.replans === 1 ? "" : "s"}</span>}
       {replanAdvised && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Replan advised</span>}
+      {tight.length > 0 && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Tight margin: {tight.join(", ")}</span>}
     </div>
     <p className="flex flex-wrap items-center gap-x-1 text-xs">
       Route: <span>BASE</span>
