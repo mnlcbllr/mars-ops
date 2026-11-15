@@ -86,8 +86,9 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
       && !current?.stops.some((stop) => stop.site_id === id)) ?? [];
 
   // Replan signals while the drill is still moving: a remaining check now
-  // violates its limit, the modeled return to base is missing/unaffordable,
-  // or a contingency was injected after the last plan (stale plan).
+  // violates its limit, the remaining route no longer fits the remaining
+  // budget, the modeled return to base is missing/unaffordable, or a
+  // contingency was injected after the last plan (stale plan).
   const planStale = useMemo(
     () => (view && run ? simPlanStale(run.run_id, view.state) : false),
     [view, run],
