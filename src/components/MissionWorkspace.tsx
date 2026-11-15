@@ -5,6 +5,7 @@ import { ScenarioEditor } from "@/components/ScenarioEditor";
 import { SimulationPanel } from "@/components/SimulationPanel";
 import { Terrain3D } from "@/components/Terrain3D";
 import { Button } from "@/components/ui/button";
+import { Pause, Play } from "lucide-react";
 import { api, errorText } from "@/lib/api";
 import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
@@ -17,6 +18,9 @@ import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@
 const RESULTS_DEFAULT = 360;
 const RESULTS_MIN = 140;
 const MAP_KEEP = 260;
+/** Playback: one tick advances the mission clock this much, this often. */
+const PLAYBACK_TICK_S = 60;
+const PLAYBACK_TICK_MS = 500;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
 // Stable identities: new array literals here would rebuild the 3D overlay every render (visible blink).
@@ -33,6 +37,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
   const [contextSiteId, setContextSiteId] = useState<string | null>(null);
   const [seekTargetS, setSeekTargetS] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
   const rowRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLElement>(null);
@@ -59,6 +64,24 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   useEffect(() => () => { inspection.current++; }, []);
   // Discard terrain checks started before an edit, solve or simulation lock.
   useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
+
+  /** Music-player playback: advance the simulation on a timer while playing.
+   *  Ticks during an in-flight op are dropped by the job lock, which is fine —
+   *  every advance is relative, so time simply moves a touch slower. */
+  const playbackPhase = simulation?.state.phase ?? null;
+  const missionRef = useRef(mission);
+  missionRef.current = mission;
+  useEffect(() => {
+    if (!playing) return;
+    if (playbackPhase === null || playbackPhase === "COMPLETE" || playbackPhase === "INFEASIBLE" || state.error) {
+      setPlaying(false);
+      return;
+    }
+    const id = window.setInterval(() => {
+      void missionRef.current.advanceSimulation(PLAYBACK_TICK_S);
+    }, PLAYBACK_TICK_MS);
+    return () => window.clearInterval(id);
+  }, [playing, playbackPhase, state.error]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -351,22 +374,29 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               <label htmlFor="sim-progress-slider-map" className="font-medium">Mission progress</label>
               <span className="tabular-nums text-muted-foreground">{minutes(sliderValue, 1)} / {minutes(plannedTotalS || sliderMax, 1)}</span>
             </div>
-            <input
-              id="sim-progress-slider-map"
-              type="range"
-              min={sliderMin}
-              max={sliderMax}
-              step={1}
-              value={Math.min(sliderValue, sliderMax)}
-              disabled={busy && !scrubbing}
-              className="mt-1 w-full accent-foreground"
-              aria-label="Mission progress timeline"
-              onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
-              onPointerUp={commitSeek}
-              onPointerCancel={commitSeek}
-              onKeyUp={(e) => { if (["Enter", " ", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) commitSeek(); }}
-              onBlur={() => { if (scrubbing) commitSeek(); }}
-            />
+            <div className="mt-1 flex items-center gap-2">
+              <Button type="button" size="sm" variant="secondary" className="size-6 shrink-0 p-0"
+                aria-label={playing ? "Pause simulation playback" : "Play simulation"}
+                onClick={() => setPlaying((value) => !value)}>
+                {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+              </Button>
+              <input
+                id="sim-progress-slider-map"
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={1}
+                value={Math.min(sliderValue, sliderMax)}
+                disabled={busy && !scrubbing && !playing}
+                className="w-full flex-1 accent-foreground"
+                aria-label="Mission progress timeline"
+                onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
+                onPointerUp={commitSeek}
+                onPointerCancel={commitSeek}
+                onKeyUp={(e) => { if (["Enter", " ", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) commitSeek(); }}
+                onBlur={() => { if (scrubbing) commitSeek(); }}
+              />
+            </div>
             <p className="mt-1 text-muted-foreground">Release to jump: the map, usage and stop states then show that exact time. The timeline starts at the mission clock after EVA overhead ({minutes(overheadS, 0)} min). Seeking replays from the start; injected events/replans are not preserved.</p>
           </div>;
         })()}
