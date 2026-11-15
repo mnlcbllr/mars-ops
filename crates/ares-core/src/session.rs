@@ -2,8 +2,11 @@
 //! both the desktop shell and the CLI drive. Nothing here knows about Tauri.
 
 use crate::data::{DataError, Dataset, LayerKind, Manifest};
+use crate::benchmark::BenchmarkReport;
 use crate::inspect::{inspect_point, PointInspection};
-use crate::planning::{plan_greedy, validate_scenario, MissionScenario, ValidationReport};
+use crate::planning::{
+    plan_dp, plan_greedy, validate_scenario, MissionScenario, ValidationReport,
+};
 use crate::report::{MissionReport, CODE_REVISION};
 use crate::terrain::{PlanningGrid, PLANNING_FACTOR};
 use crate::LocalPoint;
@@ -57,6 +60,16 @@ pub enum SessionError {
     Data(#[from] DataError),
     #[error("ScenarioDatasetMismatch: the scenario is for dataset '{scenario}' but '{opened}' is open")]
     ScenarioDatasetMismatch { scenario: String, opened: String },
+}
+
+/// Which discrete planner `Session::solve_with` runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SolverChoice {
+    /// Reproducible cheapest-insertion baseline.
+    Greedy,
+    /// Held-Karp subset/order search at minimum activity durations.
+    ExactSubset,
 }
 
 /// An opened, checksum-verified dataset and the lattice routes are planned on.
@@ -122,6 +135,16 @@ impl Session {
         inspect_point(georeference, &self.dataset.elevation, &self.grid, p, max_slope_deg)
     }
 
+    /// Deterministic headless comparison of both discrete planners.
+    pub fn benchmark(&self, scenario: &MissionScenario) -> Result<BenchmarkReport, SessionError> {
+        self.check_dataset(scenario)?;
+        Ok(crate::benchmark::compare(
+            &self.dataset.manifest.dataset_id,
+            &self.grid,
+            scenario,
+        ))
+    }
+
     fn check_dataset(&self, scenario: &MissionScenario) -> Result<(), SessionError> {
         let opened = &self.dataset.manifest.dataset_id;
         if &scenario.dataset_id != opened {
@@ -138,11 +161,24 @@ impl Session {
         Ok(validate_scenario(&self.grid, scenario))
     }
 
-    /// Plan `scenario` with the deterministic baseline and bind the result to
-    /// this dataset's hashes in a report.
+    /// Plan `scenario` with the exact subset/order solver and bind the result
+    /// to this dataset's hashes in a report.
     pub fn solve(&self, scenario: MissionScenario) -> Result<MissionReport, SessionError> {
+        self.solve_with(scenario, SolverChoice::ExactSubset)
+    }
+
+    /// Plan with an explicit solver. `Greedy` remains the reproducible
+    /// baseline; `ExactSubset` is the improved discrete planner.
+    pub fn solve_with(
+        &self,
+        scenario: MissionScenario,
+        solver: SolverChoice,
+    ) -> Result<MissionReport, SessionError> {
         self.check_dataset(&scenario)?;
-        let result = plan_greedy(&self.grid, &scenario);
+        let result = match solver {
+            SolverChoice::Greedy => plan_greedy(&self.grid, &scenario),
+            SolverChoice::ExactSubset => plan_dp(&self.grid, &scenario),
+        };
         Ok(MissionReport::new(&self.dataset, &self.grid, scenario, result))
     }
 
@@ -203,6 +239,7 @@ mod tests {
                 activity_max_s: 100.0,
                 activity_power_w: 0.0,
                 preference_weight: 1.0,
+                required: false,
             }],
             budget: time_only(1000.0, 100.0),
             model: bare_model(),
@@ -303,7 +340,7 @@ mod tests {
         let report = session.solve(scenario.clone()).unwrap();
         assert_eq!(report.software, "HYDE");
         assert_eq!(report.report_schema_version, 1);
-        assert_eq!(report.result.solver.name, "GreedyPlanner");
+        assert_eq!(report.result.solver.name, "ExactSubsetDp");
         assert_eq!(report.result.status, PlanStatus::FeasibleModeled);
         // 5 cells of 4 m each way at 1 m/s, plus 100 s of work.
         let totals = report.result.totals.as_ref().unwrap();

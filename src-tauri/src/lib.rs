@@ -5,15 +5,15 @@
 //! access: datasets are read only from the bundled resource directory, and
 //! reports are written only to one fixed folder.
 
+use ares_core::simulation_events::ContingencyKind;
 use ares_core::data::{dataset_dir, find_datasets, DatasetSummary};
 use ares_core::inspect::PointInspection;
+use ares_core::mission_state::{MissionState, SimulationView};
 use ares_core::planning::{MissionScenario, ValidationReport};
 use ares_core::report::MissionReport;
 use ares_core::report::{utc_iso8601, write_new};
 use ares_core::session::{DatasetInfo, DisplayLayer, Session};
 use ares_core::LocalPoint;
-use ares_core::mission::{MissionState, MissionAction};
-use ares_core::contingency::{cells_within_radius, CellRef};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -27,74 +27,16 @@ struct AppState {
     /// The most recent solved run: the one on screen, and the only one that
     /// can be exported.
     last_run: Mutex<Option<(u64, MissionReport)>>,
+    /// Stateful simulation started from one solved run. Cleared whenever the
+    /// dataset or the solved run changes.
+    simulation: Mutex<Option<(u64, MissionState)>>,
     run_counter: AtomicU64,
-    simulation_epoch: AtomicU64,
 }
 
 #[derive(serde::Serialize)]
 struct SolvedRun {
     run_id: u64,
     report: MissionReport,
-}
-
-#[derive(serde::Serialize)]
-struct SimulationSnapshot {
-    run_id: u64,
-    generation: u64,
-    revision: usize,
-    mission: MissionState,
-}
-
-/// Authoritative simulation lives in the native run report, not editable JS.
-#[tauri::command(rename_all = "snake_case")]
-fn start_simulation(state: State<'_, AppState>, run_id: u64) -> Result<SimulationSnapshot, String> {
-    let session = current(&state)?;
-    let mut run = lock(&state.last_run);
-    let (_, report) = run.as_mut().filter(|(id, _)| *id == run_id).ok_or("RunNotAvailable")?;
-    if report.dataset.manifest_sha256 != session.dataset.manifest_sha256 { return Err("DatasetChanged".into()); }
-    if report.simulation.is_some() { return Err("SimulationAlreadyStarted: reset first".into()); }
-    let mission = MissionState::start(report.scenario.clone(), report.result.clone(), report.dataset.manifest_sha256.clone()).map_err(message)?;
-    report.simulation = Some(mission.clone());
-    let generation = state.simulation_epoch.fetch_add(1, Ordering::SeqCst) + 1;
-    Ok(SimulationSnapshot { run_id, generation, revision: 0, mission })
-}
-
-#[tauri::command(rename_all = "snake_case")]
-async fn simulation_action(state: State<'_, AppState>, run_id: u64, generation: u64, revision: usize, action: MissionAction) -> Result<SimulationSnapshot, String> {
-    let session = current(&state)?;
-    let mission = {
-        let run = lock(&state.last_run);
-        if state.simulation_epoch.load(Ordering::SeqCst) != generation { return Err("StaleSimulationGeneration".into()); }
-        let (_, report) = run.as_ref().filter(|(id, _)| *id == run_id).ok_or("RunNotAvailable")?;
-        report.simulation.clone().filter(|m| m.timeline.len() == revision).ok_or("StaleSimulationRevision")?
-    };
-    if mission.manifest_sha256 != session.dataset.manifest_sha256 { return Err("DatasetChanged".into()); }
-    let updated = tauri::async_runtime::spawn_blocking(move || mission.apply(&session.grid, action)).await.map_err(message)?.map_err(message)?;
-    let mut run = lock(&state.last_run);
-    if state.simulation_epoch.load(Ordering::SeqCst) != generation { return Err("StaleSimulationGeneration".into()); }
-    let (_, report) = run.as_mut().filter(|(id, _)| *id == run_id).ok_or("RunNotAvailable")?;
-    if report.simulation.as_ref().map(|m| m.timeline.len()) != Some(revision) { return Err("StaleSimulationRevision".into()); }
-    report.simulation = Some(updated.clone());
-    Ok(SimulationSnapshot { run_id, generation, revision: updated.timeline.len(), mission: updated })
-}
-
-#[tauri::command(rename_all = "snake_case")]
-fn reset_simulation(state: State<'_, AppState>, run_id: u64) -> Result<(), String> {
-    let mut run = lock(&state.last_run);
-    let (_, report) = run.as_mut().filter(|(id, _)| *id == run_id).ok_or("RunNotAvailable")?;
-    state.simulation_epoch.fetch_add(1, Ordering::SeqCst);
-    report.simulation = None;
-    Ok(())
-}
-
-#[tauri::command(rename_all = "snake_case")]
-fn preview_blockage(state: State<'_, AppState>, centre: LocalPoint, radius_m: f64) -> Result<Vec<CellRef>, String> {
-    if !radius_m.is_finite() || !(0.0..=100.0).contains(&radius_m) { return Err("InvalidRadius: use 0–100 metres".into()); }
-    let session = current(&state)?;
-    if session.grid.cell_of(centre).is_none() { return Err("OutsideCoverage".into()); }
-    let cells = cells_within_radius(session.grid.width, session.grid.height, session.grid.cell_x_m, session.grid.cell_y_m, centre, radius_m);
-    if cells.is_empty() || cells.len() > 4096 { return Err("InvalidBlockage: choose 1–4096 cells".into()); }
-    Ok(cells)
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -126,8 +68,8 @@ async fn open_dataset(
     dataset_id: String,
 ) -> Result<DatasetInfo, String> {
     *lock(&state.session) = None;
-    state.run_counter.fetch_add(1, Ordering::SeqCst);
     *lock(&state.last_run) = None;
+    *lock(&state.simulation) = None;
     let dir = dataset_dir(&datasets_root(&app)?, &dataset_id).map_err(message)?;
     let session = tauri::async_runtime::spawn_blocking(move || Session::open(&dir))
         .await
@@ -178,20 +120,95 @@ fn validate_scenario(
 async fn solve_mission(
     state: State<'_, AppState>,
     scenario: MissionScenario,
-    exact: Option<bool>,
 ) -> Result<SolvedRun, String> {
     let session = current(&state)?;
-    let opened = session.clone();
-    let run_id = state.run_counter.fetch_add(1, Ordering::SeqCst) + 1;
-    let report = tauri::async_runtime::spawn_blocking(move || if exact.unwrap_or(false) { session.solve_exact(scenario) } else { session.solve(scenario) })
+    let report = tauri::async_runtime::spawn_blocking(move || session.solve(scenario))
         .await
         .map_err(message)?
         .map_err(message)?;
-    if state.run_counter.load(Ordering::SeqCst) != run_id || !Arc::ptr_eq(&current(&state)?, &opened) {
-        return Err("StaleSolve: the dataset or run changed".into());
-    }
+    let run_id = state.run_counter.fetch_add(1, Ordering::Relaxed) + 1;
     *lock(&state.last_run) = Some((run_id, report.clone()));
+    *lock(&state.simulation) = None;
     Ok(SolvedRun { run_id, report })
+}
+
+/// Start a stateful simulation from the most recent solved run. The frozen
+/// scenario and plan come from the stored report, never from the webview.
+#[tauri::command(rename_all = "snake_case")]
+fn start_simulation(state: State<'_, AppState>, run_id: u64) -> Result<SimulationView, String> {
+    let session = current(&state)?;
+    let report = {
+        let last = lock(&state.last_run);
+        match last.as_ref() {
+            Some((id, report)) if *id == run_id => report.clone(),
+            _ => return Err("RunNotAvailable: start the simulation from the most recent run".into()),
+        }
+    };
+    let simulation = MissionState::start(
+        &session.grid,
+        &session.dataset.manifest.dataset_id,
+        report.scenario.clone(),
+        report.result.clone(),
+    )
+    .map_err(message)?;
+    let view = simulation.view(&session.grid);
+    *lock(&state.simulation) = Some((run_id, simulation));
+    Ok(view)
+}
+
+fn with_simulation(
+    state: &State<'_, AppState>,
+    change: impl FnOnce(&mut MissionState, &ares_core::terrain::PlanningGrid) -> Result<(), String>,
+) -> Result<SimulationView, String> {
+    let session = current(state)?;
+    let mut guard = lock(&state.simulation);
+    let (_, simulation) = guard
+        .as_mut()
+        .ok_or_else(|| "NoSimulation: start a simulation from a solved run first".to_string())?;
+    change(simulation, &session.grid)?;
+    Ok(simulation.view(&session.grid))
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn advance_simulation(state: State<'_, AppState>, seconds: f64) -> Result<SimulationView, String> {
+    with_simulation(&state, |simulation, grid| {
+        simulation.advance(grid, seconds).map(|_| ()).map_err(message)
+    })
+}
+
+/// Advance exactly to the next arrival or activity boundary, never past it.
+#[tauri::command]
+fn advance_simulation_to_stop(state: State<'_, AppState>) -> Result<SimulationView, String> {
+    with_simulation(&state, |simulation, grid| {
+        simulation.advance_to_stop(grid).map(|_| ()).map_err(message)
+    })
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn inject_simulation_event(
+    state: State<'_, AppState>,
+    kind: ContingencyKind,
+) -> Result<SimulationView, String> {
+    with_simulation(&state, |simulation, grid| {
+        simulation.inject(grid, kind).map(|_| ()).map_err(message)
+    })
+}
+
+#[tauri::command]
+fn replan_simulation(state: State<'_, AppState>) -> Result<SimulationView, String> {
+    with_simulation(&state, |simulation, grid| simulation.replan(grid).map(|_| ()).map_err(message))
+}
+
+#[tauri::command]
+fn simulation_view(state: State<'_, AppState>) -> Result<Option<SimulationView>, String> {
+    let session = current(&state)?;
+    Ok(lock(&state.simulation).as_ref().map(|(_, simulation)| simulation.view(&session.grid)))
+}
+
+#[tauri::command]
+fn clear_simulation(state: State<'_, AppState>) -> Result<(), String> {
+    *lock(&state.simulation) = None;
+    Ok(())
 }
 
 /// Write the run that is on screen to `Documents/ARES/reports` and return the
@@ -202,11 +219,28 @@ fn export_mission_report(
     state: State<'_, AppState>,
     run_id: u64,
 ) -> Result<String, String> {
-    let last_run = lock(&state.last_run);
-    let report = match last_run.as_ref() {
-        Some((id, report)) if *id == run_id => report,
-        _ => return Err("RunNotAvailable: only the most recent run can be exported".into()),
+    let mut report = {
+        let last_run = lock(&state.last_run);
+        match last_run.as_ref() {
+            Some((id, report)) if *id == run_id => report.clone(),
+            _ => return Err("RunNotAvailable: only the most recent run can be exported".into()),
+        }
     };
+    {
+        let session = current(&state)?;
+        if let Some((id, simulation)) = lock(&state.simulation).as_ref() {
+            if *id == run_id {
+                simulation
+                    .check_dataset(&session.dataset.manifest.dataset_id)
+                    .map_err(message)?;
+                report.simulation = Some(ares_core::report::ReportSimulation::Timed(simulation.record(&session.grid)));
+                report.disclaimers.push(
+                    "Simulation events are declared model inputs, not observations from Mars."
+                        .into(),
+                );
+            }
+        }
+    }
     let documents = app.path().document_dir().or_else(|_| app.path().app_data_dir()).map_err(message)?;
     // Retain the legacy storage location so a branding change does not relocate user reports.
     let path = report.write_to_dir(&documents.join("ARES").join("reports")).map_err(message)?;
@@ -302,14 +336,17 @@ pub fn run() {
             inspect_map_point,
             validate_scenario,
             solve_mission,
+            start_simulation,
+            advance_simulation,
+            advance_simulation_to_stop,
+            inject_simulation_event,
+            replan_simulation,
+            simulation_view,
+            clear_simulation,
             export_mission_report,
             save_plan,
             list_plans,
             load_plan,
-            start_simulation,
-            simulation_action,
-            reset_simulation,
-            preview_blockage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running HYDE");

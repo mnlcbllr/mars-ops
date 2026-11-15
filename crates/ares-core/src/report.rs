@@ -2,6 +2,7 @@
 //! result to the exact data, assumptions and code that produced it.
 
 use crate::data::{Dataset, LayerRecord};
+use crate::mission_state::SimulationRecord;
 use crate::planning::{MissionResult, MissionScenario};
 use crate::provenance::EvidenceKind;
 use crate::terrain::PlanningGrid;
@@ -38,6 +39,14 @@ pub struct PlanningGridRef {
     pub raster_cells_per_planning_cell: usize,
 }
 
+/// Preserve schema-v1 waypoint reports alongside the time-based simulation record.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ReportSimulation {
+    Timed(SimulationRecord),
+    Waypoint(crate::mission::MissionState),
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MissionReport {
     pub report_schema_version: u32,
@@ -49,9 +58,10 @@ pub struct MissionReport {
     pub planning_grid: PlanningGridRef,
     pub scenario: MissionScenario,
     pub result: MissionResult,
-    /// Optional extension: old schema-v1 reports remain readable and unchanged.
+    /// Present when the run was advanced in the stateful simulation. Optional
+    /// so schema-v1 reports written before simulation existed still read back.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub simulation: Option<crate::mission::MissionState>,
+    pub simulation: Option<ReportSimulation>,
     /// What this report must not be read as.
     pub disclaimers: Vec<String>,
 }
@@ -169,6 +179,12 @@ impl MissionReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::test_support::write_raster_dataset;
+    use crate::mission_state::{SimulationPhase, SimulationRecord};
+    use crate::planning::{MissionResult, MissionScenario, PlanStatus, SolverInfo, Timing};
+    use crate::resources::test_support::{bare_model, time_only};
+    use crate::terrain::PlanningGrid;
+    use crate::LocalPoint;
 
     #[test]
     fn formats_known_instants() {
@@ -176,5 +192,78 @@ mod tests {
         assert_eq!(utc_iso8601(951_782_400), "2000-02-29T00:00:00Z"); // leap day
         assert_eq!(utc_iso8601(1_700_000_000), "2023-11-14T22:13:20Z");
         assert_eq!(utc_iso8601(4_102_444_799), "2099-12-31T23:59:59Z");
+    }
+
+    /// A schema-v1 report written before simulation existed must still parse,
+    /// and a report carrying a simulation record must round-trip unchanged.
+    #[test]
+    fn reports_without_and_with_a_simulation_record_round_trip() {
+        let dir = crate::data::test_support::temp_dir("report-simulation");
+        write_raster_dataset(&dir, 5, 5, &[0.0; 25], true, |_| {});
+        let dataset = Dataset::open(&dir).unwrap();
+        let grid = PlanningGrid::build(&dataset.elevation, 1);
+        let scenario = MissionScenario {
+            schema_version: 1,
+            name: "report fixture".into(),
+            dataset_id: dataset.manifest.dataset_id.clone(),
+            base: LocalPoint { x_m: 2.5, y_m: 2.5 },
+            sites: Vec::new(),
+            budget: time_only(600.0, 60.0),
+            model: bare_model(),
+        };
+        let result = MissionResult {
+            status: PlanStatus::Infeasible,
+            solver: SolverInfo {
+                name: "TestPlanner".into(),
+                version: "1".into(),
+                description: "fixture".into(),
+            },
+            stops: Vec::new(),
+            legs: Vec::new(),
+            totals: None,
+            checks: Vec::new(),
+            utility: 0.0,
+            issues: Vec::new(),
+            excluded: Vec::new(),
+            candidate_insights: Vec::new(),
+            timing: Timing::default(),
+        };
+        let mut report = MissionReport::new(&dataset, &grid, scenario, result);
+        let old_json = serde_json::to_string(&report).unwrap();
+        assert!(!old_json.contains("\"simulation\""));
+        assert_eq!(serde_json::from_str::<MissionReport>(&old_json).unwrap(), report);
+
+        report.simulation = Some(ReportSimulation::Timed(SimulationRecord {
+            schema_version: 1,
+            phase: SimulationPhase::Travel,
+            elapsed_s: 0.0,
+            consumed: crate::resources::ResourceUse {
+                distance_m: 0.0,
+                travel_time_s: 0.0,
+                activity_time_s: 0.0,
+                overhead_s: 0.0,
+                eva_time_s: 0.0,
+                energy_wh: 0.0,
+                consumable: 0.0,
+            },
+            completed_sites: Vec::new(),
+            completed: Vec::new(),
+            events: Vec::new(),
+            replans: 0,
+            current_plan: report.result.clone(),
+            remaining_budget: time_only(600.0, 60.0),
+            remaining_checks: Vec::new(),
+            return_margin_s: Some(0.0),
+        }));
+        let new_json = serde_json::to_string(&report).unwrap();
+        assert!(new_json.contains("\"simulation\""));
+        assert_eq!(serde_json::from_str::<MissionReport>(&new_json).unwrap(), report);
+        let (grid, scenario) = crate::mission_tests::fixture();
+        let plan = crate::planning::plan_greedy(&grid, &scenario);
+        report.simulation = Some(ReportSimulation::Waypoint(
+            crate::mission::MissionState::start(scenario, plan, "legacy-fixture".into()).unwrap(),
+        ));
+        let legacy_json = serde_json::to_string(&report).unwrap();
+        assert_eq!(serde_json::from_str::<MissionReport>(&legacy_json).unwrap(), report);
     }
 }

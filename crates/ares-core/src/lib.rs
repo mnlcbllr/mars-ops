@@ -11,10 +11,14 @@
 pub mod data;
 pub mod contingency;
 pub mod mission;
+pub mod benchmark;
+pub mod simulation_events;
 pub mod geo;
 pub mod inspect;
+pub mod mission_state;
 pub mod planning;
 pub mod provenance;
+pub mod replan;
 pub mod report;
 pub mod resources;
 pub mod route;

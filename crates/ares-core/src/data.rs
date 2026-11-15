@@ -617,6 +617,7 @@ mod tests {
                 activity_max_s: 120.0,
                 activity_power_w: 5.0,
                 preference_weight: 2.0,
+                required: false,
             }],
         };
         let assumptions = Assumptions { budget: time_only(3600.0, 600.0), model: bare_model() };

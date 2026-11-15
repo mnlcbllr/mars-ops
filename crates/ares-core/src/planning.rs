@@ -44,6 +44,11 @@ pub struct ScientificSite {
     pub activity_power_w: f64,
     /// Mission-designer preference. NOT a NASA science score.
     pub preference_weight: f64,
+    /// When true, the planner must include this site if a feasible modeled plan
+    /// exists that satisfies all hard constraints including this site; otherwise
+    /// the plan is reported infeasible for this requirement.
+    #[serde(default)]
+    pub required: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -122,6 +127,37 @@ pub struct Exclusion {
     pub reason: String,
 }
 
+/// Per-candidate analysis computed by the planner from actual route/resource
+/// evaluations. Figures are modeled estimates under the declared scenario.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CandidateInsight {
+    pub site_id: String,
+    /// `SELECTED`, `EXCLUDED`, or `INFEASIBLE`.
+    pub status: String,
+    /// True when a traversable route to and from the base exists in this run.
+    pub reachable_from_base: bool,
+    /// True when a base->site->base round trip is feasible alone at minimum
+    /// activity duration under the declared limits/reserves.
+    pub feasible_alone: bool,
+    /// Why the optimizer included or excluded this candidate (engine-derived).
+    pub explanation: String,
+    /// Stable machine-readable reason/category when excluded or infeasible.
+    pub reason_code: Option<String>,
+    /// Terrain class at the site position under the scenario slope limit.
+    pub terrain: String,
+    /// Derived slope at the site, degrees, when known.
+    pub site_slope_deg: Option<f64>,
+    /// Standalone round-trip distance/time at minimum dwell, when reachable.
+    pub standalone_distance_m: Option<f64>,
+    pub standalone_travel_time_s: Option<f64>,
+    pub standalone_eva_time_s: Option<f64>,
+    pub standalone_checks: Vec<ConstraintCheck>,
+    /// Modeled preference utility earned in the final plan (0 if not selected).
+    pub planned_utility: f64,
+    /// Activity duration assigned in the final plan (0 if not selected).
+    pub planned_activity_s: f64,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SolverInfo {
     pub name: String,
@@ -153,6 +189,9 @@ pub struct MissionResult {
     pub utility: f64,
     pub issues: Vec<Issue>,
     pub excluded: Vec<Exclusion>,
+    /// Per-candidate selection analysis from planner calculations.
+    #[serde(default)]
+    pub candidate_insights: Vec<CandidateInsight>,
     pub timing: Timing,
 }
 
@@ -324,6 +363,7 @@ fn plan_from(
         utility: 0.0,
         issues: Vec::new(),
         excluded: Vec::new(),
+        candidate_insights: Vec::new(),
         timing: Timing::default(),
     };
 
@@ -358,11 +398,127 @@ fn plan_from(
     // ---- Select, order and schedule ------------------------------------------
     let planning_started = Instant::now();
     let problem = Problem { scenario, table: &table };
+    let minimum = dwell_at_minimum(scenario);
+    let required: Vec<usize> = scenario
+        .sites
+        .iter()
+        .enumerate()
+        .filter_map(|(i, s)| if s.required { Some(i) } else { None })
+        .collect();
+    for &req in &required {
+        if !table.reachable.contains(&req) {
+            let site_id = &scenario.sites[req].id;
+            let reason = result
+                .excluded
+                .iter()
+                .find(|e| &e.site_id == site_id)
+                .map(|e| e.reason.clone())
+                .unwrap_or_else(|| "Required site is not reachable from the base under the declared model.".into());
+            result.status = PlanStatus::Infeasible;
+            result.issues.push(Issue {
+                severity: Severity::Error,
+                code: "RequiredSiteUnsatisfied".into(),
+                message: format!("Required site {site_id} cannot be included: {reason}"),
+                site_id: Some(site_id.clone()),
+            });
+            result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+            return result;
+        }
+        let alone = problem.evaluate(&[req], &minimum).expect("reachable required site has base legs");
+        if !alone.feasible() {
+            let site_id = &scenario.sites[req].id;
+            let shortfalls: Vec<String> = alone.checks.iter().filter(|c| !c.satisfied).map(describe_shortfall).collect();
+            result.status = PlanStatus::Infeasible;
+            result.issues.push(Issue {
+                severity: Severity::Error,
+                code: "RequiredSiteUnsatisfied".into(),
+                message: format!(
+                    "Required site {site_id} cannot be included: a round trip alone (minimum activity, return to base) does not satisfy the declared limits: {}.",
+                    shortfalls.join("; ")
+                ),
+                site_id: Some(site_id.clone()),
+            });
+            result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+            return result;
+        }
+    }
+    let Some(mut order) = greedy_selection(&problem, scenario, &table, &minimum, &required) else {
+        result.status = PlanStatus::Infeasible;
+        result.issues.push(Issue {
+            severity: Severity::Error,
+            code: "RequiredSiteUnsatisfied".into(),
+            message: "One or more required sites cannot be included together within the declared limits while preserving a modeled return to base.".into(),
+            site_id: None,
+        });
+        result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+        return result;
+    };
+    let mut dwell = minimum;
+
+    if !exact && !order.is_empty() {
+        extend_activities(&problem, &order, &mut dwell);
+    }
+    if exact {
+        let mut search = Enumeration { problem: &problem, best: order.clone(),
+            best_utility: problem.evaluate(&order, &dwell).filter(|e| e.feasible()).map_or(-1.0, |e| e.utility),
+            best_time: f64::INFINITY, evaluations: 0, capped: false };
+        if scenario.sites.len() <= 8 {
+            search.visit(&mut Vec::new(), &dwell);
+        } else {
+            search.capped = true;
+        }
+        order = search.best.clone();
+        result.solver = SolverInfo { name: "ExactSmallPlanner".into(), version: "1".into(),
+            description: format!("{}; fixed minimum activity durations, maximum user-defined utility; tie: lower EVA then input order. {} evaluations. Routing included separately. No continuous-allocation optimum claim.",
+                if search.capped { "Bounded search / greedy fallback (not proven optimal)" } else { "Exhaustive ordered-subset search completed" }, search.evaluations) };
+    }
+    result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+
+    finalize_plan(grid, scenario, &table, &problem, &order, &dwell, result, continuation)
+}
+
+/// Best-insertion order used by the baseline and as a DP fallback.
+/// `required` sites are inserted first when feasible; if any required site
+/// cannot be included in a feasible plan, returns `None`.
+fn greedy_selection(
+    problem: &Problem,
+    scenario: &MissionScenario,
+    table: &LegTable,
+    dwell: &[f64],
+    required: &[usize],
+) -> Option<Vec<usize>> {
     let mut order: Vec<usize> = Vec::new();
-    let mut dwell: Vec<f64> = scenario.sites.iter().map(|s| s.activity_min_s).collect();
+    // Insert required sites first (deterministic order by site index).
+    let mut required_sorted = required.to_vec();
+    required_sorted.sort_unstable();
+    for site in required_sorted {
+        if !table.reachable.contains(&site) {
+            return None;
+        }
+        let mut best_pos: Option<(f64, usize)> = None;
+        for position in 0..=order.len() {
+            let mut trial = order.clone();
+            trial.insert(position, site);
+            let Some(eval) = problem.evaluate(&trial, dwell) else { continue };
+            if !eval.feasible() {
+                continue;
+            }
+            let better = match best_pos {
+                None => true,
+                Some((best_time, _)) => eval.totals.eva_time_s < best_time - 1e-12,
+            };
+            if better {
+                best_pos = Some((eval.totals.eva_time_s, position));
+            }
+        }
+        match best_pos {
+            Some((_, position)) => order.insert(position, site),
+            None => return None,
+        }
+    }
 
     loop {
-        let current_eva = problem.evaluate(&order, &dwell).map_or(0.0, |e| e.totals.eva_time_s);
+        let current_eva = problem.evaluate(&order, dwell).map_or(0.0, |e| e.totals.eva_time_s);
         // (score, added seconds, site, position) of the best feasible insertion.
         let mut best: Option<(f64, f64, usize, usize)> = None;
         for &site in table.reachable.iter().filter(|s| !order.contains(s)) {
@@ -370,7 +526,7 @@ fn plan_from(
             for position in 0..=order.len() {
                 let mut trial = order.clone();
                 trial.insert(position, site);
-                let Some(eval) = problem.evaluate(&trial, &dwell) else { continue };
+                let Some(eval) = problem.evaluate(&trial, dwell) else { continue };
                 if !eval.feasible() {
                     continue;
                 }
@@ -392,50 +548,55 @@ fn plan_from(
             None => break,
         }
     }
+    Some(order)
+}
 
-    if !exact && !order.is_empty() {
-        extend_activities(&problem, &order, &mut dwell);
-    }
-    if exact {
-        // Fixed-duration comparison: the baseline incumbent uses the same minima.
-        let mut search = Enumeration { problem: &problem, best: order.clone(),
-            best_utility: problem.evaluate(&order, &dwell).filter(|e| e.feasible()).map_or(-1.0, |e| e.utility),
-            best_time: f64::INFINITY, evaluations: 0, capped: false };
-        if scenario.sites.len() <= 8 {
-            search.visit(&mut Vec::new(), &dwell);
-        } else {
-            search.capped = true;
-        }
-        order = search.best.clone();
-        result.solver = SolverInfo { name: "ExactSmallPlanner".into(), version: "1".into(),
-            description: format!("{}; fixed minimum activity durations, maximum user-defined utility; tie: lower EVA then input order. {} evaluations. Routing included separately. No continuous-allocation optimum claim.",
-                if search.capped { "Bounded search / greedy fallback (not proven optimal)" } else { "Exhaustive ordered-subset search completed" }, search.evaluations) };
-    }
-    result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+/// Explain left-out sites, refuse an empty itinerary, or assemble the final
+/// plan from the canonical evaluation. Shared by every solver so status and
+/// accounting cannot drift between them.
+fn finalize_plan(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    table: &LegTable,
+    problem: &Problem,
+    order: &[usize],
+    dwell: &[f64],
+    mut result: MissionResult,
+    continuation: bool,
+) -> MissionResult {
+    use std::collections::HashMap;
 
-    // ---- Explain what was left out -------------------------------------------
+    let minimum = dwell_at_minimum(scenario);
+    let mut alone_map: HashMap<String, Evaluation> = HashMap::new();
+
     for &site in table.reachable.iter().filter(|s| !order.contains(s)) {
         let alone = problem
-            .evaluate(&[site], &dwell_at_minimum(scenario))
+            .evaluate(&[site], &minimum)
             .expect("a reachable site has both of its base legs");
+        let site_id = scenario.sites[site].id.clone();
         let (code, reason) = if alone.feasible() {
             (
                 "DidNotFitWithSelected",
-                "Fits on its own, but not together with the sites already selected.".to_string(),
+                "Feasible alone under the declared model, but not included with the selected sites: another combination provides better modeled utility within the mission limits."
+                    .to_string(),
             )
         } else {
             let shortfalls: Vec<String> =
                 alone.checks.iter().filter(|c| !c.satisfied).map(describe_shortfall).collect();
             (
                 "ExceedsBudgetAlone",
-                format!("A round trip to this site alone needs {}.", shortfalls.join("; ")),
+                format!(
+                    "A round trip to this site alone (minimum activity, return to base) does not satisfy the declared limits: {}.",
+                    shortfalls.join("; ")
+                ),
             )
         };
         result.excluded.push(Exclusion {
-            site_id: scenario.sites[site].id.clone(),
+            site_id: site_id.clone(),
             code: code.into(),
             reason,
         });
+        alone_map.insert(site_id, alone);
     }
 
     if order.is_empty() && !(continuation && problem.evaluate(&order, &dwell).is_some_and(|e| e.feasible())) {
@@ -462,16 +623,19 @@ fn plan_from(
             } else { "No candidate site can be visited and returned from within the declared limits.".into() },
             site_id: None,
         });
+        result.candidate_insights = build_candidate_insights(
+            grid, scenario, table, problem, order, &result, &alone_map,
+        );
         return result;
     }
 
     // ---- Assemble the plan from the canonical evaluation ---------------------
-    let eval = problem.evaluate(&order, &dwell).expect("selected sites are mutually routed");
+    let eval = problem.evaluate(order, dwell).expect("selected sites are mutually routed");
     debug_assert!(eval.feasible());
     let mut clock = scenario.model.overhead_s.value;
     let mut previous = if continuation { "CURRENT" } else { BASE_ID }.to_string();
     let mut previous_node = table.start;
-    for &site in &order {
+    for &site in order {
         let s = &scenario.sites[site];
         let leg = table.leg(previous_node, site + 1).expect("routed").clone();
         clock += leg.time_s;
@@ -493,7 +657,459 @@ fn plan_from(
     result.checks = eval.checks;
     result.totals = Some(eval.totals);
     result.status = PlanStatus::FeasibleModeled;
+    result.candidate_insights = build_candidate_insights(
+        grid, scenario, table, problem, order, &result, &alone_map,
+    );
     result
+}
+
+fn build_candidate_insights(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    table: &LegTable,
+    problem: &Problem,
+    order: &[usize],
+    result: &MissionResult,
+    alone_map: &std::collections::HashMap<String, Evaluation>,
+) -> Vec<CandidateInsight> {
+    let minimum = dwell_at_minimum(scenario);
+    let max_slope = scenario.model.max_slope_deg.value;
+    let mut insights = Vec::with_capacity(scenario.sites.len());
+    for (index, site) in scenario.sites.iter().enumerate() {
+        let (terrain, slope) = grid.classify(site.position, max_slope);
+        let terrain_name = match terrain {
+            TerrainClass::Traversable => "TRAVERSABLE",
+            TerrainClass::AboveSlopeLimit => "ABOVE_SLOPE_LIMIT",
+            TerrainClass::Unknown => "UNKNOWN",
+            TerrainClass::OutsideCoverage => "OUTSIDE_COVERAGE",
+        }
+        .to_string();
+        let site_slope_deg = slope.map(|s| s as f64);
+        let selected = order.contains(&index);
+        let reachable = table.reachable.contains(&index);
+        let exclusion = result.excluded.iter().find(|e| e.site_id == site.id);
+        let issue = result.issues.iter().find(|i| i.site_id.as_deref() == Some(site.id.as_str()));
+
+        let mut standalone_distance_m = None;
+        let mut standalone_travel_time_s = None;
+        let mut standalone_eva_time_s = None;
+        let mut standalone_checks = Vec::new();
+        let mut feasible_alone = false;
+
+        if let Some(alone) = alone_map.get(&site.id) {
+            standalone_distance_m = Some(alone.totals.distance_m);
+            standalone_travel_time_s = Some(alone.totals.travel_time_s);
+            standalone_eva_time_s = Some(alone.totals.eva_time_s);
+            standalone_checks = alone.checks.clone();
+            feasible_alone = alone.feasible();
+        } else if reachable && selected {
+            if let Some(alone) = problem.evaluate(&[index], &minimum) {
+                standalone_distance_m = Some(alone.totals.distance_m);
+                standalone_travel_time_s = Some(alone.totals.travel_time_s);
+                standalone_eva_time_s = Some(alone.totals.eva_time_s);
+                standalone_checks = alone.checks.clone();
+                feasible_alone = alone.feasible();
+            }
+        }
+
+        let (planned_utility, planned_activity_s) = if selected {
+            result
+                .stops
+                .iter()
+                .find(|stop| stop.site_id == site.id)
+                .map(|stop| (stop.utility, stop.activity_s))
+                .unwrap_or((0.0, 0.0))
+        } else {
+            (0.0, 0.0)
+        };
+
+        let (status, reason_code, explanation) = if selected {
+            let mut parts = vec![format!(
+                "Selected in the final modeled plan (utility {:.3} at {:.1} min activity).",
+                planned_utility,
+                planned_activity_s / 60.0
+            )];
+            if let Some(total) = &result.totals {
+                parts.push(format!(
+                    "Contributes to total modeled utility {:.3} within declared limits (EVA {:.1} min used).",
+                    result.utility,
+                    total.eva_time_s / 60.0
+                ));
+            }
+            ("SELECTED".to_string(), None, parts.join(" "))
+        } else if let Some(ex) = exclusion {
+            let status = if matches!(
+                ex.code.as_str(),
+                "SiteOutsideCoverage"
+                    | "SiteOnUnknownTerrain"
+                    | "RouteCrossesUnknownTerrain"
+                    | "BlockedBySlopeRule"
+                    | "SiteOnSteepTerrain"
+                    | "SiteBlockedByContingency"
+                    | "ExceedsBudgetAlone"
+            ) {
+                "INFEASIBLE"
+            } else {
+                "EXCLUDED"
+            };
+            (
+                status.to_string(),
+                Some(ex.code.clone()),
+                ex.reason.clone(),
+            )
+        } else if let Some(issue) = issue {
+            let status = if issue.code.contains("Unknown") || issue.code.contains("Outside") {
+                "INFEASIBLE"
+            } else {
+                "EXCLUDED"
+            };
+            (
+                status.to_string(),
+                Some(issue.code.clone()),
+                issue.message.clone(),
+            )
+        } else {
+            (
+                "EXCLUDED".to_string(),
+                Some("NotSelected".to_string()),
+                "Not included in the final modeled plan.".to_string(),
+            )
+        };
+
+        insights.push(CandidateInsight {
+            site_id: site.id.clone(),
+            status,
+            reachable_from_base: reachable,
+            feasible_alone,
+            explanation,
+            reason_code,
+            terrain: terrain_name,
+            site_slope_deg,
+            standalone_distance_m,
+            standalone_travel_time_s,
+            standalone_eva_time_s,
+            standalone_checks,
+            planned_utility,
+            planned_activity_s,
+        });
+    }
+    insights
+}
+
+/// Wall-clock budget for the exact subset search. On expiry the planner
+/// abandons the partial search and uses the reproducible greedy baseline, so
+/// the desktop stays responsive and never presents a truncated search as
+/// exact.
+const DP_BUDGET_MS: f64 = 2_500.0;
+
+/// Exact subset and order search over the routed leg table (Held-Karp), then
+/// the same greedy activity extension as the baseline.
+///
+/// Scope of the exactness claim: at minimum activity durations, with the
+/// resource coefficients validated non-negative, every resource use is
+/// monotone in travel time for a fixed site set. The dynamic program therefore
+/// finds the feasible site set with the highest minimum-dwell utility and, on
+/// ties, the least travel time. Activity extension is a heuristic. The
+/// baseline greedy schedule is evaluated on the same leg table and used when
+/// its extension yields more final utility.
+pub fn plan_dp(grid: &PlanningGrid, scenario: &MissionScenario) -> MissionResult {
+    plan_dp_within(grid, scenario, DP_BUDGET_MS)
+}
+
+/// `plan_dp` with an explicit subset-search budget. A nonpositive budget
+/// exercises the documented greedy fallback; callers never present the
+/// fallback as an exact result.
+fn plan_dp_within(
+    grid: &PlanningGrid,
+    scenario: &MissionScenario,
+    subset_budget_ms: f64,
+) -> MissionResult {
+    let mut result = MissionResult {
+        status: PlanStatus::Infeasible,
+        solver: SolverInfo {
+            name: "ExactSubsetDp".into(),
+            version: "1".into(),
+            description: "Held-Karp subset/order search at minimum activity durations over the \
+                          routed leg table, then greedy activity extension. Exact for the \
+                          minimum-dwell objective; the baseline schedule is used when its \
+                          extension yields more utility. Not an optimality claim for arbitrary \
+                          dwell allocations."
+                .into(),
+        },
+        stops: Vec::new(),
+        legs: Vec::new(),
+        totals: None,
+        checks: Vec::new(),
+        utility: 0.0,
+        issues: Vec::new(),
+        excluded: Vec::new(),
+        candidate_insights: Vec::new(),
+        timing: Timing::default(),
+    };
+
+    let report = validate_scenario(grid, scenario);
+    result.issues = report.issues;
+    if !report.ok {
+        let base_data_missing = result.issues.iter().any(|i| {
+            i.severity == Severity::Error
+                && matches!(i.code.as_str(), "BaseOutsideCoverage" | "BaseOnUnknownTerrain")
+        });
+        if base_data_missing {
+            result.status = PlanStatus::UnknownDataCoverage;
+        }
+        return result;
+    }
+    for issue in &result.issues {
+        if let Some(site_id) = &issue.site_id {
+            result.excluded.push(Exclusion {
+                site_id: site_id.clone(),
+                code: issue.code.clone(),
+                reason: issue.message.clone(),
+            });
+        }
+    }
+
+    let routing_started = Instant::now();
+    let table = LegTable::route(grid, scenario, &HashSet::new(), scenario.base, &mut result);
+    result.timing.routing_ms = routing_started.elapsed().as_secs_f64() * 1e3;
+
+    let planning_started = Instant::now();
+    let problem = Problem { scenario, table: &table };
+    let minimum = dwell_at_minimum(scenario);
+    let required: Vec<usize> = scenario
+        .sites
+        .iter()
+        .enumerate()
+        .filter_map(|(i, s)| if s.required { Some(i) } else { None })
+        .collect();
+    for &req in &required {
+        if !table.reachable.contains(&req) {
+            let site_id = &scenario.sites[req].id;
+            let reason = result
+                .excluded
+                .iter()
+                .find(|e| &e.site_id == site_id)
+                .map(|e| e.reason.clone())
+                .unwrap_or_else(|| "Required site is not reachable from the base under the declared model.".into());
+            result.status = PlanStatus::Infeasible;
+            result.issues.push(Issue {
+                severity: Severity::Error,
+                code: "RequiredSiteUnsatisfied".into(),
+                message: format!("Required site {site_id} cannot be included: {reason}"),
+                site_id: Some(site_id.clone()),
+            });
+            result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+            return result;
+        }
+        let alone = problem.evaluate(&[req], &minimum).expect("reachable required site has base legs");
+        if !alone.feasible() {
+            let site_id = &scenario.sites[req].id;
+            let shortfalls: Vec<String> = alone.checks.iter().filter(|c| !c.satisfied).map(describe_shortfall).collect();
+            result.status = PlanStatus::Infeasible;
+            result.issues.push(Issue {
+                severity: Severity::Error,
+                code: "RequiredSiteUnsatisfied".into(),
+                message: format!(
+                    "Required site {site_id} cannot be included: a round trip alone (minimum activity, return to base) does not satisfy the declared limits: {}.",
+                    shortfalls.join("; ")
+                ),
+                site_id: Some(site_id.clone()),
+            });
+            result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+            return result;
+        }
+    }
+    let required_reachable: Vec<usize> = required.clone();
+    let dp_order = subset_dp_order_within(&problem, &table, &minimum, subset_budget_ms, &required_reachable);
+    let greedy_order = greedy_selection(&problem, scenario, &table, &minimum, &required_reachable).unwrap_or_default();
+    let dp_choice = schedule_order(&problem, dp_order, &minimum);
+    let greedy_choice = schedule_order(&problem, greedy_order, &minimum);
+    let (order, dwell, used_greedy) = match (dp_choice, greedy_choice) {
+        (Some(dp), Some(greedy)) => {
+            if greedy.2.utility > dp.2.utility + 1e-9 {
+                (greedy.0, greedy.1, true)
+            } else {
+                (dp.0, dp.1, false)
+            }
+        }
+        (Some(dp), None) => (dp.0, dp.1, false),
+        (None, Some(greedy)) => (greedy.0, greedy.1, true),
+        (None, None) => (Vec::new(), minimum.clone(), false),
+    };
+    if used_greedy {
+        result.solver.name = "GreedyPlanner".into();
+        result.solver.description =
+            "Baseline cheapest-insertion schedule chosen because the exact subset/order search \
+             produced no better extended schedule or ran out of its wall-clock budget."
+                .into();
+    }
+    if !required_reachable.is_empty() && !required_reachable.iter().all(|r| order.contains(r)) {
+        result.status = PlanStatus::Infeasible;
+        result.issues.push(Issue {
+            severity: Severity::Error,
+            code: "RequiredSiteUnsatisfied".into(),
+            message: "One or more required sites cannot be included together within the declared limits while preserving a modeled return to base.".into(),
+            site_id: None,
+        });
+        result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+        return result;
+    }
+    result.timing.planning_ms = planning_started.elapsed().as_secs_f64() * 1e3;
+
+    finalize_plan(grid, scenario, &table, &problem, &order, &dwell, result, false)
+}
+
+/// Extend a minimum-dwell order with the shared heuristic, then evaluate it.
+fn schedule_order(
+    problem: &Problem,
+    order: Vec<usize>,
+    minimum: &[f64],
+) -> Option<(Vec<usize>, Vec<f64>, Evaluation)> {
+    if order.is_empty() {
+        return None;
+    }
+    let mut dwell = minimum.to_vec();
+    extend_activities(problem, &order, &mut dwell);
+    let eval = problem.evaluate(&order, &dwell)?;
+    if !eval.feasible() {
+        return None;
+    }
+    Some((order, dwell, eval))
+}
+
+/// Held-Karp over subsets of reachable sites: the least travel time to visit
+/// exactly `mask` and finish at each site. Returns the best feasible order.
+/// `budget_ms <= 0` tests the fallback path. An abandoned search returns an
+/// empty order, never a partial result labelled exact.
+/// When `required` is non-empty, only subsets containing every required site
+/// are considered.
+fn subset_dp_order_within(
+    problem: &Problem,
+    table: &LegTable,
+    minimum: &[f64],
+    budget_ms: f64,
+    required: &[usize],
+) -> Vec<usize> {
+    let started = Instant::now();
+    let reachable = &table.reachable;
+    let k = reachable.len();
+    if k == 0 {
+        return Vec::new();
+    }
+    let mut required_mask = 0usize;
+    for &req in required {
+        if let Some(slot) = reachable.iter().position(|&s| s == req) {
+            required_mask |= 1 << slot;
+        } else {
+            // Required site not reachable: cannot satisfy.
+            return Vec::new();
+        }
+    }
+    let size = 1usize << k;
+    let mut best = vec![f64::INFINITY; size * k];
+    let mut parent = vec![u8::MAX; size * k];
+
+    for (slot, &site) in reachable.iter().enumerate() {
+        if let Some(leg) = table.leg(0, site + 1) {
+            best[(1 << slot) * k + slot] = leg.time_s;
+        }
+    }
+    for mask in 1..size {
+        if started.elapsed().as_secs_f64() * 1e3 > budget_ms {
+            return Vec::new();
+        }
+        for last in 0..k {
+            if mask & (1 << last) == 0 {
+                continue;
+            }
+            let reached = best[mask * k + last];
+            if !reached.is_finite() {
+                continue;
+            }
+            for next in 0..k {
+                if mask & (1 << next) != 0 {
+                    continue;
+                }
+                let Some(leg) = table.leg(reachable[last] + 1, reachable[next] + 1) else {
+                    continue;
+                };
+                let candidate = reached + leg.time_s;
+                let index = (mask | (1 << next)) * k + next;
+                if candidate < best[index] {
+                    best[index] = candidate;
+                    parent[index] = last as u8;
+                }
+            }
+        }
+    }
+
+    // (utility, travel time, mask, last) of the best feasible subset.
+    let mut choice: Option<(f64, f64, usize, usize)> = None;
+    for mask in 1..size {
+        if started.elapsed().as_secs_f64() * 1e3 > budget_ms {
+            return Vec::new();
+        }
+        if (mask & required_mask) != required_mask {
+            continue;
+        }
+        let mut tail: Option<(f64, usize)> = None;
+        for last in 0..k {
+            if mask & (1 << last) == 0 {
+                continue;
+            }
+            let Some(home) = table.leg(reachable[last] + 1, 0) else { continue };
+            let total = best[mask * k + last] + home.time_s;
+            if !total.is_finite() {
+                continue;
+            }
+            if tail.map_or(true, |(known, _)| total < known) {
+                tail = Some((total, last));
+            }
+        }
+        let Some((total, last)) = tail else { continue };
+        let order = reconstruct_order(mask, last, &parent, k, reachable);
+        let Some(eval) = problem.evaluate(&order, minimum) else { continue };
+        if !eval.feasible() {
+            continue;
+        }
+        let utility = eval.utility;
+        let better = match choice {
+            None => true,
+            Some((known_utility, known_time, _, _)) => {
+                utility > known_utility + 1e-12
+                    || ((utility - known_utility).abs() <= 1e-12
+                        && total < known_time - 1e-12)
+            }
+        };
+        if better {
+            choice = Some((utility, total, mask, last));
+        }
+    }
+    match choice {
+        Some((_, _, mask, last)) => reconstruct_order(mask, last, &parent, k, reachable),
+        None => Vec::new(),
+    }
+}
+
+fn reconstruct_order(
+    mut mask: usize,
+    mut last: usize,
+    parent: &[u8],
+    k: usize,
+    reachable: &[usize],
+) -> Vec<usize> {
+    let mut order = Vec::with_capacity(k);
+    loop {
+        order.push(reachable[last]);
+        let previous = parent[mask * k + last];
+        mask &= !(1 << last);
+        if mask == 0 || previous == u8::MAX {
+            break;
+        }
+        last = previous as usize;
+    }
+    order.reverse();
+    order
 }
 
 /// Modeled preference value of working `activity_s` at `site`.
@@ -587,6 +1203,7 @@ impl LegTable {
                 RouteError::OutsideCoverage { .. } => "SiteOutsideCoverage",
                 RouteError::UnknownTerrainAtEndpoint { .. } => "SiteOnUnknownTerrain",
                 RouteError::SlopeRuleAtEndpoint { .. } => "SiteOnSteepTerrain",
+                RouteError::EndpointBlocked { .. } => "SiteBlockedByContingency",
             };
             result.excluded.push(Exclusion {
                 site_id,
@@ -619,7 +1236,9 @@ impl Enumeration<'_> {
             return;
         }
         self.evaluations += 1;
-        if let Some(e) = self.problem.evaluate(order, dwell).filter(|e| e.feasible()) {
+        let includes_required = self.problem.scenario.sites.iter().enumerate()
+            .all(|(i, site)| !site.required || order.contains(&i));
+        if let Some(e) = self.problem.evaluate(order, dwell).filter(|e| e.feasible() && includes_required) {
             if e.utility > self.best_utility || (e.utility == self.best_utility && e.totals.eva_time_s < self.best_time) {
                 self.best = order.clone();
                 self.best_utility = e.utility;
@@ -644,6 +1263,7 @@ struct Problem<'a> {
     table: &'a LegTable,
 }
 
+#[derive(Clone)]
 struct Evaluation {
     totals: ResourceUse,
     checks: Vec<ConstraintCheck>,
@@ -739,6 +1359,7 @@ mod tests {
             activity_max_s: tmax,
             activity_power_w: 0.0,
             preference_weight: weight,
+            required: false,
         }
     }
 
@@ -1178,5 +1799,145 @@ mod tests {
         let last = r.stops.last().unwrap();
         let back = r.legs.last().unwrap().leg.time_s;
         assert!((last.depart_s + back - t.eva_time_s).abs() < 1e-6);
+    }
+
+    // ---- Exact subset/order solver ------------------------------------------
+
+    /// Highest minimum-dwell utility over every ordered subset, by exhaustion.
+    fn exhaustive_min_dwell_utility(grid: &PlanningGrid, scenario: &MissionScenario) -> f64 {
+        let mut scratch = MissionResult {
+            status: PlanStatus::Infeasible,
+            solver: SolverInfo { name: "Scratch".into(), version: "1".into(), description: String::new() },
+            stops: Vec::new(),
+            legs: Vec::new(),
+            totals: None,
+            checks: Vec::new(),
+            utility: 0.0,
+            issues: Vec::new(),
+            excluded: Vec::new(),
+            candidate_insights: Vec::new(),
+            timing: Timing::default(),
+        };
+        let table = LegTable::route(grid, scenario, &HashSet::new(), scenario.base, &mut scratch);
+        let problem = Problem { scenario, table: &table };
+        let minimum = dwell_at_minimum(scenario);
+        fn walk(
+            problem: &Problem,
+            minimum: &[f64],
+            remaining: &mut Vec<usize>,
+            prefix: &mut Vec<usize>,
+            best: &mut f64,
+        ) {
+            if !prefix.is_empty() {
+                if let Some(eval) = problem.evaluate(prefix, minimum) {
+                    if eval.feasible() {
+                        *best = best.max(eval.utility);
+                    }
+                }
+            }
+            for i in 0..remaining.len() {
+                let site = remaining.remove(i);
+                prefix.push(site);
+                walk(problem, minimum, remaining, prefix, best);
+                prefix.pop();
+                remaining.insert(i, site);
+            }
+        }
+        let mut remaining: Vec<usize> = (0..scenario.sites.len()).collect();
+        let mut best = 0.0;
+        walk(&problem, &minimum, &mut remaining, &mut Vec::new(), &mut best);
+        best
+    }
+
+    #[test]
+    fn dp_matches_exhaustive_search_when_durations_are_fixed() {
+        let g = flat(31, 31, 1.0);
+        let s = scenario(
+            &g,
+            (15, 15),
+            vec![
+                site(&g, "A", 5, 15, 1.0, 50.0, 50.0),
+                site(&g, "B", 25, 15, 0.9, 50.0, 50.0),
+                site(&g, "C", 15, 5, 0.8, 50.0, 50.0),
+                site(&g, "D", 15, 25, 0.7, 50.0, 50.0),
+            ],
+            time_only(180.0, 0.0),
+        );
+        let result = plan_dp(&g, &s);
+        assert_eq!(result.status, PlanStatus::FeasibleModeled);
+        let expected = exhaustive_min_dwell_utility(&g, &s);
+        assert!((expected - 1.9).abs() < 1e-9, "fixture should fit A and B only");
+        assert!((result.utility - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dp_selects_a_better_subset_than_greedy_insertion() {
+        let g = flat(31, 31, 1.0);
+        let s = scenario(
+            &g,
+            (15, 15),
+            vec![
+                site(&g, "X", 18, 15, 1.0, 100.0, 100.0),
+                site(&g, "Y", 5, 15, 1.1, 100.0, 100.0),
+                site(&g, "Z", 25, 15, 1.1, 100.0, 100.0),
+            ],
+            time_only(240.0, 0.0),
+        );
+        let greedy = plan_greedy(&g, &s);
+        let dp = plan_dp(&g, &s);
+        assert_eq!(greedy.status, PlanStatus::FeasibleModeled);
+        assert!((greedy.utility - 2.1).abs() < 1e-9, "baseline takes X plus one side");
+        assert_eq!(dp.status, PlanStatus::FeasibleModeled);
+        assert!((dp.utility - 2.2).abs() < 1e-9, "exact solver takes both sides");
+        assert!(ids(&dp).contains(&"Y") && ids(&dp).contains(&"Z"));
+        assert!(!ids(&dp).contains(&"X"));
+    }
+
+    #[test]
+    fn dp_is_never_worse_than_the_baseline_on_the_varied_fixture() {
+        let (g, s) = varied();
+        let dp = plan_dp(&g, &s);
+        let greedy = plan_greedy(&g, &s);
+        if greedy.status == PlanStatus::FeasibleModeled {
+            assert_eq!(dp.status, PlanStatus::FeasibleModeled);
+        }
+        assert!(dp.utility + 1e-9 >= greedy.utility);
+    }
+
+    #[test]
+    fn dp_is_deterministic() {
+        let (g, s) = varied();
+        let mut a = plan_dp(&g, &s);
+        let mut b = plan_dp(&g, &s);
+        a.timing = Timing::default();
+        b.timing = Timing::default();
+        assert_eq!(serde_json::to_string(&a).unwrap(), serde_json::to_string(&b).unwrap());
+    }
+
+    #[test]
+    fn dp_abandons_a_search_that_exceeds_its_budget() {
+        let (g, s) = varied();
+        let mut scratch = MissionResult {
+            status: PlanStatus::Infeasible,
+            solver: SolverInfo { name: "Scratch".into(), version: "1".into(), description: String::new() },
+            stops: Vec::new(),
+            legs: Vec::new(),
+            totals: None,
+            checks: Vec::new(),
+            utility: 0.0,
+            issues: Vec::new(),
+            excluded: Vec::new(),
+            candidate_insights: Vec::new(),
+            timing: Timing::default(),
+        };
+        let table = LegTable::route(&g, &s, &HashSet::new(), s.base, &mut scratch);
+        let problem = Problem { scenario: &s, table: &table };
+        let minimum = dwell_at_minimum(&s);
+        assert!(subset_dp_order_within(&problem, &table, &minimum, 0.0, &[]).is_empty());
+        // The public planner still produces the baseline schedule.
+        let fallback = plan_dp_within(&g, &s, 0.0);
+        assert_eq!(fallback.status, PlanStatus::FeasibleModeled);
+        assert_eq!(fallback.solver.name, "GreedyPlanner");
+        assert!(!fallback.stops.is_empty());
     }
 }

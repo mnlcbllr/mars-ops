@@ -1,6 +1,8 @@
 // Turns numeric rasters into map pixels. Pure functions: the same code feeds
 // the 3D texture.
 
+import type { BlockOverlay } from "./types";
+
 /**
  * Elevation ramp: one hue, dark (low) to light (high), so brightness alone
  * carries the order and the map never needs a rainbow.
@@ -15,6 +17,12 @@ export const ABOVE_LIMIT_RGB = [236, 131, 90] as const;
 /** No usable elevation or slope: dark veil, light hatching "\". */
 export const UNKNOWN_VEIL_RGB = [13, 13, 13] as const;
 export const UNKNOWN_HATCH_RGB = [195, 194, 183] as const;
+
+/** Temporary simulation block: red fill with a solid darker edge. */
+export const BLOCKED_RGB = [208, 59, 59] as const;
+export const BLOCKED_EDGE_RGB = [90, 16, 16] as const;
+const BLOCKED_ALPHA = 110;
+const BLOCKED_EDGE_ALPHA = 220;
 
 const TINT_ALPHA = 90;
 const VEIL_ALPHA = 150;
@@ -112,4 +120,31 @@ export function hazardRgba(
     }
   }
   return { data, width, height, aboveLimit, unknown };
+}
+
+/**
+ * The temporary blocked cells of a running simulation, drawn at
+ * `pxPerCell` pixels per planning cell. The dataset itself never changes:
+ * this image exists only for the current simulation view.
+ */
+export function blockedRgba(overlay: BlockOverlay, pxPerCell: number): HazardImage {
+  const [width, height] = [overlay.width * pxPerCell, overlay.height * pxPerCell];
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (const index of overlay.cells) {
+    const col = index % overlay.width;
+    const row = Math.floor(index / overlay.width);
+    if (row < 0 || row >= overlay.height) continue;
+    for (let y = 0; y < pxPerCell; y++) {
+      for (let x = 0; x < pxPerCell; x++) {
+        const edge = x === 0 || y === 0 || x === pxPerCell - 1 || y === pxPerCell - 1;
+        const rgb = edge ? BLOCKED_EDGE_RGB : BLOCKED_RGB;
+        const i = ((row * pxPerCell + y) * width + col * pxPerCell + x) * 4;
+        data[i] = rgb[0];
+        data[i + 1] = rgb[1];
+        data[i + 2] = rgb[2];
+        data[i + 3] = edge ? BLOCKED_EDGE_ALPHA : BLOCKED_ALPHA;
+      }
+    }
+  }
+  return { data, width, height, aboveLimit: 0, unknown: 0 };
 }

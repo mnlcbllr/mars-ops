@@ -16,8 +16,11 @@ USAGE:
   ares-cli verify-manifest <dataset_dir>
   ares-cli inspect <dataset_dir> <x_m> <y_m>
   ares-cli plan <dataset_dir> [--scenario <scenario.json>] [--out <report.json>]
+  ares-cli benchmark <dataset_dir> [--scenario <scenario.json>] [--out <benchmark.json>]
 
-`plan` without --scenario uses the scenario packaged with the dataset.";
+`plan` without --scenario uses the scenario packaged with the dataset.
+`benchmark` compares the greedy baseline with the exact subset/order planner
+on the same declared cases and writes machine-readable results.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -25,6 +28,7 @@ fn main() -> ExitCode {
         Some("verify-manifest") if args.len() == 2 => verify(Path::new(&args[1])),
         Some("inspect") if args.len() == 4 => inspect(Path::new(&args[1]), &args[2], &args[3]),
         Some("plan") if args.len() >= 2 => plan(Path::new(&args[1]), &args[2..]),
+        Some("benchmark") if args.len() >= 2 => benchmark(Path::new(&args[1]), &args[2..]),
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -108,6 +112,75 @@ fn plan(dir: &Path, options: &[String]) -> Result<ExitCode, String> {
         println!("report    {path}");
     }
     Ok(if status == PlanStatus::FeasibleModeled { ExitCode::SUCCESS } else { ExitCode::from(2) })
+}
+
+fn benchmark(dir: &Path, options: &[String]) -> Result<ExitCode, String> {
+    let (mut scenario_path, mut out_path) = (None, None);
+    let mut it = options.iter();
+    while let Some(flag) = it.next() {
+        let value = it.next().ok_or_else(|| format!("{flag} needs a value\n\n{USAGE}"))?;
+        match flag.as_str() {
+            "--scenario" => scenario_path = Some(value),
+            "--out" => out_path = Some(value),
+            _ => return Err(format!("unknown option {flag}\n\n{USAGE}")),
+        }
+    }
+    let session = open(dir)?;
+    let scenario: MissionScenario = match scenario_path {
+        Some(path) => {
+            let text = std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))?;
+            serde_json::from_str(&text).map_err(|e| format!("{path} is not a mission scenario: {e}"))?
+        }
+        None => session.dataset.default_scenario().map_err(|e| e.to_string())?,
+    };
+    let report = session.benchmark(&scenario).map_err(|e| e.to_string())?;
+    println!(
+        "{:<12} {:<14} {:>5} {:>8} {:>9} {:>8} {:>8} {:>7} {:>8}",
+        "case", "solver", "stops", "utility", "EVA min", "margin", "replans", "events", "runtime"
+    );
+    for case in &report.cases {
+        for outcome in [&case.greedy, &case.exact] {
+            let eva = outcome
+                .checks
+                .iter()
+                .find(|check| check.resource == "eva_time")
+                .map(|check| check.used / 60.0)
+                .unwrap_or(f64::NAN);
+            let margin = outcome
+                .checks
+                .iter()
+                .find(|check| check.resource == "eva_time")
+                .map(|check| check.margin / 60.0)
+                .unwrap_or(f64::NAN);
+            println!(
+                "{:<12} {:<14} {:>5} {:>8.3} {:>9.1} {:>8.1} {:>8} {:>7} {:>7.1}ms  {}",
+                case.name,
+                outcome.solver,
+                outcome.completed_sites.len(),
+                outcome.achieved_utility,
+                eva,
+                margin,
+                outcome.replans,
+                outcome.events,
+                outcome.runtime_ms,
+                match outcome.final_phase {
+                    Some(ares_core::mission_state::SimulationPhase::Complete) => "returned to base",
+                    Some(ares_core::mission_state::SimulationPhase::Infeasible) => "INFEASIBLE",
+                    Some(_) => "unfinished",
+                    None => "not simulated",
+                }
+            );
+            if let Some(failure) = &outcome.failure {
+                println!("             note: {failure}");
+            }
+        }
+    }
+    if let Some(path) = out_path {
+        let json = report.to_json().map_err(|e| e.to_string())?;
+        std::fs::write(path, json).map_err(|e| format!("cannot write {path}: {e}"))?;
+        println!("benchmark {path}");
+    }
+    Ok(ExitCode::SUCCESS)
 }
 
 fn print_summary(report: &MissionReport) {

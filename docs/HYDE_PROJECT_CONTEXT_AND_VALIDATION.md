@@ -9,7 +9,7 @@
 
 ## 0. Instructions to the coding agent — read this first
 
-You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration System) as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements. HYDE is the project brand, not a claim that the HyDE optimizer is implemented; the current solver remains GreedyPlanner.
+You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration System) as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements. HYDE is the project brand, not a claim that the HyDE optimizer is implemented; the implementation notes in `docs/MARS_OPS_IMPLEMENTATION.md` record what was built, including the exact subset/order planner and the retained GreedyPlanner baseline.
 
 **Non-negotiable rules**
 

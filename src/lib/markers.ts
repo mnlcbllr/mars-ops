@@ -26,10 +26,18 @@ export interface Marker {
 }
 
 /** Markers for the current scenario and, if there is one, its plan. */
-export function markersFor(scenario: MissionScenario, result: MissionResult | null): Marker[] {
+export function markersFor(
+  scenario: MissionScenario,
+  result: MissionResult | null,
+  completed: readonly string[] = [],
+): Marker[] {
   const order = new Map(result?.stops.map((stop, i) => [stop.site_id, i + 1]));
+  const done = new Set(completed);
   const sites = scenario.sites.map((site): Marker => {
     const position = { x_m: site.position.x_m, y_m: site.position.y_m };
+    // Completed work wins over the remaining plan, so a finished stop never
+    // still reads as a future visit.
+    if (done.has(site.id)) return { kind: "visited", id: site.id, ...position, glyph: "", label: `${site.id} complete` };
     const visit = order.get(site.id);
     if (visit !== undefined) return { kind: "visited", id: site.id, ...position, glyph: String(visit), label: site.id };
     if (result?.excluded.some((e) => e.site_id === site.id)) {

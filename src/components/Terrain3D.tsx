@@ -7,7 +7,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { errorText } from "@/lib/api";
 import { drawMarker, type Marker } from "@/lib/markers";
 import { buildTerrainMesh } from "@/lib/terrainMesh";
-import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE } from "@/lib/theme";
+import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE, WARNING } from "@/lib/theme";
 import type { LocalPoint, PlannedLeg, PointInspection } from "@/lib/types";
 
 export interface MeshInfo {
@@ -39,8 +39,14 @@ interface Terrain3DProps {
   exaggeration: number;
   markers: Marker[];
   legs: PlannedLeg[];
-  originalLegs?: PlannedLeg[];
-  currentPosition?: LocalPoint | null;
+  /** Latest replanned route, drawn on top of the original when present. */
+  revisedLegs?: PlannedLeg[];
+  /** Simulated crew position on the lattice, when a simulation is running. */
+  position?: LocalPoint | null;
+  /** Candidate corridor the user is about to block, drawn as a ring. */
+  blockPreview?: { center: LocalPoint; radius_m: number } | null;
+  /** Terrain-derived ground-level preview at a selected destination (clearly labeled in UI). */
+  pov?: { point: LocalPoint; label: string } | null;
   selectedLeg: number | null;
   inspected: PointInspection | null;
   placing: boolean;
@@ -87,7 +93,7 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, revisedLegs, position, blockPreview, pov, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -135,15 +141,18 @@ export function Terrain3D(props: Terrain3DProps) {
     scene.add(frame);
 
     let pending = 0;
+    const renderNow = () => {
+      renderer.render(scene, camera);
+      // North is −z. With the camera due south (azimuth 0) north points up.
+      if (compassRef.current) {
+        compassRef.current.style.transform = `rotate(${THREE.MathUtils.radToDeg(controls.getAzimuthalAngle())}deg)`;
+      }
+    };
     const invalidate = () => {
       if (pending) return;
       pending = requestAnimationFrame(() => {
         pending = 0;
-        renderer.render(scene, camera);
-        // North is −z. With the camera due south (azimuth 0) north points up.
-        if (compassRef.current) {
-          compassRef.current.style.transform = `rotate(${THREE.MathUtils.radToDeg(controls.getAzimuthalAngle())}deg)`;
-        }
+        renderNow();
       });
     };
     controls.addEventListener("change", invalidate);
@@ -155,7 +164,9 @@ export function Terrain3D(props: Terrain3DProps) {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       setViewportHeight(h);
-      invalidate();
+      // Draw in the same tick: setSize clears the WebGL buffer, and a deferred
+      // rAF redraw would let one blank frame reach the screen (visible blink).
+      renderNow();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(host);
@@ -266,16 +277,43 @@ export function Terrain3D(props: Terrain3DProps) {
     s.invalidate();
   }, [exaggeration, extentX, extentY, elevation, step]);
 
+  const surfaceZ = (x_m: number, y_m: number): number | null => {
+    const col = Math.floor(x_m / dx);
+    const row = height - 1 - Math.floor(y_m / dy);
+    if (col < 0 || col >= width || row < 0 || row >= height) return null;
+    const value = elevation[row * width + col]!;
+    return Number.isNaN(value) ? null : value;
+  };
+
   // Starting view: from the south, looking north, about 35° above the horizon.
   useEffect(() => {
     const s = stage.current;
-    if (!s) return;
+    if (!s || pov) return;
     const reach = Math.max(extentX, extentY);
     s.camera.position.set(0, reach * 0.75, reach * 1.05);
     s.controls.target.set(0, 0, 0);
     s.controls.update();
     s.invalidate();
-  }, [resetSignal, extentX, extentY]);
+  }, [resetSignal, extentX, extentY, pov]);
+
+  // Destination POV: terrain-derived ground-level preview (not a real photo).
+  // Camera/target live in world space, where the mesh sits (elevation − reference)
+  // metres above the origin, so the offset must be added back.
+  useEffect(() => {
+    const s = stage.current;
+    if (!s || !pov) return;
+    const z = surfaceZ(pov.point.x_m, pov.point.y_m);
+    if (z === null) return;
+    const eye = 1.7; // modeled observer eye height, metres above DTM surface
+    const look = 12; // metres ahead (north) — short, so the ground stays close and readable
+    const px = pov.point.x_m;
+    const py = pov.point.y_m;
+    const groundY = (z - s.reference) * exaggeration;
+    s.camera.position.set(px, groundY + eye * exaggeration, -py);
+    s.controls.target.set(px, groundY + eye * 0.7 * exaggeration, -(py + look));
+    s.controls.update();
+    s.invalidate();
+  }, [pov, elevation, width, height, dx, dy, exaggeration]);
 
   // Route, markers and the inspected point, at their own elevations.
   useEffect(() => {
@@ -291,21 +329,51 @@ export function Terrain3D(props: Terrain3DProps) {
       return Number.isNaN(value) ? null : value;
     };
 
-    const drawRoute = (routes: PlannedLeg[], original: boolean) => routes.forEach((leg, index) => {
+    legs.forEach((leg, index) => {
       if (leg.path.length < 2) return;
       const positions = leg.path.flatMap((p, i) => [p.x_m, leg.elevation_m[i]! + OVERLAY_LIFT_M, -p.y_m]);
       const geometry = new LineGeometry();
       geometry.setPositions(positions);
-      const selected = !original && index === selectedLeg;
-      const material = new LineMaterial({ color: original ? 0xb0b0b0 : props.currentPosition ? 0x54d3e5 : selected ? INK_LIGHT : ROUTE,
-        linewidth: original ? 2 : selected ? 6 : 4, dashed: original, dashSize: 12, gapSize: 8 });
+      const selected = index === selectedLeg;
+      const material = new LineMaterial({ color: selected ? INK_LIGHT : ROUTE, linewidth: selected ? 6 : 4 });
       const line = new Line2(geometry, material);
-      line.computeLineDistances();
       line.renderOrder = selected ? 2 : 1;
       s.overlay.add(line);
     });
-    drawRoute(props.originalLegs ?? [], true);
-    drawRoute(legs, false);
+
+    // The replanned route sits slightly higher so shared stretches do not fight.
+    (revisedLegs ?? []).forEach((leg) => {
+      if (leg.path.length < 2) return;
+      const positions = leg.path.flatMap((p, i) => [p.x_m, leg.elevation_m[i]! + OVERLAY_LIFT_M + 1, -p.y_m]);
+      const geometry = new LineGeometry();
+      geometry.setPositions(positions);
+      const material = new LineMaterial({ color: WARNING, linewidth: 5 });
+      const line = new Line2(geometry, material);
+      line.renderOrder = 3;
+      s.overlay.add(line);
+    });
+
+    // Corridor preview: a ring on the surface at the declared radius.
+    if (blockPreview) {
+      const ring: number[] = [];
+      const segments = 72;
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * 2 * Math.PI;
+        const x = blockPreview.center.x_m + Math.cos(angle) * blockPreview.radius_m;
+        const y = blockPreview.center.y_m + Math.sin(angle) * blockPreview.radius_m;
+        const z = surface(x, y);
+        if (z === null) continue;
+        ring.push(x, z + OVERLAY_LIFT_M + 1, -y);
+      }
+      if (ring.length >= 6) {
+        const geometry = new LineGeometry();
+        geometry.setPositions(ring);
+        const material = new LineMaterial({ color: WARNING, linewidth: 3 });
+        const line = new Line2(geometry, material);
+        line.renderOrder = 4;
+        s.overlay.add(line);
+      }
+    }
 
     // Constant on-screen size: a sprite's scale is a fraction of the view height.
     const pixel = (2 * Math.tan(THREE.MathUtils.degToRad(FOV_DEG / 2))) / viewportHeight;
@@ -340,16 +408,26 @@ export function Terrain3D(props: Terrain3DProps) {
       sprite(canvas, MARKER_CANVAS.anchorX, marker.x_m, marker.y_m, z);
     }
 
-    if (props.currentPosition) {
-      const p = props.currentPosition;
-      const z = surface(p.x_m, p.y_m);
+    if (position) {
+      const z = surface(position.x_m, position.y_m);
       if (z !== null) {
-        const [canvas, ctx] = canvas2x(160, 40);
-        ctx.fillStyle = "#101319"; ctx.fillRect(3, 8, 24, 24);
-        ctx.strokeStyle = "#54d3e5"; ctx.lineWidth = 3; ctx.strokeRect(3, 8, 24, 24);
-        ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px sans-serif";
-        ctx.fillText("SIM", 5, 24); ctx.fillText("Current", 34, 24);
-        sprite(canvas, 15, p.x_m, p.y_m, z);
+        const [canvas, ctx] = canvas2x(36, 36);
+        ctx.beginPath();
+        ctx.arc(18, 18, 12, 0, 2 * Math.PI);
+        ctx.fillStyle = INK_DARK;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(18, 18, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = WARNING;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(18, 11);
+        ctx.lineTo(24, 24);
+        ctx.lineTo(12, 24);
+        ctx.closePath();
+        ctx.fillStyle = INK_DARK;
+        ctx.fill();
+        sprite(canvas, 18, position.x_m, position.y_m, z);
       }
     }
 
@@ -373,7 +451,7 @@ export function Terrain3D(props: Terrain3DProps) {
       sprite(canvas, 16, inspected.local.x_m, inspected.local.y_m, inspected.elevation_m);
     }
     s.invalidate();
-  }, [legs, props.originalLegs, props.currentPosition, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
+  }, [legs, revisedLegs, position, blockPreview, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
 
   if (failure) {
     return (

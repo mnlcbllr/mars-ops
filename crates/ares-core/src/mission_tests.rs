@@ -13,7 +13,7 @@ pub(crate) fn fixture() -> (PlanningGrid, MissionScenario) {
         id: id.to_string(), name: id.to_string(), position: at(&g, *col, 4),
         science_rationale: "SYNTHETIC fixture".into(), source_product_ids: vec![],
         evidence_kind: EvidenceKind::Synthetic, activity_min_s: 10.0, activity_max_s: 10.0,
-        activity_power_w: 360.0, preference_weight: 1.0,
+        activity_power_w: 360.0, preference_weight: 1.0, required: false,
     }).collect();
     let mut model = bare_model();
     model.base_power_w = coef(360.0, "W");

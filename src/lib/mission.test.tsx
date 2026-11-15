@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
 import { editCoefficient, addedSite, initialMission, missionReducer, planningScenario, type MissionState } from "./mission";
-import type { MissionScenario, SolvedRun, ValidationReport } from "./types";
+import type { MissionScenario, SimulationView, SolvedRun, ValidationReport } from "./types";
 
 function scenario(): MissionScenario {
   const read = (file: string) => JSON.parse(readFileSync(new URL(`../../datasets/jezero-small/${file}`, import.meta.url), "utf8"));
@@ -42,6 +42,24 @@ function planned(): MissionState {
   state = missionReducer(state, { type: "startRun" });
   state = missionReducer(state, { type: "validated", report: { ok: true, issues: [] } });
   return missionReducer(state, { type: "solved", run: solved(state.scenario) });
+}
+
+/** Synthetic simulation view for reducer and lock tests; no real mission. */
+function running(input: MissionState): SimulationView {
+  const report = input.run!.report;
+  return {
+    state: {
+      schema_version: 1, dataset_id: report.dataset.dataset_id, scenario: report.scenario,
+      initial_plan: report.result, plan: report.result, phase: "TRAVEL",
+      leg_index: 0, point_index: 0, step_elapsed_s: 0, activity_done_s: 0,
+      elapsed_s: report.result.totals!.overhead_s, consumed: report.result.totals!,
+      anchor: report.scenario.base, completed_sites: [], completed: [], events: [],
+      blocked: { width: 512, height: 512, cells: [] }, replans: 0,
+    },
+    position: report.scenario.base, remaining_budget: report.scenario.budget,
+    remaining_checks: report.result.checks, return_margin_s: 2400, remaining_sites: 1,
+    leg_progress: 0.2,
+  };
 }
 
 describe("mission workflow", () => {
@@ -119,6 +137,30 @@ describe("mission workflow", () => {
     expect(failed.run).toBeNull();
   });
 
+  test("a simulation locks editing and only reset clears it", () => {
+    let state = planned();
+    state = missionReducer(state, { type: "startSimulation" });
+    expect(state.simulationBusy).toBe(true);
+    expect(missionReducer(state, { type: "startSimulation" })).toBe(state);
+    const view = running(state);
+    state = missionReducer(state, { type: "simulation", view });
+    expect(state.simulation).toBe(view);
+    expect(state.simulationBusy).toBe(false);
+    // A late async edit cannot unfreeze an active drill.
+    expect(missionReducer(state, { type: "edit", scenario: { ...state.scenario, name: "Changed" } })).toBe(state);
+    state = missionReducer(state, { type: "clearSimulation" });
+    expect(state.simulation).toBeNull();
+    const edited = missionReducer(state, { type: "edit", scenario: { ...state.scenario, name: "Changed" } });
+    expect(edited.simulation).toBeNull();
+    expect(edited.run).toBeNull();
+
+    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false}
+      datasetId="jezero-small" locked onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}}
+      onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
+    expect(html).toContain("Simulation active. The scenario is frozen; reset the simulation to edit it.");
+    expect(html).toContain("<fieldset disabled");
+  });
+
   test("export requires a current run; export failure leaves it available for retry", () => {
     const initial = initialMission(scenario());
     expect(missionReducer(initial, { type: "startExport" })).toBe(initial);
@@ -164,7 +206,7 @@ describe("mission workflow", () => {
     } });
     expect(planningScenario(edited).budget.energy_budget_wh).toBeNull();
     expect(planningScenario(edited).budget.energy_reserve_wh).toBe(200);
-    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} placingSite={false} datasetId="jezero-small" onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} placingSite={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain("Energy reserve needs a budget.");
     expect(html).not.toContain("No energy limit set.");
   });
@@ -200,9 +242,9 @@ describe("mission presentation", () => {
     expect(html).toContain("246 m");
     expect(html).toContain("10.0 min");
     expect(html).toContain("1.25");
-    expect(html).toContain("Margin after reserve");
-    expect(html).toContain("45.000");
-    expect(html).toContain("Return to base");
+    expect(html.toLowerCase()).toContain("margin");
+    expect(html).toContain("45.00");
+    expect(html.toLowerCase()).toContain("return");
     expect(html).toContain("/reports/17.json");
   });
 
@@ -223,16 +265,16 @@ describe("mission presentation", () => {
     const state = initialMission(scenario());
     state.scenario.budget.energy_budget_wh = null;
     state.scenario.budget.energy_reserve_wh = null;
-    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false} datasetId="jezero-small" onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain('id="mission-scenario"');
-    expect(html).toContain("Time limit (min)");
+    expect(html).toContain("EVA limit (min)");
     expect(html).toContain('value="360"');
-    expect(html).toContain("No energy limit.");
-    expect(html).toContain("Max stay (min)");
+    expect(html).toContain("No energy limit set.");
+    expect(html).toContain("maximum activity (min)");
     expect(html).toContain("Add candidate on map");
     expect(html).toContain("Save plan");
     expect(html).toContain("Load a saved plan");
-    expect(html).toContain("Assumptions");
+    expect(html).toContain("Model assumptions");
     expect(html).toContain("session-only");
   });
 });

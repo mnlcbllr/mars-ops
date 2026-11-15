@@ -54,6 +54,8 @@ export interface ScientificSite {
   activity_max_s: number;
   activity_power_w: number;
   preference_weight: number;
+  /** If true, the planner must include this site or report infeasibility. */
+  required?: boolean;
 }
 
 export interface MissionScenario {
@@ -107,6 +109,24 @@ export interface Exclusion {
   reason: string;
 }
 
+export interface CandidateInsight {
+  site_id: string;
+  /** `SELECTED`, `EXCLUDED`, or `INFEASIBLE`. */
+  status: string;
+  reachable_from_base: boolean;
+  feasible_alone: boolean;
+  explanation: string;
+  reason_code: string | null;
+  terrain: string;
+  site_slope_deg: number | null;
+  standalone_distance_m: number | null;
+  standalone_travel_time_s: number | null;
+  standalone_eva_time_s: number | null;
+  standalone_checks: ConstraintCheck[];
+  planned_utility: number;
+  planned_activity_s: number;
+}
+
 export interface ResourceUse {
   distance_m: number;
   travel_time_s: number;
@@ -138,6 +158,7 @@ export interface MissionResult {
   utility: number;
   issues: Issue[];
   excluded: Exclusion[];
+  candidate_insights?: CandidateInsight[];
   timing: { routing_ms: number; planning_ms: number; legs_routed: number; cells_expanded: number };
 }
 
@@ -164,8 +185,90 @@ export interface MissionReport {
   planning_grid: { cell_x_m: number; cell_y_m: number; raster_cells_per_planning_cell: number };
   scenario: MissionScenario;
   result: MissionResult;
-  simulation?: SimulationMission;
+  /** Present when the run was advanced in the stateful simulation. */
+  simulation?: SimulationRecord;
   disclaimers: string[];
+}
+
+export type SimulationPhase = "TRAVEL" | "ACTIVITY" | "COMPLETE" | "INFEASIBLE";
+export type ResourceKind = "EVA_TIME" | "ENERGY" | "CONSUMABLE";
+
+export interface GridCellRef {
+  col: number;
+  row: number;
+}
+
+export type ContingencyKind =
+  | { type: "BLOCK_CELLS"; cells: GridCellRef[] }
+  | { type: "BLOCK_CORRIDOR"; center: LocalPoint; radius_m: number }
+  | { type: "DELAY"; seconds: number }
+  | { type: "RESOURCE_LOSS"; resource: ResourceKind; amount: number };
+
+export interface ContingencyEvent {
+  id: number;
+  at_elapsed_s: number;
+  kind: ContingencyKind;
+}
+
+/** Sparse temporary blocked cells; the dataset itself is never modified. */
+export interface BlockOverlay {
+  width: number;
+  height: number;
+  cells: number[];
+}
+
+export interface CompletedStop {
+  site_id: string;
+  activity_s: number;
+  utility: number;
+  depart_s: number;
+}
+
+export interface MissionState {
+  schema_version: number;
+  dataset_id: string;
+  scenario: MissionScenario;
+  initial_plan: MissionResult;
+  plan: MissionResult;
+  phase: SimulationPhase;
+  leg_index: number;
+  point_index: number;
+  step_elapsed_s: number;
+  activity_done_s: number;
+  elapsed_s: number;
+  consumed: ResourceUse;
+  anchor: LocalPoint;
+  completed_sites: string[];
+  /** Work the simulation actually executed, in completion order. */
+  completed: CompletedStop[];
+  events: ContingencyEvent[];
+  blocked: BlockOverlay;
+  replans: number;
+}
+
+export interface SimulationView {
+  state: MissionState;
+  position: LocalPoint;
+  remaining_budget: ResourceBudget;
+  remaining_checks: ConstraintCheck[];
+  return_margin_s: number | null;
+  remaining_sites: number;
+  leg_progress: number;
+}
+
+export interface SimulationRecord {
+  schema_version: number;
+  phase: SimulationPhase;
+  elapsed_s: number;
+  consumed: ResourceUse;
+  completed_sites: string[];
+  completed: CompletedStop[];
+  events: ContingencyEvent[];
+  replans: number;
+  current_plan: MissionResult;
+  remaining_budget: ResourceBudget;
+  remaining_checks: ConstraintCheck[];
+  return_margin_s: number | null;
 }
 
 export interface SolvedRun {
@@ -273,40 +376,4 @@ export interface PlanSummary {
   file: string;
   name: string;
   dataset_id: string;
-}
-
-export interface CellRef { col: number; row: number }
-export type ResourceKind = "EVA_TIME" | "ENERGY" | "CONSUMABLE";
-export type ContingencyEvent =
-  | { kind: "BLOCK_CELLS"; cells: CellRef[]; reason: string }
-  | { kind: "DELAY"; seconds: number; reason: string }
-  | { kind: "RESOURCE_ADJUSTMENT"; resource: ResourceKind; amount: number; reason: string };
-export type MissionAction =
-  | { kind: "ADVANCE"; steps: number }
-  | { kind: "INJECT"; dataset_id: string; event: ContingencyEvent }
-  | { kind: "REPLAN"; exact: boolean };
-export type SimulationPhase = { phase: "OVERHEAD" } | { phase: "TRAVELING"; leg_index: number; waypoint: number }
-  | { phase: "WORKING"; leg_index: number } | { phase: "RETURNED" };
-export interface SimulationMission {
-  scenario: MissionScenario;
-  manifest_sha256: string;
-  original_plan: MissionResult;
-  plan: MissionResult;
-  position: LocalPoint;
-  phase: SimulationPhase;
-  plan_valid: boolean;
-  completed: string[];
-  utility_earned: number;
-  used: ResourceUse;
-  adjusted_budget: ResourceBudget;
-  events: ContingencyEvent[];
-  timeline: { at_s: number; position: LocalPoint; action: MissionAction }[];
-  revisions: { at_s: number; position: LocalPoint; completed: string[]; dropped: string[]; plan: MissionResult }[];
-  activity_durations_s: [string, number][];
-}
-export interface SimulationSnapshot {
-  run_id: number;
-  generation: number;
-  revision: number;
-  mission: SimulationMission;
 }

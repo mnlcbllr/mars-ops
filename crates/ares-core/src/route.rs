@@ -40,6 +40,119 @@ pub enum Search {
     Dijkstra,
 }
 
+/// A per-run set of planning cells made impassable by a contingency.
+///
+/// The overlay never touches the dataset: it only hides cells from routing and
+/// simulation for the current mission attempt. Cells are stored as sorted
+/// linear indices so it serializes sparsely and checks in `O(log n)`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockOverlay {
+    pub width: usize,
+    pub height: usize,
+    /// Sorted, deduplicated linear cell indices (`row * width + col`).
+    pub cells: Vec<u32>,
+}
+
+impl BlockOverlay {
+    pub fn new(width: usize, height: usize) -> Self {
+        Self { width, height, cells: Vec::new() }
+    }
+
+    /// True when the overlay describes the same lattice as `grid`.
+    pub fn covers(&self, grid: &PlanningGrid) -> bool {
+        self.width == grid.width && self.height == grid.height
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cells.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.cells.len()
+    }
+
+    /// Whether the planning cell `idx` is blocked in this overlay.
+    pub fn contains(&self, idx: usize) -> bool {
+        self.cells.binary_search(&(idx as u32)).is_ok()
+    }
+
+    /// Block one cell and return whether it was newly blocked.
+    pub fn block_index(&mut self, idx: usize) -> bool {
+        match self.cells.binary_search(&(idx as u32)) {
+            Ok(_) => false,
+            Err(position) => {
+                self.cells.insert(position, idx as u32);
+                true
+            }
+        }
+    }
+
+    /// Block the cell containing `p`; `None` when `p` is outside the lattice.
+    pub fn block_point(&mut self, grid: &PlanningGrid, p: LocalPoint) -> Option<bool> {
+        let (col, row) = grid.cell_of(p)?;
+        Some(self.block_index(grid.index(col, row)))
+    }
+
+    /// Block every cell whose centre lies within `radius_m` of `center`.
+    /// Returns the number of newly blocked cells. The radius is capped at the
+    /// lattice diagonal and must be finite and positive.
+    pub fn block_disc(
+        &mut self,
+        grid: &PlanningGrid,
+        center: LocalPoint,
+        radius_m: f64,
+    ) -> Result<usize, OverlayError> {
+        if !self.covers(grid) {
+            return Err(OverlayError::LatticeMismatch);
+        }
+        if !(radius_m.is_finite() && radius_m > 0.0) {
+            return Err(OverlayError::InvalidRadius);
+        }
+        grid.cell_of(center).ok_or(OverlayError::CenterOutsideCoverage)?;
+        let diagonal = (grid.width as f64 * grid.cell_x_m).hypot(grid.height as f64 * grid.cell_y_m);
+        let radius = radius_m.min(diagonal);
+        let mut added = 0;
+        for r in 0..grid.height {
+            for c in 0..grid.width {
+                let p = grid.cell_center(c, r);
+                if (p.x_m - center.x_m).hypot(p.y_m - center.y_m) <= radius {
+                    if self.block_index(grid.index(c, r)) {
+                        added += 1;
+                    }
+                }
+            }
+        }
+        Ok(added)
+    }
+
+    /// `(col, row)` of every blocked cell, for display.
+    pub fn blocked_cells(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
+        let width = self.width;
+        self.cells.iter().map(move |&idx| {
+            let idx = idx as usize;
+            (idx % width, idx / width)
+        })
+    }
+}
+
+/// Why a block overlay could not be applied.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum OverlayError {
+    #[error("the block overlay belongs to a different planning lattice")]
+    LatticeMismatch,
+    #[error("the blocked area radius must be a positive finite distance")]
+    InvalidRadius,
+    #[error("the blocked area centre lies outside the elevation coverage")]
+    CenterOutsideCoverage,
+}
+
+/// Per-step surface cost used by the simulator to walk a planned leg.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct StepMetric {
+    pub distance_m: f64,
+    pub time_s: f64,
+}
+
 /// A routed leg between two planning cells.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Leg {
@@ -69,6 +182,8 @@ pub enum RouteError {
     UnknownTerrainAtEndpoint { endpoint: Endpoint },
     #[error("{endpoint:?} point lies on a {slope_deg:.1}° slope, above the scenario limit")]
     SlopeRuleAtEndpoint { endpoint: Endpoint, slope_deg: f64 },
+    #[error("{endpoint:?} point lies in an area blocked by a declared contingency")]
+    EndpointBlocked { endpoint: Endpoint },
     #[error("the only connections cross terrain with no elevation data")]
     RouteCrossesUnknownTerrain,
     #[error("no connection exists under the scenario slope limit")]
@@ -205,6 +320,26 @@ fn traversable(grid: &PlanningGrid, model: &TraversalModel, idx: usize) -> bool 
     !is_unknown(grid, idx) && grid.slope_deg[idx] as f64 <= model.max_slope_deg
 }
 
+/// Route a time-based simulation through the same masked router as waypoint missions.
+pub fn find_leg_avoiding(
+    grid: &PlanningGrid,
+    model: &TraversalModel,
+    from: LocalPoint,
+    to: LocalPoint,
+    search: Search,
+    blocked: Option<&BlockOverlay>,
+) -> Result<Leg, RouteError> {
+    let cells: HashSet<usize> = blocked.map(|b| b.cells.iter().map(|&i| i as usize).collect()).unwrap_or_default();
+    for (point, endpoint) in [(from, Endpoint::Start), (to, Endpoint::Goal)] {
+        if let Some((col, row)) = grid.cell_of(point) {
+            if cells.contains(&grid.index(col, row)) {
+                return Err(RouteError::EndpointBlocked { endpoint });
+            }
+        }
+    }
+    find_leg_masked(grid, model, from, to, search, &cells)
+}
+
 fn locate(
     grid: &PlanningGrid,
     model: &TraversalModel,
@@ -326,6 +461,32 @@ fn build_leg(
         }
     }
     leg
+}
+
+/// Per-step costs of a routed leg, in the same model as [`find_leg`].
+///
+/// Returns one entry per move between consecutive path points. `None` when a
+/// point does not map back onto the lattice, which would mean a leg was built
+/// for a different grid.
+pub fn leg_step_metrics(
+    grid: &PlanningGrid,
+    model: &TraversalModel,
+    leg: &Leg,
+) -> Option<Vec<StepMetric>> {
+    if leg.path.len() != leg.elevation_m.len() || leg.path.is_empty() {
+        return None;
+    }
+    let mut cells = Vec::with_capacity(leg.path.len());
+    for point in &leg.path {
+        let (col, row) = grid.cell_of(*point)?;
+        cells.push(grid.index(col, row));
+    }
+    let mut steps = Vec::with_capacity(cells.len().saturating_sub(1));
+    for pair in cells.windows(2) {
+        let s = step(grid, model, pair[0], pair[1]);
+        steps.push(StepMetric { distance_m: s.distance_m, time_s: s.time_s });
+    }
+    Some(steps)
 }
 
 /// Whether `goal` can be reached from `start` through cells accepted by `allowed`.
@@ -702,5 +863,120 @@ mod tests {
             let s = g.slope_deg[g.index(col, row)];
             assert!(s <= 20.0, "cell {col},{row} has slope {s}");
         }
+    }
+
+    // ---- Temporary block overlays -------------------------------------------
+
+    #[test]
+    fn a_block_overlay_forces_the_same_detour_as_a_steep_wall() {
+        let g = walled();
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        for row in 1..=5 {
+            blocked.block_index(g.index(3, row));
+        }
+        let leg = find_leg_avoiding(
+            &g,
+            &WALK,
+            at(&g, 1, 3),
+            at(&g, 5, 3),
+            Search::AStar,
+            Some(&blocked),
+        )
+        .unwrap();
+        assert!((leg.distance_m - (6.0 + 2.0 * SQRT2)).abs() < 1e-9);
+        for p in &leg.path {
+            let (col, row) = g.cell_of(*p).unwrap();
+            assert!(!(col == 3 && (1..=5).contains(&row)), "path crosses blocked {col},{row}");
+        }
+    }
+
+    #[test]
+    fn the_underlying_terrain_is_unchanged_by_an_overlay() {
+        let g = flat(7, 7, 1.0);
+        let before = g.slope_deg.clone();
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        blocked.block_index(g.index(3, 3));
+        let _ = find_leg_avoiding(
+            &g,
+            &WALK,
+            at(&g, 1, 3),
+            at(&g, 5, 3),
+            Search::AStar,
+            Some(&blocked),
+        )
+        .unwrap();
+        assert_eq!(g.slope_deg, before);
+        assert_eq!(g.elevation_m, vec![0.0; 49]);
+    }
+
+    #[test]
+    fn a_blocked_endpoint_is_reported_without_a_search() {
+        let g = flat(7, 7, 1.0);
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        blocked.block_index(g.index(1, 3));
+        let error =
+            find_leg_avoiding(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar, Some(&blocked))
+                .unwrap_err();
+        assert_eq!(error, RouteError::EndpointBlocked { endpoint: Endpoint::Start });
+    }
+
+    #[test]
+    fn an_overlay_closing_the_last_terrain_gap_is_reported_as_an_event_block() {
+        // The overlay closes the only gap the steep wall leaves open.
+        let mut g = flat(7, 7, 1.0);
+        for row in 1..=5 {
+            block(&mut g, 3, row);
+        }
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        blocked.block_index(g.index(3, 0));
+        blocked.block_index(g.index(3, 6));
+        let error =
+            find_leg_avoiding(&g, &WALK, at(&g, 1, 3), at(&g, 5, 3), Search::AStar, Some(&blocked))
+                .unwrap_err();
+        assert_eq!(error, RouteError::BlockedByEvent);
+    }
+
+    #[test]
+    fn a_blocked_disc_covers_cells_around_its_centre_only() {
+        let g = flat(21, 21, 1.0);
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        let center = at(&g, 10, 10);
+        let added = blocked.block_disc(&g, center, 2.5).unwrap();
+        // Cells whose centres lie within 2.5 m: the centre (1), axial
+        // neighbours (4), diagonals (4), two cells out (4), knight moves (8).
+        assert_eq!(added, 21);
+        assert!(blocked.contains(g.index(10, 10)));
+        assert!(blocked.contains(g.index(10, 8)));
+        assert!(!blocked.contains(g.index(10, 7)));
+        // Blocking the same disc again adds nothing.
+        assert_eq!(blocked.block_disc(&g, center, 2.5).unwrap(), 0);
+        assert_eq!(blocked.len(), 21);
+    }
+
+    #[test]
+    fn invalid_disc_geometry_is_rejected() {
+        let g = flat(9, 9, 1.0);
+        let mut blocked = BlockOverlay::new(g.width, g.height);
+        let center = at(&g, 4, 4);
+        assert_eq!(blocked.block_disc(&g, center, 0.0), Err(OverlayError::InvalidRadius));
+        assert_eq!(blocked.block_disc(&g, center, f64::NAN), Err(OverlayError::InvalidRadius));
+        assert_eq!(
+            blocked.block_disc(&g, LocalPoint::new(-1.0, 4.0), 2.0),
+            Err(OverlayError::CenterOutsideCoverage)
+        );
+        let mut other = BlockOverlay::new(8, 8);
+        assert_eq!(other.block_disc(&g, center, 2.0), Err(OverlayError::LatticeMismatch));
+    }
+
+    #[test]
+    fn step_metrics_reproduce_the_leg_totals() {
+        let g = bumpy();
+        let leg = find_leg(&g, &WALK, at(&g, 2, 2), at(&g, 37, 27), Search::AStar).unwrap();
+        let steps = leg_step_metrics(&g, &WALK, &leg).unwrap();
+        assert_eq!(steps.len(), leg.path.len() - 1);
+        let distance: f64 = steps.iter().map(|s| s.distance_m).sum();
+        let time: f64 = steps.iter().map(|s| s.time_s).sum();
+        assert!((distance - leg.distance_m).abs() < 1e-9);
+        assert!((time - leg.time_s).abs() < 1e-9);
     }
 }
