@@ -32,6 +32,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [placingSite, setPlacingSite] = useState(false);
   const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
   const [contextSiteId, setContextSiteId] = useState<string | null>(null);
+  const [seekTargetS, setSeekTargetS] = useState<number | null>(null);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
   const rowRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLElement>(null);
@@ -326,12 +327,17 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;
           const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
-          const sliderValue = scrubbing && scrubS !== null ? scrubS : elapsedS;
+          const sliderValue = scrubbing && scrubS !== null ? scrubS
+            : busy && seekTargetS !== null ? seekTargetS : elapsedS;
           const commitSeek = () => {
             setScrubbing(false);
             const target = scrubS === null ? null : Math.max(0, Math.min(sliderMax, scrubS));
             setScrubS(null);
-            if (target !== null && Math.abs(target - elapsedS) >= 0.5) void mission.seekSimulation(target);
+            if (target === null || Math.abs(target - elapsedS) < 0.5) return;
+            // Pin the thumb at the target until the replayed state lands, so the
+            // display never snaps back to the old time mid-seek.
+            setSeekTargetS(target);
+            void mission.seekSimulation(target);
           };
           return <div className="shrink-0 border-t bg-background px-4 py-2 text-xs">
             <div className="flex items-center justify-between gap-2">
