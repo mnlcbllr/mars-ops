@@ -45,6 +45,7 @@
     --color-status-critical: var(--status-critical);
     --color-accent-blue: var(--accent-blue);
     --color-route: var(--route);
+    --color-route-soft: var(--route-soft);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -96,7 +97,9 @@
     --status-serious: #ec835a;
     --status-critical: #d03b3b;
     --accent-blue: #3987e5;
-    --route: #d55181;
+    /* NASA blue for planned route/data; red is reserved for errors. */
+    --route: #3987e5;
+    --route-soft: #a9c7f5;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

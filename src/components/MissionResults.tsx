@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars } from "@/components/MissionCharts";
+import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars, RouteGraph } from "@/components/MissionCharts";
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
 import { simPlanStale, type MissionState } from "@/lib/mission";
@@ -86,7 +86,7 @@ function LineChart({ title, points, x, unit, color = "#dc2626", cap, ticks, aria
   </div>;
 }
 
-function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteId, onPreviewSite }: {
+function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteId, onPreviewSite, selectedLeg, onSelectLeg }: {
   result: MissionResult;
   scenario: MissionScenario;
   insights: CandidateInsight[];
@@ -94,6 +94,8 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
   planStale: boolean;
   previewSiteId?: string | null;
   onPreviewSite?: (point: { x_m: number; y_m: number }, label: string) => void;
+  selectedLeg: number | null;
+  onSelectLeg: (index: number | null) => void;
 }) {
   const counts = { selected: 0, excluded: 0, infeasible: 0 };
   for (const insight of insights) {
@@ -119,37 +121,21 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       {sim && <span className="rounded bg-status-warning/20 px-1.5 py-0.5">Sim: {SIM_PHASE[sim.state.phase]} · {sim.state.replans} replan{sim.state.replans === 1 ? "" : "s"}</span>}
       {replanAdvised && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Replan advised</span>}
     </div>
-    <p className="flex flex-wrap items-center gap-x-1 text-xs">
-      Route: <span>BASE</span>
-      {result.stops.map((stop) => {
-        const site = siteById(scenario, stop.site_id);
-        return <span key={stop.site_id} className="flex items-center gap-x-1">
-          <span aria-hidden>→</span>
-          <Button type="button" size="sm" variant={previewSiteId === stop.site_id ? "secondary" : "ghost"}
-            className="h-5 px-1.5 text-xs" title={site ? `${site.id} · ${site.name}` : stop.site_id}
-            onClick={() => site && onPreviewSite?.(site.position, `${site.id} · ${site.name}`)}>
-            {stop.site_id}
-          </Button>
-        </span>;
-      })}
-      <span aria-hidden>→</span><span>BASE{result.stops.length === 0 ? " (no stops)" : ""}</span>
-    </p>
     {sim && <p className="text-xs text-muted-foreground">
       {clock(sim.state.elapsed_s)} · {sim.state.completed_sites.length}/{result.stops.length} stops done
       {sim.return_margin_s !== null && ` · return margin ${minutes(sim.return_margin_s, 1)}`}
       {dropped.length > 0 && ` · dropped: ${dropped.join(", ")}`}
     </p>}
-    {insights.length > 0 && <div role="img" aria-label={`${counts.selected} selected, ${counts.excluded} excluded, ${counts.infeasible} infeasible candidates`} className="flex h-2 overflow-hidden rounded bg-muted">
-      <span className="bg-red-500" style={{ width: `${counts.selected / insights.length * 100}%` }} />
-      <span className="bg-muted-foreground" style={{ width: `${counts.excluded / insights.length * 100}%` }} />
-      <span className="bg-status-warning" style={{ width: `${counts.infeasible / insights.length * 100}%` }} />
-    </div>}
-    {totals && <dl className="grid grid-cols-4 gap-2 pt-1">
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Sites</dt><dd className="text-base font-medium">{result.stops.length}/{scenario.sites.length}</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Time (planned)</dt><dd className="text-base font-medium">{minutes(totals.eva_time_s, 1)}</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Distance</dt><dd className="text-base font-medium">{fmt(totals.distance_m, 0)} m</dd></div>
-      <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Utility</dt><dd className="text-base font-medium">{fmt(result.utility, 2)}</dd></div>
-    </dl>}
+    <div className="flex flex-wrap items-start gap-3">
+      <RouteGraph base={scenario.base} sites={scenario.sites} result={result} dropped={dropped}
+        selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} />
+      {totals && <dl className="grid min-w-64 flex-1 grid-cols-2 gap-2 self-center">
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Sites</dt><dd className="text-base font-medium">{result.stops.length}/{scenario.sites.length}</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Time (planned)</dt><dd className="text-base font-medium">{minutes(totals.eva_time_s, 1)}</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Distance</dt><dd className="text-base font-medium">{fmt(totals.distance_m, 0)} m</dd></div>
+        <div className="rounded border p-2"><dt className="text-[11px] text-muted-foreground">Utility</dt><dd className="text-base font-medium">{fmt(result.utility, 2)}</dd></div>
+      </dl>}
+    </div>
   </div>;
 }
 
@@ -208,7 +194,7 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
 
     {result && <>
       <MissionBrief result={result} scenario={scenario} insights={insights} sim={sim} planStale={planStale}
-        previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} />
+        previewSiteId={previewSiteId} onPreviewSite={onPreviewSite} selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} />
 
       <MissionCharts result={result} selectedLeg={selectedLeg} onSelectLeg={onSelectLeg} />
 
