@@ -19,7 +19,7 @@ const RESULTS_DEFAULT = 360;
 const RESULTS_MIN = 140;
 const MAP_KEEP = 260;
 /** Playback: two ticks per second; the per-tick mission time is chosen so the
- *  whole planned mission plays in about a minute of wall clock. */
+ *  whole planned mission plays in about half a minute of wall clock. */
 const PLAYBACK_TICK_MS = 500;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
@@ -66,10 +66,10 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
 
   /** Music-player playback: advance the simulation on a timer while playing,
-   *  sized so the full plan plays in about a minute. Ticks during an in-flight
-   *  op are dropped by the job lock, which is fine — every advance is relative,
-   *  so time simply moves a touch slower. Playback starts automatically with
-   *  every fresh simulation. */
+   *  sized so the full plan plays in about half a minute. Ticks during an
+   *  in-flight op are dropped by the job lock, which is fine — every advance is
+   *  relative, so time simply moves a touch slower. Playback starts
+   *  automatically with every fresh simulation. */
   const playbackPhase = simulation?.state.phase ?? null;
   const simActive = simulation !== null;
   const missionTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
@@ -84,7 +84,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
       setPlaying(false);
       return;
     }
-    const tickS = Math.max(60, missionTotalS / (2 * 60));
+    const tickS = Math.max(60, missionTotalS / (2 * 30));
     const id = window.setInterval(() => {
       void missionRef.current.advanceSimulation(tickS);
     }, PLAYBACK_TICK_MS);
