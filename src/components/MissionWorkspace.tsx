@@ -279,7 +279,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             blockPreview={blockPreview}
             pov={pov}
             selectedLeg={selectedLeg}
-            inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
+            inspected={inspected} hideInspected={contextPoint !== null} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
             onContextPick={setContextPoint} onMesh={() => {}}
           />
           <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">

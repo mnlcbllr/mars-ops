@@ -49,6 +49,8 @@ interface Terrain3DProps {
   pov?: { point: LocalPoint; label: string } | null;
   selectedLeg: number | null;
   inspected: PointInspection | null;
+  /** Hide the inspection reticle, e.g. while the right-click placement menu is open. */
+  hideInspected?: boolean;
   placing: boolean;
   /** Changing this value puts the camera back to its starting view. */
   resetSignal: number;
@@ -94,7 +96,7 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, revisedLegs, position, blockPreview, pov, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, revisedLegs, position, blockPreview, pov, selectedLeg, inspected, hideInspected, placing, resetSignal, onPick, onMesh } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -444,7 +446,7 @@ export function Terrain3D(props: Terrain3DProps) {
       }
     }
 
-    if (inspected?.elevation_m != null) {
+    if (inspected?.elevation_m != null && !hideInspected) {
       const [canvas, ctx] = canvas2x(32, 32);
       for (const [color, lineWidth] of [[INK_DARK, 4], [INK_LIGHT, 1.5]] as const) {
         ctx.strokeStyle = color;
@@ -464,7 +466,7 @@ export function Terrain3D(props: Terrain3DProps) {
       sprite(canvas, 16, inspected.local.x_m, inspected.local.y_m, inspected.elevation_m);
     }
     s.invalidate();
-  }, [legs, revisedLegs, position, blockPreview, markers, selectedLeg, inspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
+  }, [legs, revisedLegs, position, blockPreview, markers, selectedLeg, inspected, hideInspected, elevation, width, height, dx, dy, viewportHeight, exaggeration]);
 
   if (failure) {
     return (
