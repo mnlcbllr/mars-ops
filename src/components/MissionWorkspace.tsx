@@ -324,14 +324,16 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
         </ContextMenu.Root>
         <p id="map-shortcuts" className="border-t px-4 py-1 text-[11px] text-muted-foreground">Right-click to place · With map focused: B base, C candidate, Esc cancel · Shift + drag to pan</p>
         {simulation && (() => {
+          const overheadS = scenario.model.overhead_s.value;
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;
-          const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
+          const sliderMin = overheadS;
+          const sliderMax = Math.max(plannedTotalS, elapsedS, overheadS + 1);
           const sliderValue = scrubbing && scrubS !== null ? scrubS
             : busy && seekTargetS !== null ? seekTargetS : elapsedS;
           const commitSeek = () => {
             setScrubbing(false);
-            const target = scrubS === null ? null : Math.max(0, Math.min(sliderMax, scrubS));
+            const target = scrubS === null ? null : Math.max(sliderMin, Math.min(sliderMax, scrubS));
             setScrubS(null);
             if (target === null || Math.abs(target - elapsedS) < 0.5) return;
             // Pin the thumb at the target until the replayed state lands, so the
@@ -347,7 +349,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <input
               id="sim-progress-slider-map"
               type="range"
-              min={0}
+              min={sliderMin}
               max={sliderMax}
               step={1}
               value={Math.min(sliderValue, sliderMax)}
@@ -360,7 +362,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               onKeyUp={(e) => { if (["Enter", " ", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) commitSeek(); }}
               onBlur={() => { if (scrubbing) commitSeek(); }}
             />
-            <p className="mt-1 text-muted-foreground">Release to jump: the map, usage and stop states then show that exact time. Seeking replays from the start; injected events/replans are not preserved.</p>
+            <p className="mt-1 text-muted-foreground">Release to jump: the map, usage and stop states then show that exact time. The timeline starts at the mission clock after EVA overhead ({minutes(overheadS, 0)} min). Seeking replays from the start; injected events/replans are not preserved.</p>
           </div>;
         })()}
         {showResults && <>
