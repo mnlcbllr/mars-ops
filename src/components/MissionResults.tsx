@@ -178,7 +178,7 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
     [sim, run],
   );
 
-  return <section aria-label="Mission results" className="max-h-[46vh] shrink-0 space-y-3 overflow-y-auto border-t bg-background px-4 py-3 text-sm" aria-busy={phase !== "idle"}>
+  return <section aria-label="Mission results" className="space-y-3 border-t bg-background px-4 py-3 text-sm" aria-busy={phase !== "idle"}>
     <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1">
       <h2 className="font-medium">{phase === "validating" ? "Validating scenario…" : phase === "solving" ? "Planning round trip…" : phase === "exporting" ? "Exporting report…"
         : result ? STATUS[result.status] : validation && !validation.ok ? "Scenario needs attention" : "Configure a scenario, then run the mission"}</h2>
