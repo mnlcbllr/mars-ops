@@ -8,6 +8,11 @@ rust-version.workspace = true
 [lib]
 name = "mars_ops_app_lib"
 
+[features]
+# Enabled for production builds so the app serves the embedded frontend instead
+# of the development server. The Tauri CLI turns it on; keep it defined.
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

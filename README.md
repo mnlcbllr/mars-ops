@@ -2,6 +2,22 @@
 
 Offline Mars terrain viewer and contingency-aware excursion planner. Research prototype, not operational astronaut planning software.
 
+## Install
+
+Linux (x86-64 or aarch64), one command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/mnlcbllr/mars-ops/main/scripts/install.sh | sh
+```
+
+The installer builds the application from the reviewed source, never from a third-party mirror, and places it in `$HOME/.local`:
+
+- `$HOME/.local/bin/mars-ops-app` — the desktop application
+- `$HOME/.local/bin/mars-ops-cli` — the headless planner, verifier and benchmark runner
+- `$HOME/.local/lib/mars-ops-app/datasets/jezero-small` — the bundled dataset
+
+Useful flags: `--prefix DIR`, `--system`, `--source DIR` (build a local checkout), `--ref REF`, `--offline`, `--skip-deps`, `--dry-run`, `--no-verify`. Run `sh scripts/install.sh --help` for the full list.
+
 ## Run
 
 Requires Bun, Rust and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
