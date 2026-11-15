@@ -13,6 +13,19 @@ bun tauri dev
 
 Use the desktop window: a regular browser does not provide the native dataset/planning commands. The bundled Jezero dataset requires no Python at runtime. Only one dev server can use port 1420.
 
+## Windows installer
+
+In GitHub, open **Actions → Windows installer → Run workflow**. When the build succeeds, download the **MARS-OPS-windows-x64** artifact, extract the ZIP, and run the `*-setup.exe` installer. It includes the Jezero dataset; Python, Bun and Rust are not required on the destination PC. WebView2 is required; the installer downloads it if it is missing, so that first installation needs internet access.
+
+To build locally on Windows, install Bun, Rust and the [Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows), then run:
+
+```powershell
+bun install --frozen-lockfile
+bun tauri build --bundles nsis -- --locked
+```
+
+The installer is written to `target/release/bundle/nsis/`. Windows builds use `src-tauri/tauri.windows.conf.json`; Linux package targets are unchanged. Installers are currently unsigned, so Windows may show an unknown-publisher warning. Only run installers from a source you trust.
+
 ## Mission workflow
 
 1. Edit the base, place candidate sites on the map, and set their activity bounds, preferences and the resource budgets in the right rail. Missions start with no candidates; you add each one yourself.
