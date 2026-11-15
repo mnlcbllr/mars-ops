@@ -85,6 +85,10 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const shownPlan = simulation
     ? simulation.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan : simulation.state.initial_plan
     : result;
+  // The results panel only earns its space once it has content: a run, an
+  // in-flight phase, an error, an export or validation issues.
+  const showResults = state.run !== null || state.phase !== "idle" || state.error !== null
+    || state.exportPath !== null || (state.validation !== null && !state.validation.ok);
   const markers = useMemo(() => {
     const base = markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
       .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m));
@@ -338,10 +342,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
           </div>;
         })()}
-        <VResize height={resultsHeight} onHeight={setResultsHeight} min={RESULTS_MIN}
-          containerRef={rowRef} defaultHeight={RESULTS_DEFAULT} />
-        <div className="flex shrink-0 flex-col overflow-hidden" style={{ height: resultsHeight }}>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+        {showResults && <>
+          <VResize height={resultsHeight} onHeight={setResultsHeight} min={RESULTS_MIN}
+            containerRef={rowRef} defaultHeight={RESULTS_DEFAULT} />
+          <div className="flex shrink-0 flex-col overflow-hidden" style={{ height: resultsHeight }}>
+            <div className="min-h-0 flex-1 overflow-y-auto">
             <MissionResults
           state={state}
           selectedLeg={selectedLeg}
@@ -360,8 +365,9 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             void mission.runWith(updated);
           }}
         />
+            </div>
           </div>
-        </div>
+        </>}
       </div>
       <aside aria-label="Mission configuration" className="w-[360px] shrink-0 space-y-5 overflow-y-auto border-l p-4 text-sm">
         <SimulationPanel
