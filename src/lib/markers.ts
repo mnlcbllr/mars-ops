@@ -12,7 +12,9 @@ export type MarkerKind =
   /** A candidate with no plan yet: ringed disc. */
   | "candidate"
   /** A candidate the plan left out: dashed ring, struck through. */
-  | "left_out";
+  | "left_out"
+  /** The right-click target point: a crosshair reticle, transient while the menu is open. */
+  | "target";
 
 export interface Marker {
   kind: MarkerKind;
@@ -53,7 +55,7 @@ export function markersFor(
 
 /** Radius of the marker body in CSS pixels (labels start beyond it). */
 export function markerRadius(kind: MarkerKind): number {
-  return kind === "visited" || kind === "base" ? 11 : 9;
+  return kind === "visited" || kind === "base" ? 11 : kind === "target" ? 10 : 9;
 }
 
 /** Draw a marker centred on (x, y). */
@@ -61,6 +63,28 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
   const r = markerRadius(marker.kind);
   ctx.save();
   ctx.lineJoin = "round";
+
+  if (marker.kind === "target") {
+    // Crosshair reticle: dark underlay keeps it readable on bright imagery.
+    const inner = r * 0.45;
+    for (const [color, width] of [[INK_DARK, 4.5], [INK_LIGHT, 2]] as const) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, y, inner, 0, 2 * Math.PI);
+      ctx.moveTo(x - r - 3, y);
+      ctx.lineTo(x - inner, y);
+      ctx.moveTo(x + inner, y);
+      ctx.lineTo(x + r + 3, y);
+      ctx.moveTo(x, y - r - 3);
+      ctx.lineTo(x, y - inner);
+      ctx.moveTo(x, y + inner);
+      ctx.lineTo(x, y + r + 3);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
 
   if (marker.kind === "base") {
     ctx.fillStyle = INK_DARK;

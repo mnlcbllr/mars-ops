@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { api, errorText } from "@/lib/api";
 import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
-import { markersFor } from "@/lib/markers";
+import { markersFor, type Marker } from "@/lib/markers";
 import { mapShortcut, type PlacementMode } from "@/lib/mapInteraction";
 import { addedSite, useMission } from "@/lib/mission";
 import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@/lib/types";
@@ -78,9 +78,15 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const shownPlan = simulation
     ? simulation.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan : simulation.state.initial_plan
     : result;
-  const markers = useMemo(() => markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
-    .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m)),
-  [shownScenario, shownPlan, simulation?.state.completed_sites]);
+  const markers = useMemo(() => {
+    const base = markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
+      .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m));
+    // Transient crosshair at the right-click point while the context menu is open.
+    const target: Marker | null = contextPoint && Number.isFinite(contextPoint.x_m) && Number.isFinite(contextPoint.y_m)
+      ? { kind: "target", id: "target", x_m: contextPoint.x_m, y_m: contextPoint.y_m, glyph: "", label: "" }
+      : null;
+    return target ? [...base, target] : base;
+  }, [shownScenario, shownPlan, simulation?.state.completed_sites, contextPoint]);
   const pov = useMemo(() => preview ? { point: preview.point, label: preview.label } : null, [preview]);
   const blockPreview = useMemo(() => pickingBlock && blockCenter ? { center: blockCenter, radius_m: blockRadius } : null,
     [pickingBlock, blockCenter, blockRadius]);
