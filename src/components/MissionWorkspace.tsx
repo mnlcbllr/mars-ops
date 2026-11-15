@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ContextMenu } from "@base-ui/react/context-menu";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
@@ -12,6 +12,11 @@ import { markersFor, type Marker } from "@/lib/markers";
 import { mapShortcut, type PlacementMode } from "@/lib/mapInteraction";
 import { addedSite, useMission } from "@/lib/mission";
 import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@/lib/types";
+
+/** Results panel geometry: nav bar + minimum map area kept visible above it. */
+const RESULTS_DEFAULT = 360;
+const RESULTS_MIN = 140;
+const MAP_KEEP = 260;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
 // Stable identities: new array literals here would rebuild the 3D overlay every render (visible blink).
@@ -26,6 +31,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [placingBase, setPlacingBase] = useState(false);
   const [placingSite, setPlacingSite] = useState(false);
   const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
+  const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
+  const rowRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLElement>(null);
   const [pickingBlock, setPickingBlock] = useState(false);
   const [blockCenter, setBlockCenter] = useState<LocalPoint | null>(null);
@@ -223,7 +230,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
         {phase === "validating" ? "Validating…" : phase === "solving" ? "Planning…" : "Run mission"}
       </Button>
     </header>
-    <div className="flex min-h-0 flex-1">
+    <div ref={rowRef} className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         <nav aria-label="Map controls" className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
           <Button size="sm" variant={layer === "imagery" ? "secondary" : "ghost"} aria-pressed={layer === "imagery"} onClick={() => setLayer("imagery")}>Imagery</Button>
@@ -331,7 +338,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
           </div>;
         })()}
-        <MissionResults
+        <VResize height={resultsHeight} onHeight={setResultsHeight} min={RESULTS_MIN}
+          containerRef={rowRef} defaultHeight={RESULTS_DEFAULT} />
+        <div className="flex shrink-0 flex-col overflow-hidden" style={{ height: resultsHeight }}>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <MissionResults
           state={state}
           selectedLeg={selectedLeg}
           onSelectLeg={selectLeg}
@@ -349,6 +360,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             void mission.runWith(updated);
           }}
         />
+          </div>
+        </div>
       </div>
       <aside aria-label="Mission configuration" className="w-[360px] shrink-0 space-y-5 overflow-y-auto border-l p-4 text-sm">
         <SimulationPanel
@@ -410,4 +423,39 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
       </aside>
     </div>
   </main>;
+}
+
+/** Horizontal drag handle that resizes the results panel below the map. */
+function VResize({ height, onHeight, min, containerRef, defaultHeight }: {
+  height: number;
+  onHeight: (height: number) => void;
+  min: number;
+  containerRef: RefObject<HTMLDivElement | null>;
+  defaultHeight: number;
+}) {
+  const start = useRef<{ y: number; h: number } | null>(null);
+  const max = () => Math.max(min + 40, (containerRef.current?.clientHeight ?? 640) - MAP_KEEP);
+  const clamp = (value: number) => Math.min(max(), Math.max(min, Math.round(value)));
+  return <div role="separator" aria-orientation="horizontal" aria-label="Results panel height"
+    aria-valuenow={height} aria-valuemin={min} aria-valuemax={max()}
+    tabIndex={0} title="Drag to resize the results panel · double-click to reset"
+    className="group flex h-3.5 shrink-0 cursor-row-resize touch-none items-center justify-center outline-none focus-visible:bg-muted/60"
+    onPointerDown={(e) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      start.current = { y: e.clientY, h: height };
+    }}
+    onPointerMove={(e) => {
+      if (start.current) onHeight(clamp(start.current.h - (e.clientY - start.current.y)));
+    }}
+    onPointerUp={() => { start.current = null; }}
+    onPointerCancel={() => { start.current = null; }}
+    onDoubleClick={() => onHeight(defaultHeight)}
+    onKeyDown={(e) => {
+      if (e.key === "ArrowUp") { e.preventDefault(); onHeight(clamp(height + 24)); }
+      if (e.key === "ArrowDown") { e.preventDefault(); onHeight(clamp(height - 24)); }
+      if (e.key === "Home") { e.preventDefault(); onHeight(max()); }
+      if (e.key === "End") { e.preventDefault(); onHeight(min); }
+    }}>
+    <span aria-hidden="true" className="h-1 w-24 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-muted-foreground/70" />
+  </div>;
 }
