@@ -131,6 +131,7 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
       {error && <p role="alert" className="text-xs text-status-critical">{error}</p>}
 
       <div className="flex flex-wrap gap-1.5">
+        <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(60)}>+1 min</Button>
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(15 * 60)}>+15 min</Button>
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(30 * 60)}>+30 min</Button>
         <Button type="button" size="sm" disabled={busy || settled} onClick={onAdvanceToStop}

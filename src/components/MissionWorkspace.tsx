@@ -313,8 +313,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
         {simulation && (() => {
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;
-          const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
-          const sliderValue = scrubbing && scrubS !== null ? scrubS : elapsedS;
+          const sliderMax = Math.max(Math.ceil(Math.max(plannedTotalS, elapsedS) / 60) * 60, 60);
+          const sliderValue = Math.round((scrubbing && scrubS !== null ? scrubS : elapsedS) / 60) * 60;
           const commitSeek = () => {
             if (!scrubbing || scrubS === null || busy) { setScrubbing(false); setScrubS(null); return; }
             setScrubbing(false);
@@ -332,7 +332,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               type="range"
               min={0}
               max={sliderMax}
-              step={1}
+              step={60}
               value={Math.min(sliderValue, sliderMax)}
               disabled={busy}
               className="mt-1 w-full accent-foreground"

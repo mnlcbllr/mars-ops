@@ -116,7 +116,7 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
   // perturbation, so flag it at planning time too.
   const tight = result.checks
     .filter((c) => c.satisfied && c.margin < 60)
-    .map((c) => resourceMeta(c).label);
+    .map((c) => (c.resource === "eva_time" ? "EVA time" : c.resource === "energy" ? "Energy" : "Consumable"));
   const totals = result.totals;
   return <div className="space-y-2 rounded-lg border p-3">
     <div className="flex flex-wrap items-center gap-2 text-xs">
