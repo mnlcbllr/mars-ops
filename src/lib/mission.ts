@@ -172,6 +172,7 @@ export function useMission(scenario: MissionScenario) {
   const [state, dispatch] = useReducer(missionReducer, scenario, initialMission);
   // Close the gap before the disabled controls render: rapid clicks must not start concurrent jobs.
   const locked = useRef(false);
+  const pendingSeek = useRef<number | null>(null);
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
@@ -254,11 +255,13 @@ export function useMission(scenario: MissionScenario) {
   const replanSimulation = async () => simulationCall(() => api.replanSimulation());
 
   /** Seek by restarting from initial solved plan and advancing to target elapsed seconds.
-   *  Uses actual backend simulation calculations (no arbitrary state injection). */
+   *  Uses actual backend simulation calculations (no arbitrary state injection).
+   *  Concurrent seeks coalesce: the latest target wins instead of being dropped. */
   const seekSimulation = async (targetSeconds: number) => {
-    if (!state.run || locked.current) return;
+    if (!state.run) return;
     const runId = state.run.run_id;
     const target = Math.max(0, targetSeconds);
+    if (locked.current) { pendingSeek.current = target; return; }
     locked.current = true;
     dispatch({ type: "startSimulation" });
     try {
@@ -269,6 +272,9 @@ export function useMission(scenario: MissionScenario) {
       if (mounted.current) dispatch({ type: "failed", message: errorText(failure) });
     } finally {
       locked.current = false;
+      const next = pendingSeek.current;
+      pendingSeek.current = null;
+      if (next !== null && next !== target) void seekSimulation(next);
     }
   };
 

@@ -44,6 +44,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [viewReset, setViewReset] = useState(0);
   const [scrubS, setScrubS] = useState<number | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
+  const scrubSeek = useRef<{ timer: number; last: number | null; pending: number | null }>({ timer: 0, last: null, pending: null });
   const inspection = useRef(0);
   const busy = phase !== "idle" || state.simulationBusy;
   const simulation = state.simulation;
@@ -311,12 +312,27 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           const elapsedS = simulation.state.elapsed_s ?? 0;
           const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
           const sliderValue = scrubbing && scrubS !== null ? scrubS : elapsedS;
+          const clampTarget = (value: number) => Math.max(0, Math.min(sliderMax, value));
+          /** Seek continuously while scrubbing, throttled so replays stay smooth. */
+          const seekThrottled = (target: number) => {
+            scrubSeek.current.pending = clampTarget(target);
+            if (scrubSeek.current.timer || scrubSeek.current.pending === scrubSeek.current.last) return;
+            scrubSeek.current.timer = window.setTimeout(() => {
+              scrubSeek.current.timer = 0;
+              const t = scrubSeek.current.pending;
+              scrubSeek.current.pending = null;
+              scrubSeek.current.last = t;
+              void mission.seekSimulation(t);
+            }, 160);
+          };
           const commitSeek = () => {
-            if (!scrubbing || scrubS === null || busy) { setScrubbing(false); setScrubS(null); return; }
+            const state = scrubSeek.current;
+            if (state.timer) { window.clearTimeout(state.timer); state.timer = 0; }
+            const target = state.pending;
+            state.pending = null;
             setScrubbing(false);
-            const target = Math.max(0, Math.min(sliderMax, scrubS));
             setScrubS(null);
-            if (Math.abs(target - elapsedS) >= 0.5) void mission.seekSimulation(target);
+            if (target !== null && target !== state.last) { state.last = target; void mission.seekSimulation(target); }
           };
           return <div className="shrink-0 border-t bg-background px-4 py-2 text-xs">
             <div className="flex items-center justify-between gap-2">
@@ -330,16 +346,15 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               max={sliderMax}
               step={1}
               value={Math.min(sliderValue, sliderMax)}
-              disabled={busy}
+              disabled={busy && !scrubbing}
               className="mt-1 w-full accent-foreground"
               aria-label="Mission progress timeline"
-              onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
-              onMouseUp={commitSeek}
-              onTouchEnd={commitSeek}
-              onKeyUp={(e) => { if (e.key === "Enter" || e.key === " " || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Home" || e.key === "End") commitSeek(); }}
+              onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); seekThrottled(Number(e.currentTarget.value)); }}
+              onPointerUp={commitSeek}
+              onPointerCancel={commitSeek}
               onBlur={() => { if (scrubbing) commitSeek(); }}
             />
-            <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
+            <p className="mt-1 text-muted-foreground">The map follows while you drag. Seeking replays from the start; injected events/replans are not preserved.</p>
           </div>;
         })()}
         {showResults && <>
