@@ -1,8 +1,8 @@
 import { useEffect, useReducer, useRef } from "react";
 import { api, errorText } from "./api";
 import type {
-  ContingencyKind, LocalPoint, MissionScenario, ResourceModel, SimulationView, SolvedRun,
-  ValidationReport,
+  ContingencyEvent, ContingencyKind, LocalPoint, MissionScenario, ResourceModel, SimulationView,
+  SolvedRun, ValidationReport,
 } from "./types";
 
 export type CoefficientKey = Exclude<keyof ResourceModel, "model_version">;
@@ -105,8 +105,7 @@ export function planningScenario(state: MissionState): MissionScenario {
   return state.scenario;
 }
 
-/** Defaults for a site the user places on the map, mirroring the packaged demo targets. */
-const PLACED_SITE_DEFAULTS = {
+/** Defaults for a site the user places on the map, mirroring the packaged demo targets. */const PLACED_SITE_DEFAULTS = {
   name: "User candidate",
   science_rationale: "Placed by the user on the map; terrain was checked at placement time.",
   source_product_ids: [] as string[],
@@ -143,6 +142,30 @@ export function editCoefficient(scenario: MissionScenario, key: CoefficientKey, 
       },
     },
   };
+}
+
+/**
+ * Frontend staleness tracker: a plan goes stale when a contingency is injected
+ * after the last replan. Resource checks cannot catch block events (they change
+ * neither consumption nor budget), so this closes the gap. A seek/reset drops
+ * events, which resets the tracker.
+ */
+const planStaleness = new Map<number, { events: number; replans: number; stale: boolean }>();
+
+export function simPlanStale(runId: number, state: { events: ContingencyEvent[]; replans: number }): boolean {
+  const entry = planStaleness.get(runId) ?? { events: 0, replans: 0, stale: false };
+  if (state.events.length < entry.events) {
+    entry.events = state.events.length;
+    entry.replans = state.replans;
+    entry.stale = false;
+  } else {
+    if (state.events.length > entry.events) entry.stale = true;
+    if (state.replans > entry.replans) entry.stale = false;
+    entry.events = Math.max(entry.events, state.events.length);
+    entry.replans = Math.max(entry.replans, state.replans);
+  }
+  planStaleness.set(runId, entry);
+  return entry.stale;
 }
 
 export function useMission(scenario: MissionScenario) {

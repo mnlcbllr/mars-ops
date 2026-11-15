@@ -141,15 +141,18 @@ export function Terrain3D(props: Terrain3DProps) {
     scene.add(frame);
 
     let pending = 0;
+    const renderNow = () => {
+      renderer.render(scene, camera);
+      // North is −z. With the camera due south (azimuth 0) north points up.
+      if (compassRef.current) {
+        compassRef.current.style.transform = `rotate(${THREE.MathUtils.radToDeg(controls.getAzimuthalAngle())}deg)`;
+      }
+    };
     const invalidate = () => {
       if (pending) return;
       pending = requestAnimationFrame(() => {
         pending = 0;
-        renderer.render(scene, camera);
-        // North is −z. With the camera due south (azimuth 0) north points up.
-        if (compassRef.current) {
-          compassRef.current.style.transform = `rotate(${THREE.MathUtils.radToDeg(controls.getAzimuthalAngle())}deg)`;
-        }
+        renderNow();
       });
     };
     controls.addEventListener("change", invalidate);
@@ -161,7 +164,9 @@ export function Terrain3D(props: Terrain3DProps) {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       setViewportHeight(h);
-      invalidate();
+      // Draw in the same tick: setSize clears the WebGL buffer, and a deferred
+      // rAF redraw would let one blank frame reach the screen (visible blink).
+      renderNow();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(host);
@@ -292,19 +297,20 @@ export function Terrain3D(props: Terrain3DProps) {
   }, [resetSignal, extentX, extentY, pov]);
 
   // Destination POV: terrain-derived ground-level preview (not a real photo).
+  // Camera/target live in world space, where the mesh sits (elevation − reference)
+  // metres above the origin, so the offset must be added back.
   useEffect(() => {
     const s = stage.current;
     if (!s || !pov) return;
     const z = surfaceZ(pov.point.x_m, pov.point.y_m);
     if (z === null) return;
     const eye = 1.7; // modeled observer eye height, metres above DTM surface
-    const look = 30; // metres ahead (north) for a stable horizon
+    const look = 12; // metres ahead (north) — short, so the ground stays close and readable
     const px = pov.point.x_m;
     const py = pov.point.y_m;
-    const camY = (z + eye) * exaggeration;
-    const targetY = (z + eye * 0.7) * exaggeration;
-    s.camera.position.set(px, camY, -py);
-    s.controls.target.set(px, targetY, -(py + look));
+    const groundY = (z - s.reference) * exaggeration;
+    s.camera.position.set(px, groundY + eye * exaggeration, -py);
+    s.controls.target.set(px, groundY + eye * 0.7 * exaggeration, -(py + look));
     s.controls.update();
     s.invalidate();
   }, [pov, elevation, width, height, dx, dy, exaggeration]);

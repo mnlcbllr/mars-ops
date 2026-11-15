@@ -115,23 +115,23 @@ export function ScenarioEditor({
           <NumberField label={`Consumable reserve (${budget.consumable_unit ?? "units"})`} value={budget.consumable_reserve} optional
             onChange={(value) => updateBudget({ consumable_reserve: nullable(value) })} />
         </div>
-        <p className="text-xs text-muted-foreground">To leave a resource unconstrained, clear both its budget and reserve. A blank reserve with a declared budget means zero.</p>
+        <p className="text-xs text-muted-foreground">Clear both budget and reserve to leave a resource unconstrained; a blank reserve with a budget means zero.</p>
         {budget.energy_budget_wh === null && <p className="text-xs text-status-warning">{budget.energy_reserve_wh === null ? "No energy limit set." : "Energy reserve needs a budget."}</p>}
         {budget.consumable_budget === null && <p className="text-xs text-status-warning">{budget.consumable_reserve === null ? "No consumable limit set." : "Consumable reserve needs a budget."}</p>}
       </section>
       <section className="space-y-2" aria-label="Candidate science sites">
         <h2 className="font-medium">Candidate sites · {scenario.sites.length}</h2>
-        <p className="text-xs text-muted-foreground">Sites you add are the planner's candidates, not required stops. It may still leave some out.</p>
+        <p className="text-xs text-muted-foreground">Candidates are optional; the planner may still leave some out.</p>
         <Button type="button" size="sm" variant="outline" aria-pressed={placingSite} onClick={onTogglePlaceSite}>
           {placingSite ? "Cancel site placement" : "Add candidate on map"}
         </Button>
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground">Reproducible demo</summary>
-          <p className="mt-2 text-muted-foreground">Load the seven USER_DEFINED targets and budgets packaged with this dataset. This replaces the current base, candidates, budgets and model assumptions. A fresh mission still starts with no candidates.</p>
+          <p className="mt-2 text-muted-foreground">Replaces the base, candidates, budgets and model with the packaged targets.</p>
           <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={onLoadPackaged}>Load packaged scenario</Button>
         </details>
         {scenario.sites.length === 0
-          ? <p className="text-xs text-muted-foreground">No candidate sites yet. Choose “Add candidate on map” and click known terrain to place the first one.</p>
+          ? <p className="text-xs text-muted-foreground">No candidates yet — use “Add candidate on map”.</p>
           : scenario.sites.map((site) => <div key={site.id} className="rounded-lg border p-2.5">
             <div className="flex items-start gap-2">
               <details className="min-w-0 flex-1">
@@ -181,7 +181,7 @@ export function ScenarioEditor({
             </li>)}
           </ul>
         </details>
-        <p className="text-xs text-muted-foreground">A saved plan holds the scenario without any result: load it and run the mission again.</p>
+        <p className="text-xs text-muted-foreground">A saved plan is the scenario only — load it, then run.</p>
       </section>
       <details className="space-y-2">
         <summary className="cursor-pointer font-medium">Model assumptions</summary>
@@ -197,7 +197,7 @@ export function ScenarioEditor({
           {COEFFICIENTS.map(([key, label]) => <p key={key} className="mt-2"><strong>{label}:</strong> {scenario.model[key].citation_or_assumption}</p>)}
         </details>
       </details>
-      <p className="text-xs text-muted-foreground">Preferences are modeled mission-designer priorities, not measured scientific value. Edits clear the previous plan and are session-only; save the plan or export JSON to retain the solved scenario.</p>
+      <p className="text-xs text-muted-foreground">Priorities are modeled preferences, not measured value. Edits clear the previous plan and are session-only; save or export JSON to keep them.</p>
     </fieldset>
   </form>;
 }

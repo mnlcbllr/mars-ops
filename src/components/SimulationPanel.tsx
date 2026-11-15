@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clock, fmt, minutes } from "@/lib/format";
-import type { MissionState } from "@/lib/mission";
+import { simPlanStale, type MissionState } from "@/lib/mission";
 import type {
   ConstraintCheck, ContingencyKind, LocalPoint, ResourceKind, SimulationView,
 } from "@/lib/types";
@@ -78,12 +78,26 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
   const current = view?.state.plan;
 
   const lossSeconds = lossKind === "EVA_TIME" ? lossAmount * 60 : lossAmount;
-  const scale = lossKind === "EVA_TIME" ? 60 : 1;
 
   const dropped = initial?.stops
     .map((stop) => stop.site_id)
     .filter((id) => !view?.state.completed_sites.includes(id)
       && !current?.stops.some((stop) => stop.site_id === id)) ?? [];
+
+  // Replan signals while the drill is still moving: a remaining check now
+  // violates its limit, the modeled return to base is missing/unaffordable,
+  // or a contingency was injected after the last plan (stale plan).
+  const planStale = useMemo(
+    () => (view && run ? simPlanStale(run.run_id, view.state) : false),
+    [view, run],
+  );
+  const replanReasons = view && !settled ? [
+    ...view.remaining_checks.filter((c) => !c.satisfied)
+      .map((c) => `${CHECK_LABEL[c.resource] ?? c.resource} limit exceeded`),
+    ...(view.return_margin_s === null ? ["no modeled return route"] : []),
+    ...(view.return_margin_s !== null && view.return_margin_s < 0 ? ["return exceeds EVA limit"] : []),
+    ...(planStale ? ["plan out of date — contingency since last plan"] : []),
+  ] : [];
 
   return <section aria-label="Mission simulation" className="space-y-3 border-t pt-4">
     <div className="flex items-center justify-between gap-2">
@@ -91,10 +105,10 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
       {view && <span className="text-xs text-muted-foreground">{phase === "validating" ? "validating" : simulationBusy ? "working" : "session state"}</span>}
     </div>
 
-    {!run && <p className="text-xs text-muted-foreground">Run the mission first. The simulation starts from that solved plan and freezes the scenario.</p>}
+    {!run && <p className="text-xs text-muted-foreground">Run the mission first; the drill locks the scenario.</p>}
 
     {run && !view && <>
-      <p className="text-xs text-muted-foreground">Advance along the computed route, inject events, then replan from the current position. The scenario is locked while the drill is active.</p>
+      <p className="text-xs text-muted-foreground">Walk the route, inject events, replan from your position.</p>
       <Button type="button" size="sm" disabled={busy || !run} onClick={onStart}>Start simulation</Button>
     </>}
 
@@ -109,7 +123,10 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
         </dl>
       </div>
 
-      <p className="text-xs text-muted-foreground">Mission timeline/progress slider is available below the map frame.</p>
+      {replanReasons.length > 0 && <div role="alert" className="rounded-lg border border-status-warning bg-status-warning/10 p-2.5 text-xs">
+        <p className="font-medium">Replan advised</p>
+        <p className="text-muted-foreground">{replanReasons.join(" · ")}</p>
+      </div>}
 
       <div className="flex flex-wrap gap-1.5">
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(15 * 60)}>+15 min</Button>
@@ -193,7 +210,7 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
               onClick={() => onInject({ type: "BLOCK_CORRIDOR", center: blockCenter!, radius_m: radius })}>
               Block corridor
             </Button>
-            <p className="text-muted-foreground">Blocks passable planning cells for future routing only. The dataset is unchanged; unknown cells stay impassable.</p>
+            <p className="text-muted-foreground">Blocks cells for routing only; dataset unchanged.</p>
           </fieldset>
 
           <fieldset className="space-y-1.5 border-t pt-2" disabled={busy || settled}>
@@ -223,16 +240,16 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
               onClick={() => onInject({ type: "RESOURCE_LOSS", resource: lossKind, amount: lossSeconds })}>
               Apply loss
             </Button>
-            <p className="text-muted-foreground">Declared model input, not an observation from Mars. A reserve can make the remaining mission infeasible.</p>
+            <p className="text-muted-foreground">Model input, not an observation. A reserve can make the rest infeasible.</p>
           </fieldset>
-          <p className="text-[10px] text-muted-foreground">Amount is stored in base units: {fmt(lossSeconds / scale, 2)} × {scale === 60 ? "minute" : "unit"} = {fmt(lossSeconds, 1)}.</p>
+          <p className="text-[10px] text-muted-foreground">Stored as {fmt(lossSeconds, 1)} s.</p>
         </div>
       </details>
 
       <details className="text-xs">
         <summary className="cursor-pointer font-medium">Event history ({view.state.events.length})</summary>
         <div className="mt-2"><EventHistory view={view} /></div>
-        <p className="mt-2 text-muted-foreground">Events are applied at the simulated instant shown and are part of the exported record.</p>
+        <p className="mt-2 text-muted-foreground">Events are part of the exported record.</p>
       </details>
     </>}
   </section>;

@@ -564,7 +564,7 @@ fn finalize_plan(
             site_id: None,
         });
         result.candidate_insights = build_candidate_insights(
-            grid, scenario, table, problem, order, dwell, &result, &alone_map,
+            grid, scenario, table, problem, order, &result, &alone_map,
         );
         return result;
     }
@@ -598,7 +598,7 @@ fn finalize_plan(
     result.totals = Some(eval.totals);
     result.status = PlanStatus::FeasibleModeled;
     result.candidate_insights = build_candidate_insights(
-        grid, scenario, table, problem, order, dwell, &result, &alone_map,
+        grid, scenario, table, problem, order, &result, &alone_map,
     );
     result
 }
@@ -609,7 +609,6 @@ fn build_candidate_insights(
     table: &LegTable,
     problem: &Problem,
     order: &[usize],
-    dwell: &[f64],
     result: &MissionResult,
     alone_map: &std::collections::HashMap<String, Evaluation>,
 ) -> Vec<CandidateInsight> {

@@ -9,8 +9,11 @@ import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
 import { markersFor } from "@/lib/markers";
 import { addedSite, useMission } from "@/lib/mission";
-import type { LocalPoint, MissionScenario, PointInspection } from "@/lib/types";
+import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@/lib/types";
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
+
+// Stable identities: new array literals here would rebuild the 3D overlay every render (visible blink).
+const NO_LEGS: PlannedLeg[] = [];
 
 export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const mission = useMission(workspace.scenario);
@@ -72,6 +75,9 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const markers = useMemo(() => markersFor(shownScenario, shownPlan, simulation?.state.completed_sites ?? [])
     .filter((marker) => Number.isFinite(marker.x_m) && Number.isFinite(marker.y_m)),
   [shownScenario, shownPlan, simulation?.state.completed_sites]);
+  const pov = useMemo(() => preview ? { point: preview.point, label: preview.label } : null, [preview]);
+  const blockPreview = useMemo(() => pickingBlock && blockCenter ? { center: blockCenter, radius_m: blockRadius } : null,
+    [pickingBlock, blockCenter, blockRadius]);
 
   const edit = (updated: MissionScenario) => {
     if (editingLocked) { setMapError("Reset the simulation before editing the scenario."); return; }
@@ -185,12 +191,12 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
           <label className="ml-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Slope / unknown</label>
         </nav>
-        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base. Use “Cancel base placement” to exit, or edit the coordinates by keyboard.</p>}
-        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site. Use “Cancel site placement” to exit, or edit the coordinates by keyboard afterwards.</p>}
-        {pickingBlock && <p role="status" className="border-b px-4 py-2 text-xs">Click the map to set the centre of the temporary blocked corridor. Nothing is blocked until you confirm in the simulation panel.</p>}
-        {editingLocked && <p className="border-b px-4 py-2 text-xs">Simulation active. Reset it to edit the scenario or plan a new mission.</p>}
+        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base.</p>}
+        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site.</p>}
+        {pickingBlock && <p role="status" className="border-b px-4 py-2 text-xs">Click the map to set the blocked-corridor centre; confirm it in the simulation panel.</p>}
+        {editingLocked && <p className="border-b px-4 py-2 text-xs">Simulation active — reset it to edit the scenario.</p>}
         {preview && <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-xs">
-          <p><strong>Destination preview (terrain-derived simulation):</strong> {preview.label}. Not a real NASA surface photograph. View is generated from the available DTM/elevation model at mission resolution.</p>
+          <p><strong>Terrain-derived POV:</strong> {preview.label} — generated from the DTM, not a real photograph.</p>
           <Button type="button" size="sm" variant="outline" onClick={() => { setPreview(null); setViewReset((n) => n + 1); }}>Return to overview</Button>
         </div>}
         {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
@@ -199,11 +205,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             elevation={workspace.elevation} width={geo.width} height={geo.height}
             dx={geo.cell_size_x_m} dy={geo.cell_size_y_m} step={4} texture={texture}
             lit={layer === "heights"} exaggeration={1} markers={markers}
-            legs={result?.legs ?? []}
-            revisedLegs={simulation?.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan.legs : []}
+            legs={result?.legs ?? NO_LEGS}
+            revisedLegs={simulation?.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan.legs : NO_LEGS}
             position={simulation?.position ?? null}
-            blockPreview={pickingBlock && blockCenter ? { center: blockCenter, radius_m: blockRadius } : null}
-            pov={preview ? { point: preview.point, label: preview.label } : null}
+            blockPreview={blockPreview}
+            pov={pov}
             selectedLeg={selectedLeg}
             inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick} onMesh={() => {}}
           />
@@ -246,7 +252,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               onKeyUp={(e) => { if (e.key === "Enter" || e.key === " " || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Home" || e.key === "End") commitSeek(); }}
               onBlur={() => { if (scrubbing) commitSeek(); }}
             />
-            <p className="mt-1 text-muted-foreground">Drag to seek (replays from start to selected time; injected events/replans are not preserved).</p>
+            <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
           </div>;
         })()}
         <MissionResults
@@ -305,23 +311,22 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <p>{workspace.info.manifest.region_name}</p>
           <p className="text-xs text-muted-foreground">{workspace.info.real_data_verified ? "Verified source data" : "Source data not verified"} · {fmt(geo.cell_size_x_m, 1)} m raster · {fmt(grid.cell_x_m, 1)} m planning cells</p>
           <ul className="space-y-1 text-xs text-muted-foreground">
-            <li>Square B: scenario base</li>
-            <li>Rings: candidate sites; numbered discs: visit order; dashed rings: sites the plan left out</li>
-            <li>Pink line: planned round trip; amber line: latest replanned route</li>
-            <li>Amber triangle: simulated crew position; amber ring: corridor to block</li>
-            <li>Red cells: temporarily blocked by a simulation event (not in the dataset)</li>
-            {showHazards && <><li>Orange / hatching: above {fmt(maxSlope, 1)}° slope limit</li><li>Dark \\ hatching: unknown terrain</li></>}
-            {layer === "heights" && <li>Blue: dark = {fmt(workspace.info.elevation_min_m)} m; light = {fmt(workspace.info.elevation_max_m)} m</li>}
+            <li>Square B: base · rings: candidates · numbered discs: visit order · dashed rings: left out</li>
+            <li>Pink line: planned route · amber line: replanned route</li>
+            <li>Amber triangle: crew position · amber ring: corridor to block</li>
+            <li>Red cells: temporarily blocked (simulation only)</li>
+            {showHazards && <li>Orange: above {fmt(maxSlope, 1)}° slope limit · dark: unknown terrain</li>}
+            {layer === "heights" && <li>Blue ramp: dark = {fmt(workspace.info.elevation_min_m)} m · light = {fmt(workspace.info.elevation_max_m)} m</li>}
           </ul>
           {workspace.info.manifest.layers.map((source) => <div key={source.id} className="space-y-1 break-words text-xs text-muted-foreground">
             <p>{source.instrument} · {source.origin_type}</p><p>{source.product_id}</p><p>{source.observation_date}</p>
             <p>{source.license_and_credit}</p>
           </div>)}
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p><strong>Additional science layers:</strong> none loaded. Archived CRISM, THEMIS, MEDA and PIXL products are not present or spatially verifiable for this packaged crop in this checkout, so no scientific overlay was added.</p>
+            <p>Additional science layers: none loaded — no verifiable CRISM/THEMIS/MEDA/PIXL products for this crop.</p>
           </div>
         </details>
-        <p className="text-xs text-muted-foreground">Slope limits, resource rates and candidate sites are scenario assumptions. Orbital data cannot establish astronaut safety.</p>
+        <p className="text-xs text-muted-foreground">Slope limits, resource rates and candidates are assumptions — orbital data cannot establish astronaut safety.</p>
       </aside>
     </div>
   </main>;
