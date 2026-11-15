@@ -47,6 +47,8 @@ interface Terrain3DProps {
   blockPreview?: { center: LocalPoint; radius_m: number } | null;
   /** Terrain-derived ground-level preview at a selected destination (clearly labeled in UI). */
   pov?: { point: LocalPoint; label: string } | null;
+  /** Chase camera: keep the simulated crew position framed at close range. */
+  follow?: boolean;
   selectedLeg: number | null;
   inspected: PointInspection | null;
   placing: boolean;
@@ -94,7 +96,7 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, revisedLegs, position, blockPreview, pov, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, revisedLegs, position, blockPreview, pov, follow, selectedLeg, inspected, placing, resetSignal, onPick, onMesh } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -133,7 +135,7 @@ export function Terrain3D(props: Terrain3DProps) {
     controls.enableDamping = false;
     controls.screenSpacePanning = false;
     controls.maxPolarAngle = THREE.MathUtils.degToRad(88);
-    controls.minDistance = 40;
+    controls.minDistance = 15;
     controls.maxDistance = 9000;
     // Reserve right click for placement; Shift + left drag still pans.
     controls.mouseButtons.RIGHT = null;
@@ -301,20 +303,20 @@ export function Terrain3D(props: Terrain3DProps) {
   // Starting view: from the south, looking north, about 35° above the horizon.
   useEffect(() => {
     const s = stage.current;
-    if (!s || pov) return;
+    if (!s || pov || follow) return;
     const reach = Math.max(extentX, extentY);
     s.camera.position.set(0, reach * 0.75, reach * 1.05);
     s.controls.target.set(0, 0, 0);
     s.controls.update();
     s.invalidate();
-  }, [resetSignal, extentX, extentY, pov]);
+  }, [resetSignal, extentX, extentY, pov, follow]);
 
   // Destination POV: terrain-derived ground-level preview (not a real photo).
   // Camera/target live in world space, where the mesh sits (elevation − reference)
   // metres above the origin, so the offset must be added back.
   useEffect(() => {
     const s = stage.current;
-    if (!s || !pov) return;
+    if (!s || !pov || follow) return;
     const z = surfaceZ(pov.point.x_m, pov.point.y_m);
     if (z === null) return;
     const eye = 1.7; // modeled observer eye height, metres above DTM surface
@@ -327,6 +329,24 @@ export function Terrain3D(props: Terrain3DProps) {
     s.controls.update();
     s.invalidate();
   }, [pov, elevation, width, height, dx, dy, exaggeration]);
+
+  // Follow camera: a close chase view of the simulated crew. Camera and target
+  // sit south of the crew (behind them relative to the default view) so the
+  // amber marker stays in frame while playback advances the position.
+  useEffect(() => {
+    const s = stage.current;
+    if (!s || !follow || !position) return;
+    const z = surfaceZ(position.x_m, position.y_m);
+    if (z === null) return;
+    const groundY = (z - s.reference) * exaggeration;
+    const eye = 2; // target the crew's head height, metres above the surface
+    const stand = 30; // metres south of the crew
+    const standHigh = 14; // camera height above the surface, metres
+    s.camera.position.set(position.x_m, groundY + standHigh * exaggeration, -position.y_m + stand);
+    s.controls.target.set(position.x_m, groundY + eye * exaggeration, -position.y_m);
+    s.controls.update();
+    s.invalidate();
+  }, [follow, position, elevation, width, height, dx, dy, exaggeration]);
 
   // Route, markers and the inspected point, at their own elevations.
   useEffect(() => {

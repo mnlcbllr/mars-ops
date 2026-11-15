@@ -44,6 +44,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [viewReset, setViewReset] = useState(0);
   const [scrubS, setScrubS] = useState<number | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
+  const [follow, setFollow] = useState(false);
   const inspection = useRef(0);
   const busy = phase !== "idle" || state.simulationBusy;
   const simulation = state.simulation;
@@ -57,6 +58,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   useEffect(() => () => { inspection.current++; }, []);
   // Discard terrain checks started before an edit, solve or simulation lock.
   useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
+
+  // Follow mode only makes sense with a simulation; drop it when the sim is reset.
+  useEffect(() => {
+    if (!simulation) setFollow(false);
+  }, [simulation]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -243,6 +249,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <Button type="button" size="sm" variant={placingSite ? "secondary" : "ghost"} aria-pressed={placingSite}
               disabled={busy || editingLocked} onClick={() => { togglePlacing("site", false); mapRef.current?.focus(); }}>Candidate <kbd className="text-[10px] text-muted-foreground">C</kbd></Button>
           </div>
+          {simulation && <Button size="sm" variant={follow ? "secondary" : "ghost"} aria-pressed={follow} onClick={() => setFollow((value) => !value)}>Follow crew</Button>}
         </nav>
         {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base. Esc to cancel.</p>}
         {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site. Esc to cancel.</p>}
@@ -274,6 +281,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             position={simulation?.position ?? null}
             blockPreview={blockPreview}
             pov={pov}
+            follow={follow}
             selectedLeg={selectedLeg}
             inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
             onContextPick={setContextPoint} onMesh={() => {}}
