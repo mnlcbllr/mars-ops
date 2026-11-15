@@ -8,3 +8,5 @@ results/*
 !results/.gitkeep
 src-tauri/gen/
 *.log
+
+.env

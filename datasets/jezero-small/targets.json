@@ -12,7 +12,7 @@
         "x_m": 1011.3,
         "y_m": 977.4
       },
-      "science_rationale": "USER_DEFINED demo target: light-toned bench near the top of the largest mound in the orthoimage; DTM shows it ringed by steep flanks.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the light-toned bench from the modeled stop and document visible layering. Steep flanks around this demo target may prevent access.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -30,7 +30,7 @@
         "x_m": 654.3,
         "y_m": 755.2
       },
-      "science_rationale": "USER_DEFINED demo target: break in slope where the largest mound's layered light-toned flank meets the floor.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the contact where the central mound flank meets the crater floor. Compare visible layering and texture on either side.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -48,7 +48,7 @@
         "x_m": 594.9,
         "y_m": 1482.2
       },
-      "science_rationale": "USER_DEFINED demo target: apron below the light-toned north-west mound.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the apron and lower flank. Compare visible surface texture with the central mound’s apron.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -66,7 +66,7 @@
         "x_m": 1457.4,
         "y_m": 1316.6
       },
-      "science_rationale": "USER_DEFINED demo target: rim of a small crater with a bright floor in the orthoimage.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the rim and bright crater floor from the observation point. Record their visible texture and brightness for comparison with the eastern crater.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -84,7 +84,7 @@
         "x_m": 951.8,
         "y_m": 331.2
       },
-      "science_rationale": "USER_DEFINED demo target: foot of the isolated southern mound.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the transition from the northern foot of the isolated mound to the surrounding floor. Compare it with the central mound.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -102,7 +102,7 @@
         "x_m": 1645.8,
         "y_m": 624.0
       },
-      "science_rationale": "USER_DEFINED demo target: rim of a dark-floored crater on the eastern plain.",
+      "science_rationale": "USER_DEFINED demo observation: Photograph the dark-floored crater from the rim observation point and compare it with the bright-floored crater. Brightness alone is not a mineral identification.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"
@@ -120,7 +120,7 @@
         "x_m": 1844.1,
         "y_m": 1825.5
       },
-      "science_rationale": "USER_DEFINED demo target: textured plain far from the base, included to exercise resource limits.",
+      "science_rationale": "USER_DEFINED demo observation: Take a reference photo of the textured plain away from the mounds to compare with mound-foot observations.",
       "source_product_ids": [
         "ESP_023524_1985_RED_C_01_ORTHO",
         "DTEEC_023524_1985_023379_1985_U01"

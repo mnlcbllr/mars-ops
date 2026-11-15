@@ -127,6 +127,48 @@
         "Pixel values are the product's 8-bit DN, unchanged. I/F = DN × 0.0001094936284662 + 0.1130332588555438 per the label. DN 0 = null.",
         "Imagery shows brightness only. It is not a source of heights, slopes or composition."
       ]
+    },
+    {
+      "id": "odyssey-themis-day-brightness",
+      "display_name": "THEMIS daytime infrared brightness (qualitative)",
+      "kind": "INFRARED_CONTEXT",
+      "file": "themis-dir.png",
+      "origin_type": "DERIVED",
+      "provider": "NASA/USGS/THEMIS team",
+      "instrument": "Mars Odyssey THEMIS",
+      "product_id": "mc13_syrtis_major_dir",
+      "source_url": "https://astrogeo-ard.s3.us-west-2.amazonaws.com/mars/mo/themis/controlled_mosaics/mc13_syrtis_major_dir/mc13_syrtis_major_dir.tif",
+      "license_and_credit": "Credit NASA/USGS and the THEMIS team. Qualitative brightness mosaic, not temperature.",
+      "retrieved_utc": null,
+      "observation_date": null,
+      "source_crs": "PROJCS[\"Mars (2015) - Sphere / Ocentric / Equirectangular, clon = 0\",GEOGCS[\"Mars (2015) - Sphere / Ocentric\",DATUM[\"Mars (2015) - Sphere\",SPHEROID[\"Mars (2015) - Sphere\",3396190,0,AUTHORITY[\"IAU\",\"49900\"]],AUTHORITY[\"IAU\",\"49900\"]],PRIMEM[\"Reference Meridian\",0,AUTHORITY[\"IAU\",\"49900\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"IAU\",\"49900\"]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"IAU\",\"49910\"]]",
+      "output_crs": "+proj=eqc +lat_ts=15.0 +lat_0=0 +lon_0=77.53 +x_0=0 +y_0=0 +R=3394839.8133163 +units=m +no_defs; same ROI extent as HiRISE, 512x512; row 0 north",
+      "vertical_datum": null,
+      "pixel_size_m": [
+        3.9657495707130184,
+        4.0386533074844
+      ],
+      "bbox_original": null,
+      "bbox_projected_m": [
+        -2899.7530747739,
+        1093337.1557589895,
+        -831.9625813418875,
+        1095404.9462524215
+      ],
+      "nodata_value": 0,
+      "sha256_source": "36998a9f3efab9a284da353503cc3535b74a444aeebcae302cd23ff9d334d2f0",
+      "sha256_derived": "4b572d8d6add0ed0c1d2695ee27db1c7acf71347b80d3729b43d7ec91b645308",
+      "is_real_source_verified": true,
+      "processing_steps": [
+        "tools/prepare_themis.py: verify local archived crop against unchanged SHA256SUMS.txt.",
+        "Reproject Mars 2015 sphere (R=3396190 m, eqc lat_ts=0 lon_0=0) to HiRISE product sphere/projection, nearest neighbour; preserve DN, zero transparent.",
+        "Five independent analytic lat/lon-to-source-pixel checks match the GDAL-reprojected DN exactly; see themis-registration.json."
+      ],
+      "quality_notes": [
+        "Effective source resolution 100 m; output ~4 m pixels do not add information. Qualitative 8-bit daytime infrared brightness, NOT calibrated temperature, thermal inertia, live weather or hazard probability.",
+        "sha256_source is the local 415x415 archive crop, NOT the full upstream mosaic (not downloaded/rehashed here). Product identity comes from SOURCE-LINKS.csv and embedded CRS; upstream content authenticity inherits that archive's provenance.",
+        "Georeference alignment verified, not independent surface feature/control-point accuracy. Different sphere radii handled through planetary lat/lon. Original observation dates, physical registration uncertainty and radiometric calibration are unknown."
+      ]
     }
   ]
 }

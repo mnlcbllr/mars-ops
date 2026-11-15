@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MARS-OPS — Mars excursion planner (research prototype)",
+        "title": "MARS-OPS — Mission operations planner (research prototype)",
         "width": 1440,
         "height": 900,
         "minWidth": 1100,

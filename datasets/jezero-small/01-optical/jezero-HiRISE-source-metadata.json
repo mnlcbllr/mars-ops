@@ -78,7 +78,7 @@
       "original_hyde_file": "elevation.bin",
       "geotiff_in_this_zip": "../04-topographic/jezero-HiRISE-elevation-m.tif",
       "sha256_original_hyde_export": "9309562ee7f3ef21259f156af0be6a4e6bcc7dbeec37603e50da44c5c8f176a7",
-      "metadata_note": "The crop provenance below describes the original HYDE export. This pack re-encodes the same values as a GeoTIFF."
+      "metadata_note": "The crop provenance below describes the original MARS-OPS export. This pack re-encodes the same values as a GeoTIFF."
     },
     {
       "provider": "NASA/JPL-Caltech/University of Arizona",
@@ -130,7 +130,7 @@
       "original_hyde_file": "ortho.png",
       "geotiff_in_this_zip": "jezero-HiRISE-ortho.tif",
       "sha256_original_hyde_export": "caaccc0fe726dc78b2450878f374701c02a8705b6daded0f0adf919a31d74d17",
-      "metadata_note": "The crop provenance below describes the original HYDE export. This pack re-encodes the same values as a GeoTIFF."
+      "metadata_note": "The crop provenance below describes the original MARS-OPS export. This pack re-encodes the same values as a GeoTIFF."
     }
   ]
 }
