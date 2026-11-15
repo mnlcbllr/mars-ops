@@ -48,35 +48,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
-name = "ares-app"
-version = "0.1.0"
-dependencies = [
- "ares-core",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
-]
-
-[[package]]
-name = "ares-cli"
-version = "0.1.0"
-dependencies = [
- "ares-core",
- "serde_json",
-]
-
-[[package]]
-name = "ares-core"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "atk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1842,6 +1813,35 @@ dependencies = [
  "log",
  "tendril",
  "web_atoms 0.3.0",
+]
+
+[[package]]
+name = "mars-ops-app"
+version = "0.1.0"
+dependencies = [
+ "mars-ops-core",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+]
+
+[[package]]
+name = "mars-ops-cli"
+version = "0.1.0"
+dependencies = [
+ "mars-ops-core",
+ "serde_json",
+]
+
+[[package]]
+name = "mars-ops-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

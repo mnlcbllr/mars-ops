@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Source revision the core was built from (`unknown` outside a git checkout).
-pub const CODE_REVISION: &str = env!("ARES_GIT_REVISION");
+pub const CODE_REVISION: &str = env!("MARS_OPS_GIT_REVISION");
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LayerRef {
@@ -108,7 +108,7 @@ impl MissionReport {
         MissionReport {
             report_schema_version: 1,
             generated_utc: utc_iso8601(now),
-            software: "HYDE".into(),
+            software: "MARS-OPS".into(),
             software_version: env!("CARGO_PKG_VERSION").into(),
             code_revision: CODE_REVISION.into(),
             dataset: DatasetRef {
@@ -172,7 +172,7 @@ impl MissionReport {
         let id: String =
             self.dataset.dataset_id.chars().map(|c| if keep(c) { c } else { '_' }).collect();
         let stamp: String = self.generated_utc.chars().filter(char::is_ascii_alphanumeric).collect();
-        write_new(dir, &format!("hyde-report_{id}_{stamp}"), &json)
+        write_new(dir, &format!("mars-ops-report_{id}_{stamp}"), &json)
     }
 }
 

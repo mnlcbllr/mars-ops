@@ -1,4 +1,4 @@
-# HYDE — Project Context, Scientific Validation, and Implementation Specification
+# MARS-OPS — Project Context, Scientific Validation, and Implementation Specification
 
 > **Coding-agent handoff** — NASA Space Apps Challenge 2026, Challenge #11: **Interplanetary Survival Guide: Martian Map**  
 > **Target:** Desktop application using **Tauri v2 + React/TypeScript frontend + Rust backend**.  
@@ -9,12 +9,12 @@
 
 ## 0. Instructions to the coding agent — read this first
 
-You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration System) as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements. HYDE is the project brand, not a claim that the HyDE optimizer is implemented; the implementation notes in `docs/MARS_OPS_IMPLEMENTATION.md` record what was built, including the exact subset/order planner and the retained GreedyPlanner baseline.
+You are building **MARS-OPS** (formerly MARS-OPS — Adaptive Resource & Exploration System) as a transparent, research-oriented planetary mission-planning desktop application. This document is the source of truth for scope, constraints, architecture, acceptance criteria, and credibility requirements. MARS-OPS is the project brand, not a claim that the MARS-OPS optimizer is implemented; the implementation notes in `docs/MARS_OPS_IMPLEMENTATION.md` record what was built, including the exact subset/order planner and the retained GreedyPlanner baseline.
 
 **Non-negotiable rules**
 
 1. **Do not claim to use real NASA data until a verified NASA/USGS dataset is loaded.** Clearly distinguish `OBSERVED`, `DERIVED`, `MODELED`, `USER_DEFINED`, and `SYNTHETIC` information everywhere relevant.
-2. **Do not call an approximate optimizer “HyDE” unless it faithfully implements the team's original published/thesis algorithm.** Obtain original pseudocode/source and parameter settings. Until then name it `Experimental hybrid (unverified)` and make the production UI disclose this.
+2. **Do not call an approximate optimizer “MARS-OPS” unless it faithfully implements the team's original published/thesis algorithm.** Obtain original pseudocode/source and parameter settings. Until then name it `Experimental hybrid (unverified)` and make the production UI disclose this.
 3. **Do not claim a route is safe for actual astronauts.** Say `modeled traversability` / `estimated mission feasibility`, with spatial resolution and uncertainty disclosed.
 4. **Do not invent NASA scientific targets, geological scores, real-time radiation, astronaut consumable rates, or verified safety thresholds.** User-defined assumptions are permitted if tagged and editable.
 5. **Do not fabricate evaluation results.** Generate benchmarks from executable code, record exact input configuration, dataset IDs, seeds, and code revision.
@@ -26,31 +26,31 @@ You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration Sys
 
 **First actions in the repository**
 
-- Inspect any existing prototype only as a visual/reference artifact. The earlier browser MVP has **procedural terrain, synthetic science sites, hypothetical resource coefficients, and an unverified HyDE-style solver**. **Do not reuse its scientific outputs as ground truth.**
+- Inspect any existing prototype only as a visual/reference artifact. The earlier browser MVP has **procedural terrain, synthetic science sites, hypothetical resource coefficients, and an unverified MARS-OPS-style solver**. **Do not reuse its scientific outputs as ground truth.**
 - Establish the new Tauri/Rust project structure and tests.
 - Select and **actually ingest one real Mars elevation product** before describing the map as NASA-backed.
-- Request the team's **HyDE source, thesis or exact pseudocode** if not present; proceed with clearly labeled classical baseline while preserving a plug-in interface for HyDE.
+- Request the team's **MARS-OPS source, thesis or exact pseudocode** if not present; proceed with clearly labeled classical baseline while preserving a plug-in interface for MARS-OPS.
 - Report honestly what is implemented, what was validated, and what remains assumed.
 
 ---
 
 ## 1. Executive summary
 
-**One-sentence product:** HYDE is an interactive Mars map and resource-aware science excursion planner that combines traceable orbital observations with constrained mission optimization to explain *what science objectives can be visited, in what order, using which route, and within which hypothetical mission resource limits*.
+**One-sentence product:** MARS-OPS is an interactive Mars map and resource-aware science excursion planner that combines traceable orbital observations with constrained mission optimization to explain *what science objectives can be visited, in what order, using which route, and within which hypothetical mission resource limits*.
 
-**Challenge alignment:** The official Space Apps challenge calls for a layered Martian mapping experience integrating information from multiple Mars missions to help future astronauts plan safe and scientifically valuable Marswalks. HYDE must do **data integration and interpretation first**; mission scheduling, optimization and resource accounting are an added decision-support layer. A generic route finder alone is not an adequate interpretation of the entire challenge.
+**Challenge alignment:** The official Space Apps challenge calls for a layered Martian mapping experience integrating information from multiple Mars missions to help future astronauts plan safe and scientifically valuable Marswalks. MARS-OPS must do **data integration and interpretation first**; mission scheduling, optimization and resource accounting are an added decision-support layer. A generic route finder alone is not an adequate interpretation of the entire challenge.
 
-**Core user story:** A mission designer explores an actual region on Mars, reviews NASA-sourced imagery and elevation layers, marks candidate research locations, sets EVA time / energy / consumable assumptions, and generates a *feasible round-trip itinerary*. HYDE explains its trade-offs and shows how a reference planner compares with a candidate HyDE method.
+**Core user story:** A mission designer explores an actual region on Mars, reviews NASA-sourced imagery and elevation layers, marks candidate research locations, sets EVA time / energy / consumable assumptions, and generates a *feasible round-trip itinerary*. MARS-OPS explains its trade-offs and shows how a reference planner compares with a candidate MARS-OPS method.
 
-**Primary research opportunity:** Test whether **HyDE — Hybrid Differential Evolution with warm-started increasing-population CMA-ES (IPOP-CMA-ES)** — improves the *quality or robustness of continuous/mixed mission-planning decisions* under a constrained evaluation budget relative to appropriate classical methods. **This is a hypothesis, not a demonstrated fact.**
+**Primary research opportunity:** Test whether **MARS-OPS — Hybrid Differential Evolution with warm-started increasing-population CMA-ES (IPOP-CMA-ES)** — improves the *quality or robustness of continuous/mixed mission-planning decisions* under a constrained evaluation budget relative to appropriate classical methods. **This is a hypothesis, not a demonstrated fact.**
 
-**Important correction:** HyDE is an **evolutionary/derivative-free optimization method**, **not a quantum computer or quantum algorithm**. Do not brand the application “quantum-powered” without independently implementing and evaluating a genuine quantum component.
+**Important correction:** MARS-OPS is an **evolutionary/derivative-free optimization method**, **not a quantum computer or quantum algorithm**. Do not brand the application “quantum-powered” without independently implementing and evaluating a genuine quantum component.
 
 ### Project identity
 
 | Field | Decision |
 |---|---|
-| Working name | **HYDE** |
+| Working name | **MARS-OPS** |
 | NASA Space Apps 2026 category | **Challenge #11 — Interplanetary Survival Guide: Martian Map** |
 | Related areas | Mars, human exploration, planetary mapping, geospatial science, software, operations research |
 | Main task | Layered Mars map + constrained multi-stop science excursion planning |
@@ -68,15 +68,15 @@ You are building **HYDE** (formerly ARES — Adaptive Resource & Exploration Sys
 
 Mars surface exploration requires planners to reconcile **spatial information** (terrain, slopes, hazards, geology) with **operational decisions** (which scientific observations to complete, when, and in what order) under limited **time, energy, and life-support consumables**. Relevant data come from different instruments, spatial resolutions, coverage extents, data products and reference frames. An integrated map is useful, but it does not automatically produce feasible or scientifically efficient activity plans.
 
-**HYDE should solve the bounded engineering problem:**
+**MARS-OPS should solve the bounded engineering problem:**
 
 > For one documented Mars region and a declared, approximate mission-resource model, produce and compare feasible round-trip science itineraries while exposing the geospatial evidence, modeled assumptions, algorithmic trade-offs, and uncertainty behind each recommendation.
 
-### 2.2 What HYDE is **not**
+### 2.2 What MARS-OPS is **not**
 
 - Not a NASA-approved mission planning system, certified traverse planner, or substitute for astronaut/rover hazard assessment.
 - Not a live Mars weather, radiation, oxygen or life-support monitor.
-- Not an assertion that HyDE is superior to A*, MILP, CP-SAT, or established mission-planning methods.
+- Not an assertion that MARS-OPS is superior to A*, MILP, CP-SAT, or established mission-planning methods.
 - Not a global, footstep-safe Mars map. Coarse global MOLA products **cannot** establish local astronaut-scale traversability.
 - Not a claim that a location has scientifically quantified “value 94/100” unless the score is explicitly derived from a documented metric or mission-designer preference model.
 - Not a claim that a terrain photo itself contains elevation, radiation, or mineral abundance measurements.
@@ -86,7 +86,7 @@ Mars surface exploration requires planners to reconcile **spatial information** 
 1. **Mapping:** Where are features, what instrument observed them, and how reliable is the coverage/alignment?
 2. **Routing:** Which connected paths are traversable under a declared terrain/hazard model?
 3. **Mission scheduling / resource allocation:** Which objectives should be completed, how much activity time/resources should be allocated, and in what order?
-4. **Optimizer benchmarking:** Under equivalent budgets and problem definitions, when (if ever) does HyDE improve outcomes?
+4. **Optimizer benchmarking:** Under equivalent budgets and problem definitions, when (if ever) does MARS-OPS improve outcomes?
 
 Treat them as separate Rust modules and separate validation claims. Do not conflate A* shortest-path performance with full mission-scheduling performance.
 
@@ -96,9 +96,9 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 
 **RQ1 — Integration:** Can heterogeneous NASA/USGS Mars products be aligned into one traceable, region-specific layered view with clearly disclosed coverage and uncertainty?
 
-**RQ2 — Feasibility:** Can HYDE construct a round-trip science mission plan that respects declared EVA time, energy, consumables, terrain and reserve constraints?
+**RQ2 — Feasibility:** Can MARS-OPS construct a round-trip science mission plan that respects declared EVA time, energy, consumables, terrain and reserve constraints?
 
-**RQ3 — Algorithmic value:** Compared against resource-constrained scheduling and routing baselines, does the team's faithfully reproduced HyDE improve feasible mission utility, convergence, robustness, or runtime under defined evaluation budgets?
+**RQ3 — Algorithmic value:** Compared against resource-constrained scheduling and routing baselines, does the team's faithfully reproduced MARS-OPS improve feasible mission utility, convergence, robustness, or runtime under defined evaluation budgets?
 
 **RQ4 — Sensitivity:** How do the preferred itinerary and solver rankings change when assumed traversal speed, consumable rates, terrain hazard thresholds, or science priorities vary?
 
@@ -108,7 +108,7 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 - H2: The advantage, if present, will vary with dimensionality, nonlinearity, resource tightness and objective-evaluation cost.
 - H3: Explicit uncertainty and reserve constraints reduce brittle plans compared to naive unconstrained score maximization.
 
-**Contribution boundaries:** HYDE may contribute a **validated integration workflow**, **transparent simulation-based decision support**, and **empirical evidence about algorithm applicability**. Avoid claiming to have discovered a previously unsolved NASA problem. NASA has prior related work on astronaut traverse planning and metabolic workload using **Hybrid A*** (see sources).
+**Contribution boundaries:** MARS-OPS may contribute a **validated integration workflow**, **transparent simulation-based decision support**, and **empirical evidence about algorithm applicability**. Avoid claiming to have discovered a previously unsolved NASA problem. NASA has prior related work on astronaut traverse planning and metabolic workload using **Hybrid A*** (see sources).
 
 ---
 
@@ -118,7 +118,7 @@ Treat them as separate Rust modules and separate validation claims. Do not confl
 
 The accessible search-indexed challenge summary identifies a **layered map using data from multiple Mars missions** to support astronaut safety and scientifically useful Marswalks. The full challenge page intermittently returned a retrieval error during preparation of this brief. **The coding agent must reopen the official challenge page and inspect the exact full statement, resources, rules and submission rubric before final submission.** This document does not pretend to quote an unverified full rubric.
 
-### HYDE challenge-coverage checklist
+### MARS-OPS challenge-coverage checklist
 
 - [ ] Map displays an actual named region on Mars with verified spatial coordinates.
 - [ ] At least **two distinct NASA-mission/instrument source layers** are visible and attributable (e.g., MRO CTX imagery + MGS MOLA topography); **prefer three** including a local MRO HiRISE DTM or CRISM science data.
@@ -218,7 +218,7 @@ All null placeholders **must** be filled from downloaded product metadata for re
 2. **Explore** map with `Imagery`, `Elevation`, `Slope/Unknown`, and optional `Science` overlays. Click to inspect data provenance and coverage.
 3. **Create scenario:** place base inside valid terrain, select 3–8 candidate science sites **inside data coverage**, and set mission assumptions/time/resources/reserves.
 4. **Run baseline:** calculate a feasible mission using explicit route and budget constraints. If infeasible, show why and which constraint failed.
-5. **Run optimization:** optionally execute exact original HyDE if supplied; otherwise use labeled simple baseline or standalone DE. Record seed, evaluation budget, solver, inputs and runtime.
+5. **Run optimization:** optionally execute exact original MARS-OPS if supplied; otherwise use labeled simple baseline or standalone DE. Record seed, evaluation budget, solver, inputs and runtime.
 6. **Compare:** show route geometry, visited sites, science objective coverage, resource consumption, reserves, solver runtime, and feasibility.
 7. **Inspect evidence:** selecting a route segment shows associated terrain source, effective cell resolution, slope estimate, modeled risk, or unknown coverage.
 8. **Export reproducible mission report** (`JSON`, optional `CSV`) with source IDs, scenario, parameter provenance, algorithm config, decision vector, feasibility, metrics and warnings.
@@ -229,7 +229,7 @@ All null placeholders **must** be filled from downloaded product metadata for re
 
 Suggested layout at 1440×900:
 
-- **Top bar (48–56px):** HYDE / dataset status / region / `Run mission`.
+- **Top bar (48–56px):** MARS-OPS / dataset status / region / `Run mission`.
 - **Map (65–75% viewport width):** NASA geospatial layer; route, sites, scale, north indicator, concise legend; proper pan/zoom; no procedural decorative map if real data is available.
 - **Right rail (300–360px):** Resource inputs (oxygen/energy/time), mission goal, compact objectives list, action button.
 - **Bottom dock or collapsible detail:** 3–4 KPIs (`Science objectives`, `Time used`, `Resource reserve`, `Plan status`) and short itinerary; optional **Compare** tab.
@@ -320,22 +320,22 @@ A route may look feasible under assumed speed or power use and become infeasible
 
 ---
 
-## 8. HyDE: precise role and integration contract
+## 8. MARS-OPS: precise role and integration contract
 
 ### 8.1 What is known / not known
 
-**Known from the team's study title and discussion:** HyDE is a hybrid of **Differential Evolution** and **warm-started IPOP-CMA-ES**, originally developed for **continuous parametric optimization**. The team's study must be consulted for the precise initialization, transfer, switching, restarts, population scheduling, termination and constraint handling.
+**Known from the team's study title and discussion:** MARS-OPS is a hybrid of **Differential Evolution** and **warm-started IPOP-CMA-ES**, originally developed for **continuous parametric optimization**. The team's study must be consulted for the precise initialization, transfer, switching, restarts, population scheduling, termination and constraint handling.
 
 **Not verified here:** exact source code, pseudocode, DE mutation variant, crossover rate, CMA-ES covariance adaptation formulas, switching criterion, warm-start details, treatment of box/hard constraints, and original benchmark results. **Do not invent these and call the result a faithful reproduction.**
 
-### 8.2 How to encode HYDE for a continuous optimizer
+### 8.2 How to encode MARS-OPS for a continuous optimizer
 
 Science-site selection/order is **discrete**; waypoint placement, dwell time and allocation are **continuous**. Two options:
 
 **Option A — preferred MVP (research-conservative):**
 
 - Use a validated classical mission scheduler/routing baseline for discrete **site selection and order**.
-- Run authentic HyDE on a **fixed selected itinerary** for continuous values, e.g., activity durations, permitted local waypoint offsets, speed/energy strategy coefficients, or other real, physically meaningful continuous controls.
+- Run authentic MARS-OPS on a **fixed selected itinerary** for continuous values, e.g., activity durations, permitted local waypoint offsets, speed/energy strategy coefficients, or other real, physically meaningful continuous controls.
 - Revalidate connectivity and all constraints after each candidate decode.
 - Compare against standalone DE, CMA-ES and a deterministic/convex or nonlinear solver (when applicable) **on the exact same fixed-itinerary problem**.
 
@@ -345,7 +345,7 @@ Science-site selection/order is **discrete**; waypoint placement, dwell time and
 - Deterministically decode sorted priority keys into an ordered subset; reject candidates violating hard constraints.
 - Recognize that decoding introduces discontinuities and may favor other optimizers; explicitly benchmark against **orienteering / resource-constrained mission scheduling solvers**.
 
-**Do not assume that HyDE will outperform the discrete-task baseline.** The purpose is to test suitability, not to force algorithmic victory.
+**Do not assume that MARS-OPS will outperform the discrete-task baseline.** The purpose is to test suitability, not to force algorithmic victory.
 
 ### 8.3 Rust solver interface
 
@@ -378,7 +378,7 @@ Use one canonical evaluation function and a consistent definition of an **object
 3. `ExactSmallPlanner` — exhaustive enumeration or CP-SAT/MILP for small instances to establish known/near-known optima.
 4. `StandaloneDE` — optimization reference.
 5. `StandaloneCMAES` — optimization reference (if authentic implementation available).
-6. `HyDE` — **only after porting and testing the real original algorithm**.
+6. `MARS-OPS` — **only after porting and testing the real original algorithm**.
 
 ### 8.4 Evaluation budgets and fairness
 
@@ -388,7 +388,7 @@ Use one canonical evaluation function and a consistent definition of an **object
 - Separate up-front preprocessing from solve runtime, but report both.
 - Across repeated randomized runs report **median, interquartile range, 95% bootstrap confidence interval**, and raw run data.
 - Use a predeclared success criterion rather than retrofitting one to a favorable run.
-- If tests do not show HyDE superiority, report that faithfully and explain where it was competitive or weaker.
+- If tests do not show MARS-OPS superiority, report that faithfully and explain where it was competitive or weaker.
 
 ---
 
@@ -407,13 +407,13 @@ Use one canonical evaluation function and a consistent definition of an **object
 ### 9.2 Suggested repository layout
 
 ```text
-hyde/
+mars-ops/
   README.md
   LICENSE
   LIMITATIONS.md
   DATA_CATALOG.md
   docs/
-    HYDE_PROJECT_CONTEXT_AND_VALIDATION.md
+    MARS-OPS_PROJECT_CONTEXT_AND_VALIDATION.md
     SCIENTIFIC_METHOD.md
     BENCHMARK_PROTOCOL.md
     SUBMISSION_CHECKLIST.md
@@ -440,7 +440,7 @@ hyde/
       lib.rs
       commands.rs
   crates/
-    ares-core/
+    mars-ops-core/
       src/
         lib.rs
         model.rs
@@ -457,9 +457,9 @@ hyde/
           greedy.rs
           exact_small.rs
           differential_evolution.rs
-          hyde.rs
+          mars-ops.rs
         benchmark.rs
-    ares-cli/
+    mars-ops-cli/
       src/main.rs          # Headless import validation + experiments
   tools/
     preprocess_data.py     # optional reproducible GDAL pipeline
@@ -557,8 +557,8 @@ Emit structured progress events with cancellation and final status. Never freeze
 |---|---|---|
 | Routing only | Dijkstra vs A* | Checks path correctness and efficiency under the *same edge costs* |
 | Small mission-selection cases | Exhaustive enumeration / MILP / CP-SAT vs greedy | Establishes optimality gaps / feasible scheduling quality |
-| Continuous fixed-itinerary optimization | DE vs CMA-ES vs authentic HyDE vs simple local search | Tests the algorithm on a problem aligned with its continuous design |
-| Mixed selection/scheduling (optional) | Greedy, orienteering heuristic, CP-SAT/MILP if applicable, decoded DE/HyDE | Tests overall mission utility; avoid direct A* as full-mission baseline |
+| Continuous fixed-itinerary optimization | DE vs CMA-ES vs authentic MARS-OPS vs simple local search | Tests the algorithm on a problem aligned with its continuous design |
+| Mixed selection/scheduling (optional) | Greedy, orienteering heuristic, CP-SAT/MILP if applicable, decoded DE/MARS-OPS | Tests overall mission utility; avoid direct A* as full-mission baseline |
 
 ### 10.2 Metrics
 
@@ -598,9 +598,9 @@ For statistical comparison, target **at least 20–30 reproducible independent s
 - [ ] Deterministic seed + inputs reproduce deterministic baseline and stable stochastic runs.
 - [ ] Exported report exactly matches rendered plan metrics to within documented float tolerance.
 
-**Algorithm validation — must pass before claiming HyDE**
+**Algorithm validation — must pass before claiming MARS-OPS**
 
-- [ ] Original HyDE source/pseudocode obtained and versioned; source is cited.
+- [ ] Original MARS-OPS source/pseudocode obtained and versioned; source is cited.
 - [ ] Implementation matches original equations, state transitions, restart schedule and stopping rules.
 - [ ] Original benchmark functions or known test cases reproduced to the extent necessary for a credible port; discrepancies explained.
 - [ ] Same budget/constraints for competitors; no hidden extra tuning or dataset-specific advantages.
@@ -659,7 +659,7 @@ What claims the evidence supports, and explicitly what it does NOT support
 
 - [ ] Define exact math problem, hard constraints and science-preference function in `SCIENTIFIC_METHOD.md`.
 - [ ] Implement small-instance exhaustive or optimization-solver baseline for site selection/order.
-- [ ] Port original HyDE **only with authentic study specification**; validate reproduction.
+- [ ] Port original MARS-OPS **only with authentic study specification**; validate reproduction.
 - [ ] Compare identical continuous fixed-itinerary problems with standalone DE/CMA-ES/local-search; report runtime/evaluation budget.
 - [ ] Optionally implement mixed-variable priority-key decoder as an **explicit experiment**.
 - [ ] Build deterministic benchmark CLI and export raw results/convergence curves.
@@ -695,8 +695,8 @@ What claims the evidence supports, and explicitly what it does NOT support
 | Real imagery with fake hazard/slope overlay | Appearance implies unearned validity | Derive from georeferenced DTM; mark model assumptions |
 | Static “science = 90/100” displayed as fact | Invented scientific value | Make preference user-defined, explain geological evidence |
 | Radiation from Gale shown at Jezero as observed | Incorrect transfer across geography/time | Remove map layer or explicitly present hypothetical scenario |
-| HyDE-style approximation called the original HyDE | False research reproduction | Require original algorithm spec + replication tests |
-| Comparing A* to full HyDE itinerary and declaring a winner | Different mathematical problems | Match problem formulation and baselines |
+| MARS-OPS-style approximation called the original MARS-OPS | False research reproduction | Require original algorithm spec + replication tests |
+| Comparing A* to full MARS-OPS itinerary and declaring a winner | Different mathematical problems | Match problem formulation and baselines |
 | Fitness evaluations compared without costs | Computational comparison invalid | Wall-clock + precompute/cache costs + evals |
 | Weighted penalty permits exhausted oxygen | Potentially misleading recommendation | Hard feasibility gate + reserves |
 | Routes cross gaps in DTM coverage | Unsupported risk classification | Unknown/no-data mask, conservative block |
@@ -725,7 +725,7 @@ What claims the evidence supports, and explicitly what it does NOT support
 **Research-ready handoff adds**
 
 ```text
-[ ] Exact thesis-faithful HyDE implementation with source/pseudocode linked
+[ ] Exact thesis-faithful MARS-OPS implementation with source/pseudocode linked
 [ ] Standalone DE/CMA-ES reference solvers
 [ ] Small exact solution and strong comparable mission-planning baseline
 [ ] Benchmark CLI with repeated seeds, matched budgets, raw results and plots
@@ -743,7 +743,7 @@ What claims the evidence supports, and explicitly what it does NOT support
 1. “This is a specific area of Jezero Crater. The imagery and terrain come from named NASA Mars mission products.” Show data product IDs and a slope/coverage overlay.
 2. “We want to visit these science sites, but the expedition has an assumed 6-hour time allowance and limited equipment energy.” Show **scenario assumptions** rather than pretending these are flight-certified consumable budgets.
 3. “Our baseline finds a round-trip plan and rejects activities or segments that violate constraints.” Click a blocked or impossible example.
-4. “We can optionally optimize allocation/route parameters and compare its results against a fair baseline.” If original HyDE is not verified, say **experimental optimizer**.
+4. “We can optionally optimize allocation/route parameters and compare its results against a fair baseline.” If original MARS-OPS is not verified, say **experimental optimizer**.
 5. “Here are the datasets, uncertainties, exact assumptions, seeds and benchmark results. This is a decision-support research prototype, not astronaut-certified navigation.”
 
 **Permissible claims if supported by the app:**
@@ -754,7 +754,7 @@ What claims the evidence supports, and explicitly what it does NOT support
 
 **Claims that require substantially more evidence and must NOT appear by default:**
 
-- “Our system predicts astronaut survival,” “NASA uses our route,” “HyDE beats NASA,” “95% safe,” “real-time radiation map,” “fully NASA-verified resource usage,” or “quantum-powered.”
+- “Our system predicts astronaut survival,” “NASA uses our route,” “MARS-OPS beats NASA,” “95% safe,” “real-time radiation map,” “fully NASA-verified resource usage,” or “quantum-powered.”
 
 ---
 
@@ -787,9 +787,9 @@ These links support project context, **not** an assertion that their datasets ha
 15. Kim et al., **A Consolidated Tool for Planning and Analyzing Simulated Exploration Traverses and Associated Metabolic Workload**, NASA NTRS (2024/2025 records): https://ntrs.nasa.gov/citations/20250006519
 16. Jezero DTM research and registration discussion, *Earth and Space Science* (2023), DOI 10.1029/2023EA003045: https://doi.org/10.1029/2023EA003045
 
-**Research-team source required before authentic HyDE port**
+**Research-team source required before authentic MARS-OPS port**
 
-17. **The user's original HyDE thesis/paper, pseudocode and working source implementation — NOT PROVIDED IN THIS BRIEF.** Obtain these directly from the team. Do not substitute assumptions from the algorithm name.
+17. **The user's original MARS-OPS thesis/paper, pseudocode and working source implementation — NOT PROVIDED IN THIS BRIEF.** Obtain these directly from the team. Do not substitute assumptions from the algorithm name.
 
 ---
 
@@ -817,4 +817,4 @@ At the end of each implementation phase, report only:
 - One concrete action
 ```
 
-**Final directive:** Optimize for **scientific honesty + functional Mars data integration + reproducible decision support**. Never replace missing evidence with attractive visualizations, invented scores, or a claim that HyDE has solved a problem it has not yet been tested on.
+**Final directive:** Optimize for **scientific honesty + functional Mars data integration + reproducible decision support**. Never replace missing evidence with attractive visualizations, invented scores, or a claim that MARS-OPS has solved a problem it has not yet been tested on.

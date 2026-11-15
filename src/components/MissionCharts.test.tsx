@@ -81,7 +81,7 @@ const leg = (from: string, to: string, distance: number): PlannedLeg => ({
 });
 
 const routeResult: MissionResult = {
-  status: "FEASIBLE_MODELED", solver: { name: "hyde", version: "1", description: "test" },
+  status: "FEASIBLE_MODELED", solver: { name: "mars-ops", version: "1", description: "test" },
   stops: [stop("S1", 1), stop("S2", 2)], legs: [leg("BASE", "S1", 1200), leg("S1", "S2", 1500), leg("S2", "BASE", 900)],
   totals: null, checks: [], utility: 5, issues: [],
   excluded: [{ site_id: "S3", code: "TERRAIN", reason: "no traversable route" } as Exclusion],

@@ -9,7 +9,7 @@
     "consumable_unit": "kg O2"
   },
   "model": {
-    "model_version": "ares-resource-model-1",
+    "model_version": "mars-ops-resource-model-1",
     "flat_speed_m_s": {
       "value": 0.6,
       "unit": "m/s",

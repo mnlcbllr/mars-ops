@@ -1,4 +1,4 @@
-# HYDE Mars Dataset Pack — Jezero
+# MARS-OPS Mars Dataset Pack — Jezero
 
 This pack contains real archived NASA-mission Mars observations for the Jezero crater landing region only, with derivatives used by the app. It contains selected products and local crops, not complete mission archives. No app, simulated data, or live forecast is included.
 

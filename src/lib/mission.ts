@@ -130,7 +130,7 @@ export function addedSite(scenario: MissionScenario, point: LocalPoint): Mission
 
 export function editCoefficient(scenario: MissionScenario, key: CoefficientKey, value: number): MissionScenario {
   const coefficient = scenario.model[key];
-  const note = "User-edited in HYDE. ";
+  const note = "User-edited in MARS-OPS. ";
   return {
     ...scenario,
     model: {

@@ -1,4 +1,4 @@
-// TypeScript mirrors of the Rust core's serialized types (crates/ares-core).
+// TypeScript mirrors of the Rust core's serialized types (crates/mars-ops-core).
 // Field names are the wire names; keep them identical to the Rust structs.
 
 export type EvidenceKind = "OBSERVED" | "DERIVED" | "MODELED" | "USER_DEFINED" | "SYNTHETIC";

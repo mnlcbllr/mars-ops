@@ -1,4 +1,4 @@
-//! HYDE scientific core.
+//! MARS-OPS scientific core.
 //!
 //! Everything that makes a scientific claim lives here, independent of the
 //! desktop shell: reading packaged Mars rasters, terrain metrics, leg routing,

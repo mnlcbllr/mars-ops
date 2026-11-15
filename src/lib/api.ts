@@ -39,9 +39,9 @@ export const api = {
   replanSimulation: () => invoke<SimulationView>("replan_simulation"),
   simulationView: () => invoke<SimulationView | null>("simulation_view"),
   clearSimulation: () => invoke<void>("clear_simulation"),
-  /** Writes the run to Documents/ARES/reports and resolves to the file path. */
+  /** Writes the run to Documents/MARS-OPS/reports and resolves to the file path. */
   exportReport: (run_id: number) => invoke<string>("export_mission_report", { run_id }),
-  /** Writes the scenario (no result) to Documents/ARES/plans and resolves to the file path. */
+  /** Writes the scenario (no result) to Documents/MARS-OPS/plans and resolves to the file path. */
   savePlan: (scenario: MissionScenario) => invoke<string>("save_plan", { scenario }),
   listPlans: () => invoke<PlanSummary[]>("list_plans"),
   /** Loads a saved plan; rejected unless it was saved for the open dataset. */

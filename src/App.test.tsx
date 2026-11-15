@@ -13,16 +13,16 @@ test("the app renders its shell and loading status before native data is availab
 });
 
 test("a regular browser gets an actionable native-runtime error", async () => {
-  await expect(loadWorkspace()).rejects.toThrow("Open the HYDE desktop app with bun tauri dev");
+  await expect(loadWorkspace()).rejects.toThrow("Open the MARS-OPS desktop app with bun tauri dev");
 });
 
 test("MARS-OPS branding preserves the installed-app identity", () => {
   const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
   const pkg = JSON.parse(read("../package.json"));
   const desktop = JSON.parse(read("../src-tauri/tauri.conf.json"));
-  expect(pkg.name).toBe("hyde");
-  expect(read("../index.html")).toContain("<title>HYDE</title>");
+  expect(pkg.name).toBe("mars-ops");
+  expect(read("../index.html")).toContain("<title>MARS-OPS</title>");
   expect(desktop.productName).toBe("MARS-OPS");
   expect(desktop.app.windows[0].title).toStartWith("MARS-OPS —");
-  expect(desktop.identifier).toBe("space.ares.planner");
+  expect(desktop.identifier).toBe("space.mars-ops.planner");
 });

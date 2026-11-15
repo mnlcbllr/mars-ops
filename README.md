@@ -1,4 +1,4 @@
-# HYDE
+# MARS-OPS
 
 Offline Mars terrain viewer and contingency-aware excursion planner. Research prototype, not operational astronaut planning software.
 
@@ -19,9 +19,9 @@ Use the desktop window: a regular browser does not provide the native dataset/pl
 2. Optionally place the base on the map. Only known terrain within the declared slope limit is accepted; coordinates are also keyboard-editable.
 3. Select **Run mission**. Native validation runs first, followed by the exact subset/order planner. The repository still contains the original greedy planner as a baseline and as the runtime fallback. Warnings may exclude sites; validation errors block planning.
 4. Review the route in 3D. Expand **Resource checks & itinerary**, select a leg, or inspect excluded-site reasons. Feasibility is relative to the declared model, not a safety claim.
-5. Select **Export JSON**. The app writes a `hyde-report_*.json` report to the existing `Documents/ARES/reports` folder (or its application-data directory if Documents is unavailable), and displays the actual path. It never overwrites an existing report.
+5. Select **Export JSON**. The app writes a `mars-ops-report_*.json` report to the existing `Documents/MARS-OPS/reports` folder (or its application-data directory if Documents is unavailable), and displays the actual path. It never overwrites an existing report.
 
-Edits invalidate previous results, exports and saved paths. Inputs are locked during validation, planning, export and saving. **Save plan** writes the scenario without any result to `Documents/ARES/plans`; load it later from the same panel to continue editing. The exported report includes the selected scenario, model provenance, dataset hashes, solver result and limitations. Report import is not implemented. Displayed metrics are rounded for readability; the report retains the backend's numeric values.
+Edits invalidate previous results, exports and saved paths. Inputs are locked during validation, planning, export and saving. **Save plan** writes the scenario without any result to `Documents/MARS-OPS/plans`; load it later from the same panel to continue editing. The exported report includes the selected scenario, model provenance, dataset hashes, solver result and limitations. Report import is not implemented. Displayed metrics are rounded for readability; the report retains the backend's numeric values.
 
 ## Simulation, contingencies and replanning
 
@@ -40,9 +40,9 @@ Exported reports include the simulation phase, event timeline, completed work, r
 bun test src
 bun run build
 cargo test --workspace
-cargo run -p ares-cli -- plan datasets/jezero-small
-cargo run -p ares-cli -- benchmark datasets/jezero-small
-cargo run -p ares-cli -- verify-manifest datasets/jezero-small
+cargo run -p mars-ops-cli -- plan datasets/jezero-small
+cargo run -p mars-ops-cli -- benchmark datasets/jezero-small
+cargo run -p mars-ops-cli -- verify-manifest datasets/jezero-small
 ```
 
 The benchmark compares `GreedyPlanner` with `ExactSubsetDp` on the bundled scenario for an open case and a fixed contingency script, and can write machine-readable JSON with `--out`.
@@ -51,6 +51,6 @@ The benchmark compares `GreedyPlanner` with `ExactSubsetDp` on the bundled scena
 
 ## Name and compatibility
 
-HYDE is the project name, not a claim that the HyDE optimization algorithm is implemented. The default solver is the deterministic **ExactSubsetDp**; **GreedyPlanner** remains available as the transparent baseline and runtime fallback. No HyDE, DE or CMA-ES implementation is claimed. Existing report schemas, dataset/model IDs, the installed-app identifier and report storage location are unchanged. Internal Rust crate and CLI names retain `ares-*` for compatibility; previously exported reports remain readable as JSON.
+MARS-OPS is the project name, not a claim that the MARS-OPS optimization algorithm is implemented. The default solver is the deterministic **ExactSubsetDp**; **GreedyPlanner** remains available as the transparent baseline and runtime fallback. No MARS-OPS, DE or CMA-ES implementation is claimed. Existing report schemas, dataset/model IDs, the installed-app identifier and report storage location are unchanged. Internal Rust crate and CLI names retain `mars-ops-*` for compatibility; previously exported reports remain readable as JSON.
 
-See [LIMITATIONS.md](LIMITATIONS.md), [the implementation notes](docs/MARS_OPS_IMPLEMENTATION.md) and [the project specification](docs/HYDE_PROJECT_CONTEXT_AND_VALIDATION.md).
+See [LIMITATIONS.md](LIMITATIONS.md), [the implementation notes](docs/MARS_OPS_IMPLEMENTATION.md) and [the project specification](docs/MARS-OPS_PROJECT_CONTEXT_AND_VALIDATION.md).

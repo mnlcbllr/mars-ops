@@ -3,12 +3,12 @@
 //! `validation_samples.json` was written by `tools/preprocess_data.py` from a
 //! raw-byte read of the original HiRISE `.IMG`, independently of this crate.
 
-use ares_core::data::Dataset;
-use ares_core::geo::LatLon;
-use ares_core::planning::{plan_greedy, MissionScenario, PlanStatus, BASE_ID};
-use ares_core::session::{DisplayLayer, Session};
-use ares_core::terrain::{PlanningGrid, TerrainClass, PLANNING_FACTOR};
-use ares_core::LocalPoint;
+use mars_ops_core::data::Dataset;
+use mars_ops_core::geo::LatLon;
+use mars_ops_core::planning::{plan_greedy, MissionScenario, PlanStatus, BASE_ID};
+use mars_ops_core::session::{DisplayLayer, Session};
+use mars_ops_core::terrain::{PlanningGrid, TerrainClass, PLANNING_FACTOR};
+use mars_ops_core::LocalPoint;
 use std::path::PathBuf;
 
 fn dataset_dir() -> PathBuf {
@@ -24,7 +24,7 @@ fn samples() -> serde_json::Value {
     serde_json::from_str(&text).unwrap()
 }
 
-fn planned(edit: impl FnOnce(&mut MissionScenario)) -> (PlanningGrid, MissionScenario, ares_core::planning::MissionResult) {
+fn planned(edit: impl FnOnce(&mut MissionScenario)) -> (PlanningGrid, MissionScenario, mars_ops_core::planning::MissionResult) {
     let ds = open();
     let grid = PlanningGrid::build(&ds.elevation, PLANNING_FACTOR);
     let mut scenario = ds.default_scenario().unwrap();
@@ -37,7 +37,7 @@ fn planned(edit: impl FnOnce(&mut MissionScenario)) -> (PlanningGrid, MissionSce
 fn packaged_dataset_is_the_verified_hirise_product() {
     let ds = open();
     assert!(ds.is_real_data_verified());
-    let dtm = ds.layer(ares_core::data::LayerKind::Elevation).unwrap();
+    let dtm = ds.layer(mars_ops_core::data::LayerKind::Elevation).unwrap();
     assert_eq!(dtm.product_id, "DTEEC_023524_1985_023379_1985_U01");
     assert_eq!(samples()["source_product_id"], "DTEEC_023524_1985_023379_1985_U01");
     assert_eq!(samples()["source_verified"], true);
@@ -151,8 +151,8 @@ fn session_serves_the_packaged_layers_at_their_real_dimensions() {
     let elevation = session.layer_bytes(DisplayLayer::Elevation).unwrap();
     assert_eq!(elevation.len(), 2048 * 2048 * 4);
     // Served bytes are the packaged file itself: same hash as the manifest records.
-    let dtm = session.dataset.layer(ares_core::data::LayerKind::Elevation).unwrap();
-    assert_eq!(ares_core::data::sha256_hex(&elevation), dtm.sha256_derived);
+    let dtm = session.dataset.layer(mars_ops_core::data::LayerKind::Elevation).unwrap();
+    assert_eq!(mars_ops_core::data::sha256_hex(&elevation), dtm.sha256_derived);
 
     assert_eq!(session.layer_bytes(DisplayLayer::Slope).unwrap().len(), 512 * 512 * 4);
     let png = session.layer_bytes(DisplayLayer::Imagery).unwrap();

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    ares_app_lib::run()
+    mars_ops_app_lib::run()
 }

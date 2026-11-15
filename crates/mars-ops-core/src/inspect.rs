@@ -13,7 +13,7 @@ pub struct PointInspection {
     pub terrain: TerrainClass,
     /// Elevation interpolated between the source DTM's cells, metres.
     pub elevation_m: Option<f64>,
-    /// Slope of the planning cell (derived by HYDE from the DTM), degrees.
+    /// Slope of the planning cell (derived by MARS-OPS from the DTM), degrees.
     pub slope_deg: Option<f64>,
 }
 

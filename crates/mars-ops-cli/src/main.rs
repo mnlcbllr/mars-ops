@@ -1,22 +1,22 @@
-//! Headless HYDE: verify a packaged dataset, inspect a point, plan a mission.
+//! Headless MARS-OPS: verify a packaged dataset, inspect a point, plan a mission.
 //!
 //! Exit codes: 0 success / feasible plan, 1 usage or data error, 2 no feasible plan.
 
-use ares_core::planning::{MissionScenario, PlanStatus};
-use ares_core::report::MissionReport;
-use ares_core::session::Session;
-use ares_core::LocalPoint;
+use mars_ops_core::planning::{MissionScenario, PlanStatus};
+use mars_ops_core::report::MissionReport;
+use mars_ops_core::session::Session;
+use mars_ops_core::LocalPoint;
 use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str = "\
-ares-cli — headless HYDE
+mars-ops-cli — headless MARS-OPS
 
 USAGE:
-  ares-cli verify-manifest <dataset_dir>
-  ares-cli inspect <dataset_dir> <x_m> <y_m>
-  ares-cli plan <dataset_dir> [--scenario <scenario.json>] [--out <report.json>]
-  ares-cli benchmark <dataset_dir> [--scenario <scenario.json>] [--out <benchmark.json>]
+  mars-ops-cli verify-manifest <dataset_dir>
+  mars-ops-cli inspect <dataset_dir> <x_m> <y_m>
+  mars-ops-cli plan <dataset_dir> [--scenario <scenario.json>] [--out <report.json>]
+  mars-ops-cli benchmark <dataset_dir> [--scenario <scenario.json>] [--out <benchmark.json>]
 
 `plan` without --scenario uses the scenario packaged with the dataset.
 `benchmark` compares the greedy baseline with the exact subset/order planner
@@ -164,8 +164,8 @@ fn benchmark(dir: &Path, options: &[String]) -> Result<ExitCode, String> {
                 outcome.events,
                 outcome.runtime_ms,
                 match outcome.final_phase {
-                    Some(ares_core::mission_state::SimulationPhase::Complete) => "returned to base",
-                    Some(ares_core::mission_state::SimulationPhase::Infeasible) => "INFEASIBLE",
+                    Some(mars_ops_core::mission_state::SimulationPhase::Complete) => "returned to base",
+                    Some(mars_ops_core::mission_state::SimulationPhase::Infeasible) => "INFEASIBLE",
                     Some(_) => "unfinished",
                     None => "not simulated",
                 }
