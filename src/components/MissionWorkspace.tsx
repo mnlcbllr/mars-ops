@@ -282,6 +282,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             lit={layer === "heights"} exaggeration={1} markers={markers}
             legs={result?.legs ?? NO_LEGS}
             revisedLegs={simulation?.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan.legs : NO_LEGS}
+            completedLegs={simulation
+              ? simulation.state.phase === "COMPLETE" ? simulation.state.plan.legs.length
+                : simulation.state.phase === "ACTIVITY" ? simulation.state.leg_index + 1
+                : simulation.state.leg_index
+              : 0}
             position={simulation?.position ?? null}
             blockPreview={blockPreview}
             pov={pov}

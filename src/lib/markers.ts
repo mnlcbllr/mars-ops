@@ -7,8 +7,10 @@ import { INK_DARK, INK_LIGHT, ROUTE, WARNING } from "./theme";
 export type MarkerKind =
   /** The base: a square. */
   | "base"
-  /** A site in the plan: filled disc carrying its visit order. */
+  /** A site still to visit: filled blue disc carrying its visit order. */
   | "visited"
+  /** A site already worked: muted dark disc, so blue only means "where to go". */
+  | "completed"
   /** A candidate with no plan yet: ringed disc. */
   | "candidate"
   /** A candidate the plan left out: dashed ring, struck through. */
@@ -39,7 +41,7 @@ export function markersFor(
     const position = { x_m: site.position.x_m, y_m: site.position.y_m };
     // Completed work wins over the remaining plan, so a finished stop never
     // still reads as a future visit.
-    if (done.has(site.id)) return { kind: "visited", id: site.id, ...position, glyph: "", label: `${site.id} complete` };
+    if (done.has(site.id)) return { kind: "completed", id: site.id, ...position, glyph: "", label: `${site.id} complete` };
     const visit = order.get(site.id);
     if (visit !== undefined) return { kind: "visited", id: site.id, ...position, glyph: String(visit), label: site.id };
     if (result?.excluded.some((e) => e.site_id === site.id)) {
@@ -48,14 +50,14 @@ export function markersFor(
     return { kind: "candidate", id: site.id, ...position, glyph: "", label: site.id };
   });
   const base: Marker = { kind: "base", id: "BASE", ...scenario.base, glyph: "B", label: "Base" };
-  // Draw the base and visited sites last so they sit on top.
-  const rank = (m: Marker) => (m.kind === "base" ? 3 : m.kind === "visited" ? 2 : 1);
+  // Draw the base and site markers last so they sit on top.
+  const rank = (m: Marker) => (m.kind === "base" ? 3 : m.kind === "visited" || m.kind === "completed" ? 2 : 1);
   return [...sites, base].sort((a, b) => rank(a) - rank(b));
 }
 
 /** Radius of the marker body in CSS pixels (labels start beyond it). */
 export function markerRadius(kind: MarkerKind): number {
-  return kind === "visited" || kind === "base" ? 11 : kind === "target" ? 10 : 9;
+  return kind === "visited" || kind === "base" || kind === "completed" ? 11 : kind === "target" ? 10 : 9;
 }
 
 /** Draw a marker centred on (x, y). */
@@ -109,11 +111,21 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
     if (marker.kind === "visited") {
+      // Blue = where to go. Completed stops never wear this colour.
       ctx.fillStyle = ROUTE;
       ctx.fill();
       ctx.lineWidth = 2;
       ctx.strokeStyle = INK_LIGHT;
       ctx.stroke();
+    } else if (marker.kind === "completed") {
+      // Muted dark disc: work is done, so nothing here says "follow me".
+      ctx.fillStyle = INK_DARK;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK_LIGHT;
+      ctx.globalAlpha = 0.45;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     } else {
       ctx.lineWidth = 2;
       ctx.strokeStyle = marker.kind === "left_out" ? WARNING : INK_LIGHT;

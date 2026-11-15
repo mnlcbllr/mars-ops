@@ -7,7 +7,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { errorText } from "@/lib/api";
 import { drawMarker, type Marker } from "@/lib/markers";
 import { buildTerrainMesh } from "@/lib/terrainMesh";
-import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE, WARNING } from "@/lib/theme";
+import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, WARNING } from "@/lib/theme";
 import type { LocalPoint, PlannedLeg, PointInspection } from "@/lib/types";
 
 export interface MeshInfo {
@@ -39,8 +39,10 @@ interface Terrain3DProps {
   exaggeration: number;
   markers: Marker[];
   legs: PlannedLeg[];
-  /** Latest replanned route, drawn on top of the original when present. */
+  /** Latest replanned route; replaces the original legs while present. */
   revisedLegs?: PlannedLeg[];
+  /** How many legs of the displayed route the crew has already walked. */
+  completedLegs?: number;
   /** Simulated crew position on the lattice, when a simulation is running. */
   position?: LocalPoint | null;
   /** Candidate corridor the user is about to block, drawn as a ring. */
@@ -96,7 +98,7 @@ function disposeOverlay(group: THREE.Group) {
  */
 export function Terrain3D(props: Terrain3DProps) {
   const { elevation, width, height, dx, dy, step, texture, lit, exaggeration } = props;
-  const { markers, legs, revisedLegs, position, blockPreview, pov, selectedLeg, inspected, hideInspected, placing, resetSignal, onPick, onMesh } = props;
+  const { markers, legs, revisedLegs, completedLegs = 0, position, blockPreview, pov, selectedLeg, inspected, hideInspected, placing, resetSignal, onPick, onMesh } = props;
   const hostRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const stage = useRef<Stage | null>(null);
@@ -344,27 +346,30 @@ export function Terrain3D(props: Terrain3DProps) {
       return Number.isNaN(value) ? null : value;
     };
 
-    legs.forEach((leg, index) => {
+    // One route on the map: the plan in effect right now (a replanned route
+    // replaces the original instead of fighting it). The path still to follow
+    // is dashed white; the walked part is a faint solid trail behind it.
+    const route = revisedLegs && revisedLegs.length > 0 ? revisedLegs : legs;
+    route.forEach((leg, index) => {
       if (leg.path.length < 2) return;
       const positions = leg.path.flatMap((p, i) => [p.x_m, leg.elevation_m[i]! + OVERLAY_LIFT_M, -p.y_m]);
       const geometry = new LineGeometry();
       geometry.setPositions(positions);
-      const selected = index === selectedLeg;
-      const material = new LineMaterial({ color: selected ? INK_LIGHT : ROUTE, linewidth: selected ? 6 : 4 });
+      const walked = index < completedLegs;
+      const selected = index === selectedLeg && !walked;
+      const dashed = !walked && !selected;
+      const material = new LineMaterial({
+        color: INK_LIGHT,
+        linewidth: selected ? 6 : walked ? 2.5 : 4,
+        dashed,
+        dashSize: 10,
+        gapSize: 8,
+        transparent: walked,
+        opacity: walked ? 0.35 : 1,
+      });
       const line = new Line2(geometry, material);
-      line.renderOrder = selected ? 2 : 1;
-      s.overlay.add(line);
-    });
-
-    // The replanned route sits slightly higher so shared stretches do not fight.
-    (revisedLegs ?? []).forEach((leg) => {
-      if (leg.path.length < 2) return;
-      const positions = leg.path.flatMap((p, i) => [p.x_m, leg.elevation_m[i]! + OVERLAY_LIFT_M + 1, -p.y_m]);
-      const geometry = new LineGeometry();
-      geometry.setPositions(positions);
-      const material = new LineMaterial({ color: WARNING, linewidth: 5 });
-      const line = new Line2(geometry, material);
-      line.renderOrder = 3;
+      if (dashed) line.computeLineDistances();
+      line.renderOrder = walked ? 1 : 2;
       s.overlay.add(line);
     });
 
