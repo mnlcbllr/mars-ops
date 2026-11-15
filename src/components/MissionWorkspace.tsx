@@ -18,8 +18,8 @@ import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@
 const RESULTS_DEFAULT = 360;
 const RESULTS_MIN = 140;
 const MAP_KEEP = 260;
-/** Playback: one tick advances the mission clock this much, this often. */
-const PLAYBACK_TICK_S = 60;
+/** Playback: two ticks per second; the per-tick mission time is chosen so the
+ *  whole planned mission plays in about a minute of wall clock. */
 const PLAYBACK_TICK_MS = 500;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
@@ -65,23 +65,31 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   // Discard terrain checks started before an edit, solve or simulation lock.
   useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
 
-  /** Music-player playback: advance the simulation on a timer while playing.
-   *  Ticks during an in-flight op are dropped by the job lock, which is fine —
-   *  every advance is relative, so time simply moves a touch slower. */
+  /** Music-player playback: advance the simulation on a timer while playing,
+   *  sized so the full plan plays in about a minute. Ticks during an in-flight
+   *  op are dropped by the job lock, which is fine — every advance is relative,
+   *  so time simply moves a touch slower. Playback starts automatically with
+   *  every fresh simulation. */
   const playbackPhase = simulation?.state.phase ?? null;
+  const simActive = simulation !== null;
+  const missionTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
   const missionRef = useRef(mission);
   missionRef.current = mission;
+  useEffect(() => {
+    if (simActive) setPlaying(true);
+  }, [simActive]);
   useEffect(() => {
     if (!playing) return;
     if (playbackPhase === null || playbackPhase === "COMPLETE" || playbackPhase === "INFEASIBLE" || state.error) {
       setPlaying(false);
       return;
     }
+    const tickS = Math.max(60, missionTotalS / (2 * 60));
     const id = window.setInterval(() => {
-      void missionRef.current.advanceSimulation(PLAYBACK_TICK_S);
+      void missionRef.current.advanceSimulation(tickS);
     }, PLAYBACK_TICK_MS);
     return () => window.clearInterval(id);
-  }, [playing, playbackPhase, state.error]);
+  }, [playing, playbackPhase, state.error, missionTotalS]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
