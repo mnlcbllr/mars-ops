@@ -404,12 +404,6 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           locked={editingLocked}
           onChange={edit}
           onPlaceBase={() => togglePlacing("base")}
-          onLoadPackaged={() => {
-            if (editingLocked) { setMapError("Reset the simulation before loading a scenario."); return; }
-            inspection.current++;
-            setMapError(null);
-            void api.defaultScenario().then((packaged) => edit(packaged), (failure) => setMapError(errorText(failure)));
-          }}
           onSavePlan={() => { setMapError(null); void mission.savePlan(); }}
           onLoadPlan={(loaded) => { inspection.current++; setMapError(null); mission.edit(loaded); }}
           onRun={runMission} />

@@ -37,8 +37,6 @@ interface ScenarioEditorProps {
   /** True while a simulation holds a frozen copy of the scenario. */
   locked: boolean;
   onPlaceBase: () => void;
-  /** Load the scenario packaged with the dataset, for a reproducible demo. */
-  onLoadPackaged: () => void;
   onChange: (scenario: MissionScenario) => void;
   onSavePlan: () => void;
   onLoadPlan: (scenario: MissionScenario) => void;
@@ -46,7 +44,7 @@ interface ScenarioEditorProps {
 }
 
 export function ScenarioEditor({
-  state, placingBase, datasetId, locked, onPlaceBase, onLoadPackaged,
+  state, placingBase, datasetId, locked, onPlaceBase,
   onChange, onSavePlan, onLoadPlan, onRun,
 }: ScenarioEditorProps) {
   const { scenario, phase } = state;
@@ -111,15 +109,6 @@ export function ScenarioEditor({
         <p className="text-xs text-muted-foreground">Clear both budget and reserve to leave a resource unconstrained; a blank reserve with a budget means zero.</p>
         {budget.energy_budget_wh === null && <p className="text-xs text-status-warning">{budget.energy_reserve_wh === null ? "No energy limit set." : "Energy reserve needs a budget."}</p>}
         {budget.consumable_budget === null && <p className="text-xs text-status-warning">{budget.consumable_reserve === null ? "No consumable limit set." : "Consumable reserve needs a budget."}</p>}
-      </section>
-      <section className="space-y-2" aria-label="Candidate science sites">
-        <h2 className="font-medium">Candidate sites · {scenario.sites.length}</h2>
-        <p className="text-xs text-muted-foreground">Candidates are optional; the planner may still leave some out. Right-click the map to add a candidate, or to delete one near the target. Keyboard with map focus: C add, B base.</p>
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground">Reproducible demo</summary>
-          <p className="mt-2 text-muted-foreground">Replaces the base, candidates, budgets and model with the packaged targets.</p>
-          <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={onLoadPackaged}>Load packaged scenario</Button>
-        </details>
       </section>
       <section className="space-y-2" aria-label="Saved plans">
         <h2 className="font-medium">Save &amp; load plan</h2>
