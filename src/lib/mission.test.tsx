@@ -173,8 +173,8 @@ describe("mission workflow", () => {
     expect(edited.simulation).toBeNull();
     expect(edited.run).toBeNull();
 
-    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false}
-      datasetId="jezero-small" locked onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}}
+    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false}
+      datasetId="jezero-small" locked onPlaceBase={() => {}}
       onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain("Simulation active. The scenario is frozen; reset the simulation to edit it.");
     expect(html).toContain("<fieldset disabled");
@@ -225,7 +225,7 @@ describe("mission workflow", () => {
     } });
     expect(planningScenario(edited).budget.energy_budget_wh).toBeNull();
     expect(planningScenario(edited).budget.energy_reserve_wh).toBe(200);
-    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} placingSite={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={edited} placingBase={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain("Energy reserve needs a budget.");
     expect(html).not.toContain("No energy limit set.");
   });
@@ -291,17 +291,17 @@ describe("mission presentation", () => {
     }
   });
 
-  test("editor exposes minutes, optional limits, site editing, saving and model assumptions", () => {
+  test("editor exposes minutes, optional limits, saving and model assumptions", () => {
     const state = initialMission(scenario());
     state.scenario.budget.energy_budget_wh = null;
     state.scenario.budget.energy_reserve_wh = null;
-    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} placingSite={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onTogglePlaceSite={() => {}} onLoadPackaged={() => {}} onDeleteSite={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
+    const html = renderToStaticMarkup(<ScenarioEditor state={state} placingBase={false} datasetId="jezero-small" locked={false} onPlaceBase={() => {}} onChange={() => {}} onSavePlan={() => {}} onLoadPlan={() => {}} onRun={() => {}} />);
     expect(html).toContain('id="mission-scenario"');
     expect(html).toContain("EVA limit (min)");
     expect(html).toContain('value="360"');
     expect(html).toContain("No energy limit set.");
-    expect(html).toContain("maximum activity (min)");
-    expect(html).toContain("Add candidate on map");
+    expect(html).not.toContain("Add candidate on map");
+    expect(html).not.toContain("Candidate sites");
     expect(html).toContain("Save plan");
     expect(html).toContain("Load a saved plan");
     expect(html).toContain("Model assumptions");

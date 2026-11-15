@@ -14,6 +14,15 @@ export const ELEVATION_RAMP: readonly string[] = [
 
 /** Slope above the scenario limit: orange tint, hatched "/". */
 export const ABOVE_LIMIT_RGB = [236, 131, 90] as const;
+
+/**
+ * Mars surface ramp, dark (low) to light (high): basalt shadow through
+ * butterscotch to bright dust. Applied to the grayscale ortho so the map
+ * reads as Mars while brightness alone still carries the terrain order.
+ */
+export const MARS_RAMP: readonly string[] = [
+  "#33201a", "#5c3a28", "#8a5a3c", "#b07b50", "#cf9c6b", "#e6c49a", "#f4e3c8",
+];
 /** No usable elevation or slope: dark veil, light hatching "\". */
 export const UNKNOWN_VEIL_RGB = [13, 13, 13] as const;
 export const UNKNOWN_HATCH_RGB = [195, 194, 183] as const;
@@ -47,6 +56,22 @@ export function rampLut(stops: readonly string[], size = 256): Uint8ClampedArray
     for (let c = 0; c < 3; c++) lut[i * 3 + c] = a[c]! + (b[c]! - a[c]!) * t;
   }
   return lut;
+}
+
+/** Recolor an image in place through a ramp LUT, keyed on pixel luminance. */
+export function colorizeImage(image: HTMLCanvasElement, ramp: readonly string[]): HTMLCanvasElement {
+  const context = image.getContext("2d")!;
+  const data = context.getImageData(0, 0, image.width, image.height);
+  const lut = rampLut(ramp);
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const l = (px[i]! * 0.299 + px[i + 1]! * 0.587 + px[i + 2]! * 0.114) | 0;
+    px[i] = lut[l * 3]!;
+    px[i + 1] = lut[l * 3 + 1]!;
+    px[i + 2] = lut[l * 3 + 2]!;
+  }
+  context.putImageData(data, 0, 0);
+  return image;
 }
 
 /** RGBA for an elevation raster; missing (`NaN`) cells stay transparent. */

@@ -5,6 +5,7 @@ import { ScenarioEditor } from "@/components/ScenarioEditor";
 import { SimulationPanel } from "@/components/SimulationPanel";
 import { Terrain3D } from "@/components/Terrain3D";
 import { Button } from "@/components/ui/button";
+import { Pause, Play } from "lucide-react";
 import { api, errorText } from "@/lib/api";
 import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
@@ -17,6 +18,9 @@ import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@
 const RESULTS_DEFAULT = 360;
 const RESULTS_MIN = 140;
 const MAP_KEEP = 260;
+/** Playback: two ticks per second; the per-tick mission time is chosen so the
+ *  whole planned mission plays in about half a minute of wall clock. */
+const PLAYBACK_TICK_MS = 500;
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
 
 // Stable identities: new array literals here would rebuild the 3D overlay every render (visible blink).
@@ -31,6 +35,9 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [placingBase, setPlacingBase] = useState(false);
   const [placingSite, setPlacingSite] = useState(false);
   const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
+  const [contextSiteId, setContextSiteId] = useState<string | null>(null);
+  const [seekTargetS, setSeekTargetS] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
   const rowRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLElement>(null);
@@ -57,6 +64,32 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   useEffect(() => () => { inspection.current++; }, []);
   // Discard terrain checks started before an edit, solve or simulation lock.
   useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
+
+  /** Music-player playback: advance the simulation on a timer while playing,
+   *  sized so the full plan plays in about half a minute. Ticks during an
+   *  in-flight op are dropped by the job lock, which is fine — every advance is
+   *  relative, so time simply moves a touch slower. Playback starts
+   *  automatically with every fresh simulation. */
+  const playbackPhase = simulation?.state.phase ?? null;
+  const simActive = simulation !== null;
+  const missionTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
+  const missionRef = useRef(mission);
+  missionRef.current = mission;
+  useEffect(() => {
+    if (simActive) setPlaying(true);
+  }, [simActive]);
+  useEffect(() => {
+    if (!playing) return;
+    if (playbackPhase === null || playbackPhase === "COMPLETE" || playbackPhase === "INFEASIBLE" || state.error) {
+      setPlaying(false);
+      return;
+    }
+    const tickS = Math.max(60, missionTotalS / (2 * 30));
+    const id = window.setInterval(() => {
+      void missionRef.current.advanceSimulation(tickS);
+    }, PLAYBACK_TICK_MS);
+    return () => window.clearInterval(id);
+  }, [playing, playbackPhase, state.error, missionTotalS]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -109,6 +142,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
     setInspected(null);
     setMapError(null);
     mission.edit(updated);
+  };
+
+  /** Remove a candidate site; the map right-click menu is the only delete affordance. */
+  const deleteSite = (id: string) => {
+    edit({ ...scenario, sites: scenario.sites.filter((site) => site.id !== id) });
   };
 
   /** Apply a terrain-checked point to a placement mode; false means it was rejected. */
@@ -257,7 +295,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button type="button" size="sm" variant="outline" onClick={() => { setPreview(null); setViewReset((n) => n + 1); }}>Return to overview</Button>
         </div>}
         {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
-        <ContextMenu.Root onOpenChange={(open) => { if (!open) setContextPoint(null); }}>
+        <ContextMenu.Root onOpenChange={(open) => { if (!open) { setContextPoint(null); setContextSiteId(null); } }}>
         <ContextMenu.Trigger render={<section ref={mapRef} tabIndex={0} aria-label="Terrain map" aria-describedby="map-shortcuts"
           aria-keyshortcuts="B C Escape" className="relative min-h-40 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" />}
           onPointerDownCapture={(event) => { if (event.target instanceof HTMLCanvasElement) mapRef.current?.focus({ preventScroll: true }); }}
@@ -275,12 +313,24 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             lit={layer === "heights"} exaggeration={1} markers={markers}
             legs={result?.legs ?? NO_LEGS}
             revisedLegs={simulation?.state.plan.status === "FEASIBLE_MODELED" ? simulation.state.plan.legs : NO_LEGS}
+            completedLegs={simulation
+              ? simulation.state.phase === "COMPLETE" ? simulation.state.plan.legs.length
+                : simulation.state.phase === "ACTIVITY" ? simulation.state.leg_index + 1
+                : simulation.state.leg_index
+              : 0}
             position={simulation?.position ?? null}
             blockPreview={blockPreview}
             pov={pov}
             selectedLeg={selectedLeg}
             inspected={inspected} hideInspected={contextPoint !== null} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
-            onContextPick={setContextPoint} onMesh={() => {}}
+            onContextPick={(point) => {
+              setContextPoint(point);
+              if (!point) { setContextSiteId(null); return; }
+              // A candidate within reach of the right-click target is the delete subject.
+              const near = scenario.sites.find((site) =>
+                Math.hypot(site.position.x_m - point.x_m, site.position.y_m - point.y_m) <= 30);
+              setContextSiteId(near?.id ?? null);
+            }} onMesh={() => {}}
           />
           <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">
             {inspected ? <><p>{latLon(inspected.latlon)}</p>
@@ -298,6 +348,9 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
                 className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
                 onClick={() => void placeAtContext("site")}>Add candidate here <kbd className="text-xs text-muted-foreground">C</kbd></ContextMenu.Item>
+              {contextSiteId && <ContextMenu.Item disabled={busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none text-status-critical data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => deleteSite(contextSiteId)}>Delete candidate {contextSiteId}</ContextMenu.Item>}
               {(editingLocked || !contextPoint) && <p className="max-w-56 px-3 py-2 text-xs text-muted-foreground">
                 {editingLocked ? "Reset the simulation to edit locations." : "Right-click the terrain to choose a location."}
               </p>}
@@ -307,39 +360,52 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
         </ContextMenu.Root>
         <p id="map-shortcuts" className="border-t px-4 py-1 text-[11px] text-muted-foreground">Right-click to place · With map focused: B base, C candidate, Esc cancel · Shift + drag to pan</p>
         {simulation && (() => {
+          const overheadS = scenario.model.overhead_s.value;
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;
-          const sliderMax = Math.max(plannedTotalS, elapsedS, 1);
-          const sliderValue = scrubbing && scrubS !== null ? scrubS : elapsedS;
+          const sliderMin = overheadS;
+          const sliderMax = Math.max(plannedTotalS, elapsedS, overheadS + 1);
+          const sliderValue = scrubbing && scrubS !== null ? scrubS
+            : busy && seekTargetS !== null ? seekTargetS : elapsedS;
           const commitSeek = () => {
-            if (!scrubbing || scrubS === null || busy) { setScrubbing(false); setScrubS(null); return; }
             setScrubbing(false);
-            const target = Math.max(0, Math.min(sliderMax, scrubS));
+            const target = scrubS === null ? null : Math.max(sliderMin, Math.min(sliderMax, scrubS));
             setScrubS(null);
-            if (Math.abs(target - elapsedS) >= 0.5) void mission.seekSimulation(target);
+            if (target === null || Math.abs(target - elapsedS) < 0.5) return;
+            // Pin the thumb at the target until the replayed state lands, so the
+            // display never snaps back to the old time mid-seek.
+            setSeekTargetS(target);
+            void mission.seekSimulation(target);
           };
           return <div className="shrink-0 border-t bg-background px-4 py-2 text-xs">
             <div className="flex items-center justify-between gap-2">
               <label htmlFor="sim-progress-slider-map" className="font-medium">Mission progress</label>
               <span className="tabular-nums text-muted-foreground">{minutes(sliderValue, 1)} / {minutes(plannedTotalS || sliderMax, 1)}</span>
             </div>
-            <input
-              id="sim-progress-slider-map"
-              type="range"
-              min={0}
-              max={sliderMax}
-              step={1}
-              value={Math.min(sliderValue, sliderMax)}
-              disabled={busy}
-              className="mt-1 w-full accent-foreground"
-              aria-label="Mission progress timeline"
-              onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
-              onMouseUp={commitSeek}
-              onTouchEnd={commitSeek}
-              onKeyUp={(e) => { if (e.key === "Enter" || e.key === " " || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Home" || e.key === "End") commitSeek(); }}
-              onBlur={() => { if (scrubbing) commitSeek(); }}
-            />
-            <p className="mt-1 text-muted-foreground">Drag to seek (replays from start; injected events/replans not preserved).</p>
+            <div className="mt-1 flex items-center gap-2">
+              <Button type="button" size="sm" variant="secondary" className="size-6 shrink-0 p-0"
+                aria-label={playing ? "Pause simulation playback" : "Play simulation"}
+                onClick={() => setPlaying((value) => !value)}>
+                {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+              </Button>
+              <input
+                id="sim-progress-slider-map"
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={1}
+                value={Math.min(sliderValue, sliderMax)}
+                disabled={busy && !scrubbing && !playing}
+                className="w-full flex-1 accent-foreground"
+                aria-label="Mission progress timeline"
+                onChange={(e) => { setScrubbing(true); setScrubS(Number(e.currentTarget.value)); }}
+                onPointerUp={commitSeek}
+                onPointerCancel={commitSeek}
+                onKeyUp={(e) => { if (["Enter", " ", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) commitSeek(); }}
+                onBlur={() => { if (scrubbing) commitSeek(); }}
+              />
+            </div>
+            <p className="mt-1 text-muted-foreground">Release to jump: the map, usage and stop states then show that exact time. The timeline starts at the mission clock after EVA overhead ({minutes(overheadS, 0)} min). Seeking replays from the start; injected events/replans are not preserved.</p>
           </div>;
         })()}
         {showResults && <>
@@ -384,20 +450,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           onReplan={() => void mission.replanSimulation()}
           onReset={resetSimulation}
           onInject={(kind) => void mission.injectSimulationEvent(kind)} />
-        <ScenarioEditor state={state} placingBase={placingBase} placingSite={placingSite}
+        <ScenarioEditor state={state} placingBase={placingBase}
           datasetId={workspace.info.manifest.dataset_id}
           locked={editingLocked}
           onChange={edit}
-          onPlaceBase={() => togglePlacing("base")} onTogglePlaceSite={() => togglePlacing("site")}
-          onLoadPackaged={() => {
-            if (editingLocked) { setMapError("Reset the simulation before loading a scenario."); return; }
-            inspection.current++;
-            setMapError(null);
-            void api.defaultScenario().then((packaged) => edit(packaged), (failure) => setMapError(errorText(failure)));
-          }}
-          onDeleteSite={(id) => { inspection.current++; setMapError(null); mission.edit({
-            ...scenario, sites: scenario.sites.filter((site) => site.id !== id),
-          }); }}
+          onPlaceBase={() => togglePlacing("base")}
           onSavePlan={() => { setMapError(null); void mission.savePlan(); }}
           onLoadPlan={(loaded) => { inspection.current++; setMapError(null); mission.edit(loaded); }}
           onRun={runMission} />

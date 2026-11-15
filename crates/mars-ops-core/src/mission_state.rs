@@ -656,6 +656,31 @@ mod tests {
     }
 
     #[test]
+    fn seek_to_absolute_mission_clock_lands_exactly_and_keeps_moving() {
+        let grid = flat(31, 31, 1.0);
+        let state_scenario = scenario(&grid, vec![site(&grid, "A", 6, 5), site(&grid, "B", 12, 5)]);
+        let mut state_scenario = state_scenario;
+        state_scenario.model.overhead_s = coef(1800.0, "s");
+        let mut state = start(&grid, state_scenario);
+        let overhead = state.scenario.model.overhead_s.value;
+        // The UI slider speaks absolute mission clock. The replay starts at
+        // elapsed = overhead, so a seek advances target - overhead. Regression:
+        // advancing the full target used to land the state `overhead` ahead of
+        // the requested slider position.
+        let target = overhead + 1.0;
+        state.advance(&grid, target - overhead).unwrap();
+        assert!((state.elapsed_s - target).abs() < 1e-9);
+        let a = state.view(&grid).position;
+        assert_eq!(state.phase, SimulationPhase::Travel);
+        // One more second keeps the crew moving along the leg instead of
+        // snapping to a lattice node.
+        state.advance(&grid, 1.0).unwrap();
+        let b = state.view(&grid).position;
+        let moved = ((b.x_m - a.x_m).powi(2) + (b.y_m - a.y_m).powi(2)).sqrt();
+        assert!(moved > 1e-6, "crew should move continuously, moved {moved} m");
+    }
+
+    #[test]
     fn advance_to_stop_stops_at_the_arrival_then_finishes_the_activity() {
         let grid = flat(31, 31, 1.0);
         let mut state = start(&grid, scenario(&grid, vec![site(&grid, "A", 12, 5)]));

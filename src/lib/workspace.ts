@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { api } from "./api";
-import { ELEVATION_RAMP, elevationRgba, rampLut } from "./layers";
+import { ELEVATION_RAMP, MARS_RAMP, colorizeImage, elevationRgba, rampLut } from "./layers";
 import type { DatasetInfo, MissionScenario } from "./types";
 
 export interface Workspace {
@@ -68,7 +68,7 @@ export async function loadWorkspace(): Promise<Workspace> {
       target.context.drawImage(source, 0, 0); return target.image;
     } finally { URL.revokeObjectURL(url); }
   };
-  const imagery = await decode(imageryBytes);
+  const imagery = colorizeImage(await decode(imageryBytes), MARS_RAMP);
   const infrared = infraredBytes ? await decode(infraredBytes) : null;
   return { info, scenario, elevation, slope, imagery, heights, infrared };
 }
