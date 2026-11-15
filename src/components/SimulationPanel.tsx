@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clock, fmt, minutes } from "@/lib/format";
 import { simPlanStale, type MissionState } from "@/lib/mission";
+import { assessReplan, type ReplanSeverity } from "@/lib/replan";
 import type {
   ConstraintCheck, ContingencyKind, LocalPoint, ResourceKind, SimulationView,
 } from "@/lib/types";
@@ -24,6 +25,13 @@ const RESOURCE_LABEL: Record<ResourceKind, string> = {
   EVA_TIME: "EVA time (min)",
   ENERGY: "Energy (Wh)",
   CONSUMABLE: "Consumable (units)",
+};
+
+/** The advisory states what the crew can still do, not what the planner did. */
+const ADVISORY_PANEL: Record<ReplanSeverity, string> = {
+  critical: "rounded-lg border border-status-critical bg-status-critical/10 p-2.5 text-xs",
+  warning: "rounded-lg border border-status-warning bg-status-warning/10 p-2.5 text-xs",
+  info: "rounded-lg border p-2.5 text-xs",
 };
 
 function checkValues(check: ConstraintCheck) {
@@ -84,20 +92,14 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
     .filter((id) => !view?.state.completed_sites.includes(id)
       && !current?.stops.some((stop) => stop.site_id === id)) ?? [];
 
-  // Replan signals while the drill is still moving: a remaining check now
-  // violates its limit, the modeled return to base is missing/unaffordable,
-  // or a contingency was injected after the last plan (stale plan).
+  // The advisory tells the crew what changed and what is still possible:
+  // a reserve that is gone is not the same as a plan that can no longer be
+  // flown, and a plan that predates a contingency is simply out of date.
   const planStale = useMemo(
     () => (view && run ? simPlanStale(run.run_id, view.state) : false),
     [view, run],
   );
-  const replanReasons = view && !settled ? [
-    ...view.remaining_checks.filter((c) => !c.satisfied)
-      .map((c) => `${CHECK_LABEL[c.resource] ?? c.resource} limit exceeded`),
-    ...(view.return_margin_s === null ? ["no modeled return route"] : []),
-    ...(view.return_margin_s !== null && view.return_margin_s < 0 ? ["return exceeds EVA limit"] : []),
-    ...(planStale ? ["plan out of date — contingency since last plan"] : []),
-  ] : [];
+  const advisory = useMemo(() => assessReplan(view, planStale), [view, planStale]);
 
   return <section aria-label="Mission simulation" className="space-y-3 border-t pt-4">
     <div className="flex items-center justify-between gap-2">
@@ -123,9 +125,11 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
         </dl>
       </div>
 
-      {replanReasons.length > 0 && <div role="alert" className="rounded-lg border border-status-warning bg-status-warning/10 p-2.5 text-xs">
-        <p className="font-medium">Replan advised</p>
-        <p className="text-muted-foreground">{replanReasons.join(" · ")}</p>
+      {advisory.active && <div role={advisory.required ? "alert" : "status"} className={ADVISORY_PANEL[advisory.severity ?? "info"]}>
+        <p className="font-medium">{advisory.title}</p>
+        <ul className="mt-1 space-y-0.5 text-muted-foreground">
+          {advisory.reasons.map((reason, index) => <li key={index}>{reason.text}</li>)}
+        </ul>
       </div>}
 
       {error && <p role="alert" className="text-xs text-status-critical">{error}</p>}

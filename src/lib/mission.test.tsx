@@ -272,6 +272,20 @@ describe("mission presentation", () => {
     }
   });
 
+  test("the advisory names the condition instead of blaming the planner", () => {
+    const state = planned();
+    const view = running(state);
+    const breached = {
+      ...view,
+      remaining_checks: view.remaining_checks.map((check) => ({
+        ...check, used: check.available + 60, margin: -60, satisfied: false,
+      })),
+    };
+    const html = render({ ...state, simulation: breached });
+    expect(html).toContain("Reserve in use");
+    expect(html).not.toContain("Replan advised");
+  });
+
   test("editor exposes minutes, optional limits, saving and model assumptions", () => {
     const state = initialMission(scenario());
     state.scenario.budget.energy_budget_wh = null;

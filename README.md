@@ -47,6 +47,7 @@ After a successful run, the **Simulation** panel starts a stateful drill from th
 - **Inject event** applies one typed, validated contingency at the current simulated instant: a temporary blocked corridor, a delay, or a loss of EVA time, energy or consumable budget.
 - **Replan from here** routes from the crew's actual position, keeps completed stops, subtracts consumed resources, and must still return to the base. The amber line is the latest revised route; red cells are the temporary block. If no modeled return exists, the phase becomes `INFEASIBLE` with a concrete reason.
 - **Reset** discards the simulation and restores the editable scenario. Datasets are never modified; block overlays exist only in the drill.
+- The advisory in the simulation panel states what changed, not what the planner did: **Replan required** when the plan can no longer be flown (a resource is over its total limit, or no direct return is modeled), **Reserve margin in use** when the drill has spent part of the declared reserve but the crew still returns inside the total EVA limit, and **Plan out of date** when a contingency has been injected since the last plan. The declared reserve is a planning margin, so spending it does not mean the planner failed.
 
 Exported reports include the simulation phase, event timeline, completed work, revised plan, remaining checks, return margin and replan count as an optional `simulation` object. Older schema-v1 reports without that object still read back.
 

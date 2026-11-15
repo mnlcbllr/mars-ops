@@ -3,6 +3,7 @@ import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars, RouteGraph
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
 import { simPlanStale, type MissionState } from "@/lib/mission";
+import { assessReplan, type ReplanSeverity } from "@/lib/replan";
 import type {
   CandidateInsight, MissionResult, MissionScenario, PlanStatus,
   ResourceUse, ScientificSite, SimulationView,
@@ -12,6 +13,13 @@ const STATUS: Record<PlanStatus, string> = {
   FEASIBLE_MODELED: "Feasible under declared model",
   INFEASIBLE: "No feasible plan",
   UNKNOWN_DATA_COVERAGE: "Unknown data coverage",
+};
+
+/** The advisory chip states what the crew should do, not what the planner did. */
+const ADVISORY_CHIP: Record<ReplanSeverity, string> = {
+  critical: "rounded border border-status-critical bg-status-critical/10 px-1.5 py-0.5 text-status-critical",
+  warning: "rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning",
+  info: "rounded border px-1.5 py-0.5 text-muted-foreground",
 };
 
 const SIM_PHASE: Record<SimulationView["state"]["phase"], string> = {
@@ -114,11 +122,7 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
     ? result.stops.map((s) => s.site_id).filter((id) => !sim.state.completed_sites.includes(id)
         && !sim.state.plan.stops.some((p) => p.site_id === id))
     : [];
-  const replanAdvised = sim && sim.state.phase !== "COMPLETE" && sim.state.phase !== "INFEASIBLE"
-    && (sim.remaining_checks.some((c) => !c.satisfied)
-      || sim.return_margin_s === null
-      || sim.return_margin_s < 0
-      || planStale);
+  const advisory = assessReplan(sim, planStale);
   const totals = result.totals;
   return <div className="space-y-2 rounded-lg border p-3">
     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -126,7 +130,8 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       <span className="rounded bg-muted px-1.5 py-0.5">{STATUS[result.status]}</span>
       {insights.length > 0 && <span className="text-muted-foreground">{counts.selected} selected · {counts.excluded} excluded · {counts.infeasible} infeasible</span>}
       {sim && <span className="rounded bg-status-warning/20 px-1.5 py-0.5">Sim: {SIM_PHASE[sim.state.phase]} · {sim.state.replans} replan{sim.state.replans === 1 ? "" : "s"}</span>}
-      {replanAdvised && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Replan advised</span>}
+      {advisory.active && <span className={ADVISORY_CHIP[advisory.severity ?? "info"]}
+        title={advisory.reasons.map((reason) => reason.text).join(" · ")}>{advisory.chip}</span>}
     </div>
     {sim && <p className="text-xs text-muted-foreground">
       {clock(sim.state.elapsed_s)} · {sim.state.completed_sites.length}/{result.stops.length} stops done
