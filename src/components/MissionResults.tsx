@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars, RouteGraph } from "@/components/MissionCharts";
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
@@ -119,7 +120,7 @@ function MissionBrief({ result, scenario, insights, sim, planStale, previewSiteI
       <span className="rounded bg-muted px-1.5 py-0.5">{STATUS[result.status]}</span>
       {insights.length > 0 && <span className="text-muted-foreground">{counts.selected} selected · {counts.excluded} excluded · {counts.infeasible} infeasible</span>}
       {sim && <span className="rounded bg-status-warning/20 px-1.5 py-0.5">Sim: {SIM_PHASE[sim.state.phase]} · {sim.state.replans} replan{sim.state.replans === 1 ? "" : "s"}</span>}
-      {replanAdvised && <span className="rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning">Replan advised</span>}
+      {replanAdvised && <span className="inline-flex items-center gap-1 rounded border border-status-warning bg-status-warning/10 px-1.5 py-0.5 text-status-warning"><TriangleAlert aria-hidden className="size-3" />Replan advised</span>}
     </div>
     {sim && <p className="text-xs text-muted-foreground">
       {clock(sim.state.elapsed_s)} · {sim.state.completed_sites.length}/{result.stops.length} stops done

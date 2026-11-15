@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clock, fmt, minutes } from "@/lib/format";
@@ -123,9 +124,12 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
         </dl>
       </div>
 
-      {replanReasons.length > 0 && <div role="alert" className="rounded-lg border border-status-warning bg-status-warning/10 p-2.5 text-xs">
-        <p className="font-medium">Replan advised</p>
-        <p className="text-muted-foreground">{replanReasons.join(" · ")}</p>
+      {replanReasons.length > 0 && <div role="alert" className="flex items-start gap-2 rounded-lg border border-status-warning bg-status-warning/10 p-2.5 text-xs">
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-status-warning" />
+        <div>
+          <p className="font-medium text-status-warning">Replan advised</p>
+          <p className="text-muted-foreground">{replanReasons.join(" · ")}</p>
+        </div>
       </div>}
 
       {error && <p role="alert" className="text-xs text-status-critical">{error}</p>}
