@@ -65,7 +65,8 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
   ctx.lineJoin = "round";
 
   if (marker.kind === "target") {
-    // Crosshair reticle: dark underlay keeps it readable on bright imagery.
+    // Crosshair reticle with a filled centre, so it reads as "placement point"
+    // and never as the hollow inspection reticle at the last inspected point.
     const inner = r * 0.45;
     for (const [color, width] of [[INK_DARK, 4.5], [INK_LIGHT, 2]] as const) {
       ctx.strokeStyle = color;
@@ -82,6 +83,13 @@ export function drawMarker(ctx: CanvasRenderingContext2D, marker: Marker, x: num
       ctx.lineTo(x, y + r + 3);
       ctx.stroke();
     }
+    ctx.beginPath();
+    ctx.arc(x, y, inner, 0, 2 * Math.PI);
+    ctx.fillStyle = ROUTE;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = INK_DARK;
+    ctx.stroke();
     ctx.restore();
     return;
   }
