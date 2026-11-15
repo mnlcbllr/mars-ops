@@ -31,6 +31,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [placingBase, setPlacingBase] = useState(false);
   const [placingSite, setPlacingSite] = useState(false);
   const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
+  const [contextSiteId, setContextSiteId] = useState<string | null>(null);
   const [resultsHeight, setResultsHeight] = useState(RESULTS_DEFAULT);
   const rowRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLElement>(null);
@@ -110,6 +111,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
     setInspected(null);
     setMapError(null);
     mission.edit(updated);
+  };
+
+  /** Remove a candidate site; the map right-click menu is the only delete affordance. */
+  const deleteSite = (id: string) => {
+    edit({ ...scenario, sites: scenario.sites.filter((site) => site.id !== id) });
   };
 
   /** Apply a terrain-checked point to a placement mode; false means it was rejected. */
@@ -258,7 +264,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button type="button" size="sm" variant="outline" onClick={() => { setPreview(null); setViewReset((n) => n + 1); }}>Return to overview</Button>
         </div>}
         {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
-        <ContextMenu.Root onOpenChange={(open) => { if (!open) setContextPoint(null); }}>
+        <ContextMenu.Root onOpenChange={(open) => { if (!open) { setContextPoint(null); setContextSiteId(null); } }}>
         <ContextMenu.Trigger render={<section ref={mapRef} tabIndex={0} aria-label="Terrain map" aria-describedby="map-shortcuts"
           aria-keyshortcuts="B C Escape" className="relative min-h-40 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" />}
           onPointerDownCapture={(event) => { if (event.target instanceof HTMLCanvasElement) mapRef.current?.focus({ preventScroll: true }); }}
@@ -281,7 +287,14 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             pov={pov}
             selectedLeg={selectedLeg}
             inspected={inspected} hideInspected={contextPoint !== null} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
-            onContextPick={setContextPoint} onMesh={() => {}}
+            onContextPick={(point) => {
+              setContextPoint(point);
+              if (!point) { setContextSiteId(null); return; }
+              // A candidate within reach of the right-click target is the delete subject.
+              const near = scenario.sites.find((site) =>
+                Math.hypot(site.position.x_m - point.x_m, site.position.y_m - point.y_m) <= 30);
+              setContextSiteId(near?.id ?? null);
+            }} onMesh={() => {}}
           />
           <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">
             {inspected ? <><p>{latLon(inspected.latlon)}</p>
@@ -299,6 +312,9 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
                 className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
                 onClick={() => void placeAtContext("site")}>Add candidate here <kbd className="text-xs text-muted-foreground">C</kbd></ContextMenu.Item>
+              {contextSiteId && <ContextMenu.Item disabled={busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none text-status-critical data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => deleteSite(contextSiteId)}>Delete candidate {contextSiteId}</ContextMenu.Item>}
               {(editingLocked || !contextPoint) && <p className="max-w-56 px-3 py-2 text-xs text-muted-foreground">
                 {editingLocked ? "Reset the simulation to edit locations." : "Right-click the terrain to choose a location."}
               </p>}
@@ -399,20 +415,17 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           onReplan={() => void mission.replanSimulation()}
           onReset={resetSimulation}
           onInject={(kind) => void mission.injectSimulationEvent(kind)} />
-        <ScenarioEditor state={state} placingBase={placingBase} placingSite={placingSite}
+        <ScenarioEditor state={state} placingBase={placingBase}
           datasetId={workspace.info.manifest.dataset_id}
           locked={editingLocked}
           onChange={edit}
-          onPlaceBase={() => togglePlacing("base")} onTogglePlaceSite={() => togglePlacing("site")}
+          onPlaceBase={() => togglePlacing("base")}
           onLoadPackaged={() => {
             if (editingLocked) { setMapError("Reset the simulation before loading a scenario."); return; }
             inspection.current++;
             setMapError(null);
             void api.defaultScenario().then((packaged) => edit(packaged), (failure) => setMapError(errorText(failure)));
           }}
-          onDeleteSite={(id) => { inspection.current++; setMapError(null); mission.edit({
-            ...scenario, sites: scenario.sites.filter((site) => site.id !== id),
-          }); }}
           onSavePlan={() => { setMapError(null); void mission.savePlan(); }}
           onLoadPlan={(loaded) => { inspection.current++; setMapError(null); mission.edit(loaded); }}
           onRun={runMission} />

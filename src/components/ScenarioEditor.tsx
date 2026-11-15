@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, errorText } from "@/lib/api";
 import { editCoefficient, type CoefficientKey, type MissionState } from "@/lib/mission";
-import type { MissionScenario, PlanSummary, ResourceBudget, ScientificSite } from "@/lib/types";
+import type { MissionScenario, PlanSummary, ResourceBudget } from "@/lib/types";
 
 function NumberField({ label, value, onChange, scale = 1, optional = false }: {
   label: string;
@@ -34,15 +33,12 @@ const COEFFICIENTS: [CoefficientKey, string, number][] = [
 interface ScenarioEditorProps {
   state: MissionState;
   placingBase: boolean;
-  placingSite: boolean;
   datasetId: string;
   /** True while a simulation holds a frozen copy of the scenario. */
   locked: boolean;
   onPlaceBase: () => void;
-  onTogglePlaceSite: () => void;
   /** Load the scenario packaged with the dataset, for a reproducible demo. */
   onLoadPackaged: () => void;
-  onDeleteSite: (id: string) => void;
   onChange: (scenario: MissionScenario) => void;
   onSavePlan: () => void;
   onLoadPlan: (scenario: MissionScenario) => void;
@@ -50,15 +46,12 @@ interface ScenarioEditorProps {
 }
 
 export function ScenarioEditor({
-  state, placingBase, placingSite, datasetId, locked, onPlaceBase, onTogglePlaceSite, onLoadPackaged,
-  onDeleteSite, onChange, onSavePlan, onLoadPlan, onRun,
+  state, placingBase, datasetId, locked, onPlaceBase, onLoadPackaged,
+  onChange, onSavePlan, onLoadPlan, onRun,
 }: ScenarioEditorProps) {
   const { scenario, phase } = state;
   const { budget } = scenario;
   const updateBudget = (values: Partial<ResourceBudget>) => onChange({ ...scenario, budget: { ...budget, ...values } });
-  const updateSite = (id: string, values: Partial<ScientificSite>) => onChange({
-    ...scenario, sites: scenario.sites.map((site) => site.id === id ? { ...site, ...values } : site),
-  });
   const nullable = (value: number) => Number.isNaN(value) ? null : value;
 
   // Saved plans are listed on demand: fresh on every open, so a just-saved plan shows up.
@@ -121,46 +114,12 @@ export function ScenarioEditor({
       </section>
       <section className="space-y-2" aria-label="Candidate science sites">
         <h2 className="font-medium">Candidate sites · {scenario.sites.length}</h2>
-        <p className="text-xs text-muted-foreground">Candidates are optional; the planner may still leave some out.</p>
-        <Button type="button" size="sm" variant="outline" aria-pressed={placingSite} onClick={onTogglePlaceSite}>
-          {placingSite ? "Cancel site placement" : "Add candidate on map"}
-        </Button>
+        <p className="text-xs text-muted-foreground">Candidates are optional; the planner may still leave some out. Right-click the map to add a candidate, or to delete one near the target. Keyboard with map focus: C add, B base.</p>
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground">Reproducible demo</summary>
           <p className="mt-2 text-muted-foreground">Replaces the base, candidates, budgets and model with the packaged targets.</p>
           <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={onLoadPackaged}>Load packaged scenario</Button>
         </details>
-        {scenario.sites.length === 0
-          ? <p className="text-xs text-muted-foreground">No candidates yet — use “Add candidate on map”.</p>
-          : scenario.sites.map((site) => <div key={site.id} className="rounded-lg border p-2.5">
-            <div className="flex items-start gap-2">
-              <details className="min-w-0 flex-1">
-                <summary className="cursor-pointer text-sm">{site.id} · {site.name}</summary>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  <NumberField label={`${site.id} east (m)`} value={site.position.x_m}
-                    onChange={(x_m) => updateSite(site.id, { position: { ...site.position, x_m } })} />
-                  <NumberField label={`${site.id} north (m)`} value={site.position.y_m}
-                    onChange={(y_m) => updateSite(site.id, { position: { ...site.position, y_m } })} />
-                </div>
-                <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">Activity &amp; priority · {site.evidence_kind}</p>
-                <div className="mt-1 grid grid-cols-2 gap-2 text-xs">
-                  <NumberField label={`${site.id} minimum activity (min)`} value={site.activity_min_s} scale={60}
-                    onChange={(activity_min_s) => updateSite(site.id, { activity_min_s })} />
-                  <NumberField label={`${site.id} maximum activity (min)`} value={site.activity_max_s} scale={60}
-                    onChange={(activity_max_s) => updateSite(site.id, { activity_max_s })} />
-                  <NumberField label={`${site.id} preference weight`} value={site.preference_weight}
-                    onChange={(preference_weight) => updateSite(site.id, { preference_weight })} />
-                  <NumberField label={`${site.id} activity power (W)`} value={site.activity_power_w}
-                    onChange={(activity_power_w) => updateSite(site.id, { activity_power_w })} />
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">{site.science_rationale}</p>
-              </details>
-              <Button type="button" size="icon-sm" variant="ghost" aria-label={`Remove candidate ${site.id}`}
-                title={`Remove candidate ${site.id}`} onClick={() => onDeleteSite(site.id)}>
-                <Trash2 />
-              </Button>
-            </div>
-          </div>)}
       </section>
       <section className="space-y-2" aria-label="Saved plans">
         <h2 className="font-medium">Save &amp; load plan</h2>
