@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { MissionCharts, ResourceBars } from "@/components/MissionCharts";
+import { CandidateGlance, MissionCharts, ObjectiveBars, ResourceBars } from "@/components/MissionCharts";
 import { Button } from "@/components/ui/button";
 import { clock, fmt, minutes } from "@/lib/format";
 import { simPlanStale, type MissionState } from "@/lib/mission";
 import type {
-  CandidateInsight, ConstraintCheck, MissionResult, MissionScenario, PlanStatus,
+  CandidateInsight, MissionResult, MissionScenario, PlanStatus,
   ResourceUse, ScientificSite, SimulationView,
 } from "@/lib/types";
 
@@ -19,13 +19,6 @@ const SIM_PHASE: Record<SimulationView["state"]["phase"], string> = {
 };
 
 type ChartPoint = { label: string; value: number };
-
-function resourceMeta(check: ConstraintCheck) {
-  const scale = check.resource === "eva_time" ? 60 : 1;
-  const unit = check.resource === "eva_time" ? "min" : check.unit;
-  const label = check.resource === "eva_time" ? "EVA time" : check.resource === "energy" ? "Energy" : "Consumable";
-  return { label, unit, scale };
-}
 
 function siteById(scenario: MissionScenario, id: string): ScientificSite | undefined {
   return scenario.sites.find((site) => site.id === id);
@@ -174,6 +167,7 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
   const issues = result?.issues ?? validation?.issues ?? [];
   const leg = selectedLeg === null ? null : result?.legs[selectedLeg];
   const insights = (result?.candidate_insights ?? []) as CandidateInsight[];
+  const maxPriority = Math.max(1e-9, ...scenario.sites.map((site) => site.preference_weight));
   const sim = state.simulation;
   const [history, setHistory] = useState<{ runId: number | null; samples: UsageSample[] }>({ runId: null, samples: [] });
 
@@ -254,7 +248,8 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
 
       {insights.length > 0 && <details className="rounded-lg border p-3">
         <summary className="cursor-pointer font-medium">Candidate details & POV</summary>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
+          <CandidateGlance insights={insights} evaLimitS={scenario.budget.eva_limit_s} />
           {insights.map((insight) => {
             const site = siteById(scenario, insight.site_id);
             return <details key={insight.site_id} className="rounded border p-2 text-xs">
@@ -272,13 +267,19 @@ export function MissionResults({ state, selectedLeg, onSelectLeg, onPreviewSite,
                   {site.required ? "Make optional & replan" : "Require in plan & replan"}
                 </Button>}
               </div>}
-              <div className="mt-2 space-y-1 text-muted-foreground">
-                <p className="text-foreground">{insight.explanation}</p>
-                <p>Terrain: {insight.terrain.replaceAll("_", " ").toLowerCase()}{insight.site_slope_deg != null ? ` · ${fmt(insight.site_slope_deg, 1)}°` : ""} · reachable {insight.reachable_from_base ? "yes" : "no"} · feasible alone {insight.feasible_alone ? "yes" : "no"}</p>
-                {site && <p>Objective: priority {fmt(site.preference_weight, 2)}, {minutes(site.activity_min_s, 0)}–{minutes(site.activity_max_s, 0)}, {fmt(site.activity_power_w, 0)} W · {site.evidence_kind}</p>}
-                {insight.planned_activity_s > 0 && <p>Planned: utility {fmt(insight.planned_utility, 3)}, activity {minutes(insight.planned_activity_s, 1)}.</p>}
-                {insight.standalone_eva_time_s != null && <p>Standalone round trip: {fmt(insight.standalone_distance_m, 0)} m, EVA {minutes(insight.standalone_eva_time_s, 1)}.</p>}
-                {insight.standalone_checks.length > 0 && <p>Checks: {insight.standalone_checks.map((c) => `${resourceMeta(c).label} ${c.satisfied ? "ok" : "violated"} (${fmt(c.margin / (c.resource === "eva_time" ? 60 : 1), 2)} ${resourceMeta(c).unit})`).join("; ")}.</p>}
+              <p className="mt-2 text-foreground">{insight.explanation}</p>
+              <div className="mt-2 grid gap-3 lg:grid-cols-2">
+                <div className="space-y-2">
+                  {site && <ObjectiveBars site={site} plannedS={insight.planned_activity_s}
+                    maxPriority={maxPriority} />}
+                  <p className="text-muted-foreground">Terrain: {insight.terrain.replaceAll("_", " ").toLowerCase()}{insight.site_slope_deg != null ? ` · ${fmt(insight.site_slope_deg, 1)}°` : ""} · reachable {insight.reachable_from_base ? "yes" : "no"} · feasible alone {insight.feasible_alone ? "yes" : "no"}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[11px] font-medium">Standalone round trip{insight.standalone_distance_m != null ? ` · ${fmt(insight.standalone_distance_m, 0)} m` : ""}</p>
+                  {insight.standalone_checks.length > 0
+                    ? <ResourceBars checks={insight.standalone_checks} compact />
+                    : <p className="text-muted-foreground">No standalone route under the declared model.</p>}
+                </div>
               </div>
             </details>;
           })}
