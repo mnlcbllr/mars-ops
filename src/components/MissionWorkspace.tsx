@@ -33,6 +33,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [viewReset, setViewReset] = useState(0);
   const [scrubS, setScrubS] = useState<number | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
+  const [follow, setFollow] = useState(false);
   const inspection = useRef(0);
   const busy = phase !== "idle" || state.simulationBusy;
   const simulation = state.simulation;
@@ -44,6 +45,11 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const maxSlope = scenario.model.max_slope_deg.value;
 
   useEffect(() => () => { inspection.current++; }, []);
+
+  // Follow mode only makes sense with a simulation; drop it when the sim is reset.
+  useEffect(() => {
+    if (!simulation) setFollow(false);
+  }, [simulation]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -190,6 +196,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button size="sm" variant={layer === "imagery" ? "secondary" : "ghost"} aria-pressed={layer === "imagery"} onClick={() => setLayer("imagery")}>Imagery</Button>
           <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
           <label className="ml-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Slope / unknown</label>
+          {simulation && <Button size="sm" variant={follow ? "secondary" : "ghost"} aria-pressed={follow} onClick={() => setFollow((value) => !value)}>Follow crew</Button>}
         </nav>
         {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base.</p>}
         {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site.</p>}
@@ -210,6 +217,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             position={simulation?.position ?? null}
             blockPreview={blockPreview}
             pov={pov}
+            follow={follow}
             selectedLeg={selectedLeg}
             inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick} onMesh={() => {}}
           />
