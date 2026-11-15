@@ -32,12 +32,19 @@ function statusLabel(status: string) {
 
 /** Captured simulation consumption per run, feeding the usage line charts. */
 type UsageSample = { t: number; eva: number; energy: number; consumable: number };
+
+/** Captured simulation consumption per run, feeding the usage line charts.
+ *  Consumption only grows while a simulation runs forward, so a shrinking
+ *  value means a seek restarted the replay: reset the captured trajectory
+ *  instead of drawing a line across two different timelines. */
 function recordUsage(prev: UsageSample[], elapsedS: number, consumed: ResourceUse): UsageSample[] {
   const last = prev[prev.length - 1];
-  const kept = last && elapsedS < last.t ? prev.filter((p) => p.t < elapsedS) : prev;
-  const next = kept.filter((p) => p.t !== elapsedS);
-  next.push({ t: elapsedS, eva: consumed.eva_time_s / 60, energy: consumed.energy_wh, consumable: consumed.consumable });
-  return next;
+  const restarted = last !== undefined && (consumed.eva_time_s / 60 < last.eva - 1e-9
+    || consumed.energy_wh < last.energy - 1e-9 || consumed.consumable < last.consumable - 1e-9);
+  const next = restarted ? [] : last && elapsedS < last.t ? prev.filter((p) => p.t < elapsedS) : prev;
+  const kept = next.filter((p) => p.t !== elapsedS);
+  kept.push({ t: elapsedS, eva: consumed.eva_time_s / 60, energy: consumed.energy_wh, consumable: consumed.consumable });
+  return kept;
 }
 
 function LineChart({ title, points, x, unit, color = "#dc2626", cap, ticks, ariaLabel }: {
