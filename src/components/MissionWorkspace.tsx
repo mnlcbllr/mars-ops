@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ContextMenu } from "@base-ui/react/context-menu";
 import { MissionResults } from "@/components/MissionResults";
 import { ScenarioEditor } from "@/components/ScenarioEditor";
 import { SimulationPanel } from "@/components/SimulationPanel";
@@ -8,6 +9,7 @@ import { api, errorText } from "@/lib/api";
 import { fmt, latLon, minutes } from "@/lib/format";
 import { blockedRgba, hazardRgba } from "@/lib/layers";
 import { markersFor } from "@/lib/markers";
+import { mapShortcut, type PlacementMode } from "@/lib/mapInteraction";
 import { addedSite, useMission } from "@/lib/mission";
 import type { LocalPoint, MissionScenario, PlannedLeg, PointInspection } from "@/lib/types";
 import { canvas, rasterImage, type Workspace } from "@/lib/workspace";
@@ -23,6 +25,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const [showHazards, setShowHazards] = useState(true);
   const [placingBase, setPlacingBase] = useState(false);
   const [placingSite, setPlacingSite] = useState(false);
+  const [contextPoint, setContextPoint] = useState<LocalPoint | null>(null);
+  const mapRef = useRef<HTMLElement>(null);
   const [pickingBlock, setPickingBlock] = useState(false);
   const [blockCenter, setBlockCenter] = useState<LocalPoint | null>(null);
   const [blockRadius, setBlockRadius] = useState(40);
@@ -44,6 +48,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   const maxSlope = scenario.model.max_slope_deg.value;
 
   useEffect(() => () => { inspection.current++; }, []);
+  // Discard terrain checks started before an edit, solve or simulation lock.
+  useEffect(() => { inspection.current++; }, [scenario, busy, editingLocked]);
 
   const hazards = useMemo(() => {
     if (!showHazards || !Number.isFinite(maxSlope)) return null;
@@ -80,6 +86,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
     [pickingBlock, blockCenter, blockRadius]);
 
   const edit = (updated: MissionScenario) => {
+    if (busy) return;
     if (editingLocked) { setMapError("Reset the simulation before editing the scenario."); return; }
     inspection.current++;
     setInspected(null);
@@ -88,7 +95,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   };
 
   /** Apply a terrain-checked point to a placement mode; false means it was rejected. */
-  const place = (mode: "base" | "site", value: PointInspection): boolean => {
+  const place = (mode: PlacementMode, value: PointInspection): boolean => {
+    if (busy || editingLocked) return false;
     if (value.terrain !== "TRAVERSABLE") {
       setMapError(mode === "base"
         ? "Choose a base inside known terrain and within the declared slope limit."
@@ -127,7 +135,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
   // The click before the button counts: when a mode is switched on, the most
   // recently inspected point is re-checked and placed immediately. A newer
   // map click or toggle supersedes it, so only one placement can ever happen.
-  const togglePlacing = (mode: "base" | "site") => {
+  const togglePlacing = (mode: PlacementMode, useInspected = true) => {
+    if (busy) return;
     if (editingLocked) { setMapError("Reset the simulation before editing the scenario."); return; }
     setPickingBlock(false);
     const request = ++inspection.current;
@@ -135,7 +144,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
     const enabling = mode === "base" ? !placingBase : !placingSite;
     setPlacingBase(mode === "base" ? enabling : false);
     setPlacingSite(mode === "site" ? enabling : false);
-    if (enabling && !busy && inspected && Number.isFinite(maxSlope)) {
+    if (enabling && useInspected && inspected && Number.isFinite(maxSlope)) {
       void api.inspect(inspected.local, maxSlope).then((value) => {
         if (request !== inspection.current) return;
         setInspected(value);
@@ -143,6 +152,30 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           if (mode === "base") setPlacingBase(false); else setPlacingSite(false);
         }
       }, (failure) => { if (request === inspection.current) setMapError(errorText(failure)); });
+    }
+  };
+
+  const cancelPlacement = () => {
+    inspection.current++;
+    setPlacingBase(false);
+    setPlacingSite(false);
+    setPickingBlock(false);
+    setMapError(null);
+  };
+
+  const placeAtContext = async (mode: PlacementMode) => {
+    if (!contextPoint || busy || editingLocked) return;
+    cancelPlacement();
+    mapRef.current?.focus({ preventScroll: true });
+    if (!Number.isFinite(maxSlope)) { setMapError("Enter a valid slope limit before placing a point."); return; }
+    const request = ++inspection.current;
+    try {
+      const value = await api.inspect(contextPoint, maxSlope);
+      if (request !== inspection.current) return;
+      setInspected(value);
+      place(mode, value);
+    } catch (failure) {
+      if (request === inspection.current) setMapError(errorText(failure));
     }
   };
 
@@ -191,9 +224,15 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button size="sm" variant={layer === "heights" ? "secondary" : "ghost"} aria-pressed={layer === "heights"} onClick={() => setLayer("heights")}>Elevation</Button>
           {workspace.infrared && <Button size="sm" variant={layer === "infrared" ? "secondary" : "ghost"} aria-pressed={layer === "infrared"} onClick={() => setLayer("infrared")}>THEMIS · 100 m</Button>}
           <label className="ml-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={showHazards} onChange={(event) => setShowHazards(event.target.checked)} />Slope / unknown</label>
+          <div className="ml-auto flex gap-1">
+            <Button type="button" size="sm" variant={placingBase ? "secondary" : "ghost"} aria-pressed={placingBase}
+              disabled={busy || editingLocked} onClick={() => { togglePlacing("base", false); mapRef.current?.focus(); }}>Base <kbd className="text-[10px] text-muted-foreground">B</kbd></Button>
+            <Button type="button" size="sm" variant={placingSite ? "secondary" : "ghost"} aria-pressed={placingSite}
+              disabled={busy || editingLocked} onClick={() => { togglePlacing("site", false); mapRef.current?.focus(); }}>Candidate <kbd className="text-[10px] text-muted-foreground">C</kbd></Button>
+          </div>
         </nav>
-        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base.</p>}
-        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site.</p>}
+        {placingBase && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to place the base. Esc to cancel.</p>}
+        {placingSite && <p role="status" className="border-b px-4 py-2 text-xs">Click known terrain to add a candidate site. Esc to cancel.</p>}
         {pickingBlock && <p role="status" className="border-b px-4 py-2 text-xs">Click the map to set the blocked-corridor centre; confirm it in the simulation panel.</p>}
         {editingLocked && <p className="border-b px-4 py-2 text-xs">Simulation active — reset it to edit the scenario.</p>}
         {preview && <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-xs">
@@ -201,7 +240,18 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
           <Button type="button" size="sm" variant="outline" onClick={() => { setPreview(null); setViewReset((n) => n + 1); }}>Return to overview</Button>
         </div>}
         {mapError && <p role="alert" className="border-b px-4 py-2 text-xs">{mapError}</p>}
-        <section aria-label="Terrain map" className="relative min-h-40 flex-1">
+        <ContextMenu.Root onOpenChange={(open) => { if (!open) setContextPoint(null); }}>
+        <ContextMenu.Trigger render={<section ref={mapRef} tabIndex={0} aria-label="Terrain map" aria-describedby="map-shortcuts"
+          aria-keyshortcuts="B C Escape" className="relative min-h-40 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" />}
+          onPointerDownCapture={(event) => { if (event.target instanceof HTMLCanvasElement) mapRef.current?.focus({ preventScroll: true }); }}
+          onKeyDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            const action = mapShortcut({ ...event, isComposing: event.nativeEvent.isComposing });
+            if (!action) return;
+            event.preventDefault();
+            if (action === "cancel") cancelPlacement();
+            else togglePlacing(action, false);
+          }}>
           <Terrain3D
             elevation={workspace.elevation} width={geo.width} height={geo.height}
             dx={geo.cell_size_x_m} dy={geo.cell_size_y_m} step={4} texture={texture}
@@ -212,7 +262,8 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             blockPreview={blockPreview}
             pov={pov}
             selectedLeg={selectedLeg}
-            inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick} onMesh={() => {}}
+            inspected={inspected} placing={placingBase || placingSite || pickingBlock} resetSignal={viewReset} onPick={pick}
+            onContextPick={setContextPoint} onMesh={() => {}}
           />
           <div aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 max-w-sm rounded-lg bg-background/90 px-3 py-2 text-xs shadow">
             {inspected ? <><p>{latLon(inspected.latlon)}</p>
@@ -220,7 +271,24 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
               : <p>Click the map to inspect elevation, slope and coverage.</p>}
             {layer === "infrared" && <p>DERIVED · Odyssey infrared brightness, not temperature or hazards</p>}
           </div>
-        </section>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Positioner className="z-50" sideOffset={4}>
+            <ContextMenu.Popup className="min-w-52 rounded-lg border bg-background p-1 text-sm shadow-xl outline-none">
+              <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => void placeAtContext("base")}>Place base here <kbd className="text-xs text-muted-foreground">B</kbd></ContextMenu.Item>
+              <ContextMenu.Item disabled={!contextPoint || busy || editingLocked}
+                className="flex cursor-default items-center justify-between gap-6 rounded px-3 py-2 outline-none data-highlighted:bg-muted data-disabled:opacity-40"
+                onClick={() => void placeAtContext("site")}>Add candidate here <kbd className="text-xs text-muted-foreground">C</kbd></ContextMenu.Item>
+              {(editingLocked || !contextPoint) && <p className="max-w-56 px-3 py-2 text-xs text-muted-foreground">
+                {editingLocked ? "Reset the simulation to edit locations." : "Right-click the terrain to choose a location."}
+              </p>}
+            </ContextMenu.Popup>
+          </ContextMenu.Positioner>
+        </ContextMenu.Portal>
+        </ContextMenu.Root>
+        <p id="map-shortcuts" className="border-t px-4 py-1 text-[11px] text-muted-foreground">Right-click to place · With map focused: B base, C candidate, Esc cancel · Shift + drag to pan</p>
         {simulation && (() => {
           const plannedTotalS = Math.max(0, run?.report.result.totals?.eva_time_s ?? 0);
           const elapsedS = simulation.state.elapsed_s ?? 0;

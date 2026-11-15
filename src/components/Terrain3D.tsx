@@ -53,6 +53,7 @@ interface Terrain3DProps {
   /** Changing this value puts the camera back to its starting view. */
   resetSignal: number;
   onPick: (point: LocalPoint) => void;
+  onContextPick?: (point: LocalPoint | null) => void;
   onMesh: (info: MeshInfo) => void;
 }
 
@@ -99,8 +100,8 @@ export function Terrain3D(props: Terrain3DProps) {
   const stage = useRef<Stage | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const callbacks = useRef({ onPick, onMesh });
-  callbacks.current = { onPick, onMesh };
+  const callbacks = useRef({ onPick, onMesh, onContextPick: props.onContextPick });
+  callbacks.current = { onPick, onMesh, onContextPick: props.onContextPick };
 
   const [extentX, extentY] = [width * dx, height * dy];
 
@@ -134,6 +135,8 @@ export function Terrain3D(props: Terrain3DProps) {
     controls.maxPolarAngle = THREE.MathUtils.degToRad(88);
     controls.minDistance = 40;
     controls.maxDistance = 9000;
+    // Reserve right click for placement; Shift + left drag still pans.
+    controls.mouseButtons.RIGHT = null;
 
     const frame = new THREE.Group();
     const overlay = new THREE.Group();
@@ -178,11 +181,9 @@ export function Terrain3D(props: Terrain3DProps) {
     const onDown = (event: PointerEvent) => {
       pressed = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
     };
-    const onUp = (event: PointerEvent) => {
-      const start = pressed;
-      pressed = null;
+    const surfacePoint = (event: MouseEvent): LocalPoint | null => {
       const current = stage.current;
-      if (!start || !current?.mesh || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return;
+      if (!current?.mesh) return null;
       const rect = renderer.domElement.getBoundingClientRect();
       const pointer = new THREE.Vector2(
         ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -190,12 +191,23 @@ export function Terrain3D(props: Terrain3DProps) {
       );
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObject(current.mesh, false)[0];
-      if (!hit) return;
+      if (!hit) return null;
       const local = current.frame.worldToLocal(hit.point.clone());
-      callbacks.current.onPick({ x_m: local.x, y_m: -local.z });
+      return { x_m: local.x, y_m: -local.z };
+    };
+    const onUp = (event: PointerEvent) => {
+      const start = pressed;
+      pressed = null;
+      if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return;
+      const point = surfacePoint(event);
+      if (point) callbacks.current.onPick(point);
+    };
+    const onContext = (event: MouseEvent) => {
+      callbacks.current.onContextPick?.(surfacePoint(event));
     };
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointerup", onUp);
+    renderer.domElement.addEventListener("contextmenu", onContext);
 
     stage.current = { renderer, camera, controls, frame, overlay, mesh: null, material: null, reference: 0, invalidate };
     return () => {
@@ -204,6 +216,7 @@ export function Terrain3D(props: Terrain3DProps) {
       cancelAnimationFrame(pending);
       renderer.domElement.removeEventListener("pointerdown", onDown);
       renderer.domElement.removeEventListener("pointerup", onUp);
+      renderer.domElement.removeEventListener("contextmenu", onContext);
       controls.dispose();
       disposeOverlay(overlay);
       renderer.dispose();
