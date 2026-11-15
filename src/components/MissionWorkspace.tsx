@@ -323,7 +323,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             <p>{source.license_and_credit}</p>
           </div>)}
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p>Additional science layers: none loaded — no verifiable CRISM/THEMIS/MEDA/PIXL products for this crop.</p>
+            <p><strong>Additional science layers:</strong> available in <code>datasets/jezero-small/01-optical</code>…<code>08-chemical</code> (HiRISE, THEMIS, CRISM, topography, geophysics, atmospheric, radiation, PIXL/APXS) with <code>SHA256SUMS.txt</code> and <code>SOURCE-LINKS.csv</code>. Overlays not yet wired into the UI; verify provenance before use.</p>
           </div>
         </details>
         <p className="text-xs text-muted-foreground">Slope limits, resource rates and candidates are assumptions — orbital data cannot establish astronaut safety.</p>
