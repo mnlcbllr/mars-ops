@@ -319,7 +319,7 @@ export function MissionWorkspace({ workspace }: { workspace: Workspace }) {
             if (scrubSeek.current.timer || scrubSeek.current.pending === scrubSeek.current.last) return;
             scrubSeek.current.timer = window.setTimeout(() => {
               scrubSeek.current.timer = 0;
-              const t = scrubSeek.current.pending;
+              const t = scrubSeek.current.pending ?? 0;
               scrubSeek.current.pending = null;
               scrubSeek.current.last = t;
               void mission.seekSimulation(t);
