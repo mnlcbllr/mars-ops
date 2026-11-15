@@ -66,7 +66,7 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
   onReset: () => void;
   onInject: (kind: ContingencyKind) => void;
 }) {
-  const { run, simulation, phase, simulationBusy } = state;
+  const { run, simulation, phase, simulationBusy, error } = state;
   const [delayMin, setDelayMin] = useState(20);
   const [lossKind, setLossKind] = useState<ResourceKind>("EVA_TIME");
   const [lossAmount, setLossAmount] = useState(5);
@@ -127,6 +127,8 @@ export function SimulationPanel({ state, blockCenter, pickingBlock, radius, onRa
         <p className="font-medium">Replan advised</p>
         <p className="text-muted-foreground">{replanReasons.join(" · ")}</p>
       </div>}
+
+      {error && <p role="alert" className="text-xs text-status-critical">{error}</p>}
 
       <div className="flex flex-wrap gap-1.5">
         <Button type="button" size="sm" variant="outline" disabled={busy || settled} onClick={() => onAdvance(15 * 60)}>+15 min</Button>
