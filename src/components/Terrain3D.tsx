@@ -7,7 +7,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { errorText } from "@/lib/api";
 import { drawMarker, type Marker } from "@/lib/markers";
 import { buildTerrainMesh } from "@/lib/terrainMesh";
-import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, WARNING } from "@/lib/theme";
+import { INK_DARK, INK_LIGHT, MAP_BACKGROUND, ROUTE, WARNING } from "@/lib/theme";
 import type { LocalPoint, PlannedLeg, PointInspection } from "@/lib/types";
 
 export interface MeshInfo {
@@ -359,7 +359,8 @@ export function Terrain3D(props: Terrain3DProps) {
       const selected = index === selectedLeg && !walked;
       const dashed = !walked && !selected;
       const material = new LineMaterial({
-        color: INK_LIGHT,
+        // Blue = the path still to traverse; the walked trail stays a faint white.
+        color: walked ? INK_LIGHT : ROUTE,
         linewidth: selected ? 6 : walked ? 2.5 : 4,
         dashed,
         dashSize: 10,
@@ -432,13 +433,15 @@ export function Terrain3D(props: Terrain3DProps) {
       const z = surface(position.x_m, position.y_m);
       if (z !== null) {
         const [canvas, ctx] = canvas2x(36, 36);
+        // The live crew marker shares the base's black-and-white style, so the
+        // only orange left on the map is a real warning.
         ctx.beginPath();
         ctx.arc(18, 18, 12, 0, 2 * Math.PI);
         ctx.fillStyle = INK_DARK;
         ctx.fill();
         ctx.beginPath();
         ctx.arc(18, 18, 10, 0, 2 * Math.PI);
-        ctx.fillStyle = WARNING;
+        ctx.fillStyle = INK_LIGHT;
         ctx.fill();
         ctx.beginPath();
         ctx.moveTo(18, 11);
